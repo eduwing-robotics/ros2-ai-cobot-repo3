@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>마커 검출 실측 — 실제 ARToolKit</title>
+
+<!-- 카메라 없이 **실제 검출기**로 마커를 재는 페이지.
+     PIL 로 셀을 다시 읽는 시뮬레이션은 검출기가 아니다 — 사각형 검출과
+     Hamming 오류정정을 거치는 실제 경로를 통과하는지는 이것으로만 안다.
+
+     ArToolkitContext 는 **하나만 만든다.** 이미지마다 새로 만들면 매번
+     1.2MB 프레임 버퍼와 WASM 컨트롤러를 할당해 렌더러가 얼어붙는다 (실제로 얼었다).
+     context.update(el) 가 매 호출에 요소를 받으므로 이미지만 갈아 끼우면 된다. -->
+<style>
+  body { margin: 0; padding: 16px 18px; background: #14171a; color: #e8ecef;
+         font: 13px/1.5 -apple-system, "Apple SD Gothic Neo", sans-serif; }
+  h1 { font-size: 15px; margin: 0 0 3px; }
+  p.sub { margin: 0 0 14px; color: #8b959e; font-size: 12px; }
+  table { border-collapse: collapse; font-variant-numeric: tabular-nums; font-size: 12px; }
+  th, td { padding: 3px 12px; border-bottom: 1px solid #23282d; text-align: right; }
+  th:first-child, td:first-child { text-align: left; }
+  th { color: #9fb2c2; font-weight: 500; }
+  .ok { color: #7fd6a2; } .no { color: #ff9b8a; }
+  #sum { margin: 0 0 14px; padding: 10px 12px; background: #1c2024;
+         border: 1px solid #2e343a; border-radius: 6px; white-space: pre-wrap;
+         font: 12px/1.65 ui-monospace, monospace; }
+  #arjs-video { display: none !important; }
+</style>
+</head>
+<body>
+<h1>마커 검출 실측 — 실제 ARToolKit</h1>
+<p class="sub">합성 이미지를 <code>sourceImage</code>로 먹여 실제 검출기가 바코드를 읽는지 본다.
+  카메라를 열지 않는다. 640×480 프레임 · 흐림 0.5px.</p>
+<div id="sum">준비 중…</div>
+<table id="tbl"><thead><tr>
+  <th>이미지</th><th>마커</th><th>변(px)</th><th>기울기</th><th>검출</th><th>프레임</th>
+</tr></thead><tbody></tbody></table>
+
+<script type="module">
+import * as THREE from 'three';
+// 'threex' bare 지정자는 importmap 이 만들던 것. Vite 에서는 파일 경로로 직접 쓴다.
+import { ArToolkitSource, ArToolkitContext, ArMarkerControls } from '../src/external/ar-threex.mjs';
+
+ArToolkitContext.baseURL = '../';
+const W = 640, H = 480;
+const step = (m) => { document.getElementById('sum').textContent = m; console.log('[STEP]', m); };
+step('cases.json 읽는 중');
+
+// 검사 이미지는 **생성물**이라 저장소에 없다 (gitignore). 없으면 조용히 죽지 않고 알려준다.
+const cases = await fetch('./marker-images/cases.json')
+  .then((r) => { if (!r.ok) throw new Error(r.status); return r.json(); })
+  .catch(() => {
+    const el = document.getElementById('sum');
+    el.classList.add('no');
+    el.textContent = '검사 이미지가 없다. 먼저 만들어라:\n\n'
+      + '  python3 scripts/assets/make-marker-test-images.py\n\n'
+      + '이 이미지들은 생성물이라 저장소에 담지 않는다 (.gitignore).';
+    throw new Error('marker-images 없음');
+  });
+const BARCODES = [...new Set(cases.map((c) => c.barcode))];
+
+// --- 컨텍스트 하나. 실제 AR 화면과 같은 설정을 쓴다 (ar-marker.js 와 맞춰야 의미가 있다).
+const source = new ArToolkitSource({
+  sourceType: 'image', sourceUrl: `./marker-images/${cases[0].file}`,
+  sourceWidth: W, sourceHeight: H, displayWidth: W, displayHeight: H,
+});
+step(`이미지 ${cases.length}장 · source.init`);
+await new Promise((r) => { let done = false; const ok = () => { if (!done) { done = true; r(); } };
+  source.init(ok, ok); setTimeout(() => { if (!done) step('source.init 응답 없음 (4초)'); ok(); }, 4000); });
+step('source ready=' + source.ready);
+
+const context = new ArToolkitContext({
+  cameraParametersUrl: '../assets/marker/camera_para.dat',
+  detectionMode: 'mono_and_matrix',
+  matrixCodeType: '3x3_HAMMING63',
+  canvasWidth: W, canvasHeight: H,
+  maxDetectionRate: 1000, // 매 호출 검출한다. 기본값은 프레임을 건너뛴다.
+});
+await new Promise((r) => { let done = false; const ok = () => { if (!done) { done = true; r(); } };
+  context.init(ok); setTimeout(() => { if (!done) step('context.init 응답 없음 (8초) — arController=' + Boolean(context.arController)); ok(); }, 8000); });
+step('context ready · arController=' + Boolean(context.arController));
+
+// **바코드는 한 번에 하나만 등록한다.**
+// 둘을 동시에 등록했을 때 결과가 실행마다 바뀌었다 (#2 가 17/18 → 0/18).
+// 마커를 하나만 쓰는 스트레스·대비 구간은 세 번 모두 같은 숫자가 나왔다 — 원인이 이것이다.
+// 다른 번호는 ?bc=2 로 다시 돌린다. 대신 **상대 마커 이미지를 음성 대조군에 넣어**
+// 구별 능력을 확인한다 — 그게 오독 검사보다 깨끗하다.
+const TARGET = Number(new URLSearchParams(location.search).get('bc') ?? 5);
+const OTHER = BARCODES.find((b) => b !== TARGET);
+const roots = { [TARGET]: new THREE.Group() };
+new ArMarkerControls(context, roots[TARGET], {
+  type: 'barcode', barcodeValue: TARGET, smooth: false, // 스무딩은 첫 검출을 늦춘다
+});
+document.querySelector('p.sub').innerHTML +=
+  `<br>지금 등록한 마커 = <b>#${TARGET}</b> · 다른 번호는 <code>?bc=${OTHER}</code> 로 다시 돌린다.`;
+
+/**
+ * 이미지를 갈아 끼우고 검출을 시도한다.
+ *
+ * **프레임 대기를 하지 않는다.** 두 번 밟은 함정이다 —
+ *   requestAnimationFrame: 탭이 백그라운드면(`visibilityState === 'hidden'`) 아예 안 불린다
+ *   setTimeout(0):         백그라운드 탭에서 1초로 묶여 100건 검사가 10분을 넘긴다
+ * `context.update()` 는 동기 함수라 프레임 동기가 필요 없다. 대신
+ * `_updatedAt` 을 지워 maxDetectionRate 스로틀을 매번 우회한다 —
+ * 안 지우면 같은 밀리초 안의 연속 호출이 검출 없이 false 만 돌려준다.
+ */
+// 픽셀을 **직접 캔버스에 그려서** 검출기에 넘긴다.
+// <img> 를 그대로 넘기면 결과가 실행마다 달라졌다 — onload 는 픽셀 디코드를 보장하지 않고,
+// img.decode() 는 백그라운드 탭에서 아예 resolve 되지 않는다.
+// fetch → createImageBitmap → drawImage 는 탭 가시성과 무관하게 픽셀을 확정한다.
+const probeCanvas = document.createElement('canvas');
+probeCanvas.width = W; probeCanvas.height = H;
+const probeCtx = probeCanvas.getContext('2d', { willReadFrequently: true });
+
+async function probe(file, barcode, tries = 6) {
+  let bitmap;
+  try {
+    const blob = await fetch(`./marker-images/${file}`).then((r) => {
+      if (!r.ok) throw new Error(r.status);
+      return r.blob();
+    });
+    bitmap = await createImageBitmap(blob);
+  } catch {
+    return { detected: false, readAs: null, frames: 0, correct: false, error: '이미지 없음' };
+  }
+  probeCtx.fillStyle = '#fff';
+  probeCtx.fillRect(0, 0, W, H);
+  probeCtx.drawImage(bitmap, 0, 0, W, H);
+  bitmap.close();
+  const img = probeCanvas;
+
+  for (const r of Object.values(roots)) r.visible = false;
+  let frames = 0;
+  let hit = null;
+  while (frames < tries && hit === null) {
+    context._updatedAt = null; // maxDetectionRate 스로틀 우회
+    context.update(img);
+    frames += 1;
+    if (roots[TARGET].visible) hit = TARGET;
+  }
+  return { detected: hit !== null, readAs: hit, frames, correct: hit === barcode };
+}
+
+const tbody = document.querySelector('#tbl tbody');
+
+// --- 워밍업. **이걸 빼면 측정이 못 믿을 값이 된다.**
+// context.init 콜백이 온 뒤에도 검출기는 한동안 아무것도 못 잡는다.
+// 그 구간이 실행마다 0~12 프로브로 흔들려, 같은 이미지가 17/18 → 0/18 로 바뀌었다.
+// 확실히 잡히는 큰 마커로 첫 검출이 날 때까지 돌린 뒤에 재기 시작한다.
+// (근거: 실패했던 240px 이미지가 워밍업 뒤에는 1프레임에 검출됐다.)
+const WARM_FILE = `bc${TARGET}_240px_0deg.png`;
+let warm = 0;
+for (; warm < 60; warm += 1) {
+  const r = await probe(WARM_FILE, TARGET, 2);
+  if (r.correct) break;
+}
+step(`워밍업 ${warm} 회 후 첫 검출` + (warm >= 60 ? ' — 실패! 아래 결과를 믿지 마라' : ''));
+if (warm >= 60) document.getElementById('sum').classList.add('no');
+
+const rows = [];
+const ordered = cases.filter((c) => c.barcode === TARGET)
+  .sort((a, b) => b.px - a.px || a.deg - b.deg);
+for (const k of ordered) {
+  const r = await probe(k.file, k.barcode);
+  rows.push({ ...k, ...r });
+  const tr = document.createElement('tr');
+  const mark = r.detected ? (r.correct ? '○' : `✗ ${r.readAs} 로 오독`) : '✗';
+  tr.innerHTML = `<td>${k.file}</td><td>#${k.barcode}</td><td>${k.px}</td><td>${k.deg}°</td>`
+    + `<td class="${r.correct ? 'ok' : 'no'}">${mark}</td><td>${r.frames}</td>`;
+  tbody.appendChild(tr);
+  document.getElementById('sum').textContent = `진행 ${rows.length}/${ordered.length}…`;
+}
+
+// --- 스트레스: 실제 폰 조건. 흐림(손떨림·초점) · 낮은 대비(조명) · JPEG 압축.
+// 흐림 0.5px·완벽한 조명은 폰이 아니다. **어디서 깨지는지**를 알아야 마커 크기를 정할 수 있다.
+// 스트레스·대비 이미지는 **정본 마커로만** 만들어져 있다.
+// 다른 번호로 돌리면 당연히 안 잡히는데, 그걸 "전부 실패"로 적으면 오해를 만든다.
+const stress = (await fetch('./marker-images/stress.json').then((r) => r.json()))
+  .filter((k) => k.barcode === TARGET);
+const stRows = [];
+for (const k of stress) {
+  const r = await probe(k.file, k.barcode);
+  stRows.push({ ...k, ...r });
+  const tr = document.createElement('tr');
+  tr.innerHTML = `<td>${k.file}</td><td>스트레스</td><td>${k.px}</td>`
+    + `<td>흐림${k.blur} 대비${k.contrast} jpeg${k.jpeg || '—'}</td>`
+    + `<td class="${r.correct ? 'ok' : 'no'}">${r.correct ? '○' : '✗'}</td><td>${r.frames}</td>`;
+  tbody.appendChild(tr);
+}
+// 조건별로 검출되는 최소 크기
+const stByCond = {};
+for (const r of stRows) {
+  const c = `흐림${r.blur} 대비${r.contrast} jpeg${r.jpeg || '—'}`;
+  stByCond[c] ??= [];
+  if (r.correct) stByCond[c].push(r.px);
+}
+
+// --- 대비 임계값. 스트레스에서 **크기가 아니라 대비가 먼저 깨졌다.**
+// 임계값을 "명도 차이"로 재둔다 — 사진에서 직접 잴 수 있는 값이라야 사람이 쓸 수 있다.
+const ctCases = (await fetch('./marker-images/contrast.json').then((r) => r.json()))
+  .filter((k) => k.barcode === TARGET);
+const ctRows = [];
+for (const k of ctCases) {
+  const r = await probe(k.file, k.barcode);
+  ctRows.push({ ...k, ...r });
+  const tr = document.createElement('tr');
+  tr.innerHTML = `<td>${k.file}</td><td>대비</td><td>${k.px}</td>`
+    + `<td>명도차 ${k.sep} (검정 ${k.black} / 흰 ${k.white})</td>`
+    + `<td class="${r.correct ? 'ok' : 'no'}">${r.correct ? '○' : '✗'}</td><td>${r.frames}</td>`;
+  tbody.appendChild(tr);
+}
+
+// --- 흰 여백(quiet zone) 임계값.
+// 인쇄 시트의 여백 폭을 16%로 정한 것은 **추정이었다.** 재서 근거를 만든다.
+// 마커 크기는 고정하고 여백만 0~40%로 바꾸며, 여백 밖은 **어두운 배경**으로 둔다 —
+// 어두운 판이나 테이블에 붙이는 상황이 실제 위험이다.
+const qzCases = (await fetch('./marker-images/quietzone.json').then((r) => r.json()))
+  .filter((k) => k.barcode === TARGET);
+const qzRows = [];
+for (const k of qzCases) {
+  const r = await probe(k.file, k.barcode);
+  qzRows.push({ ...k, ...r });
+  const tr = document.createElement('tr');
+  tr.innerHTML = `<td>${k.file}</td><td>여백</td><td>${k.px}</td>`
+    + `<td>여백 ${k.qz_pct}% (${k.qz_px}px) · 어두운 배경</td>`
+    + `<td class="${r.correct ? 'ok' : 'no'}">${r.correct ? '○' : '✗'}</td><td>${r.frames}</td>`;
+  tbody.appendChild(tr);
+}
+const qzByPx = {};
+for (const px of [...new Set(qzRows.map((r) => r.px))].sort((a, b) => b - a)) {
+  const ok = qzRows.filter((r) => r.px === px && r.correct).map((r) => r.qz_pct);
+  qzByPx[px] = ok.length ? Math.min(...ok) : null;
+}
+
+// --- 음성 대조군. **이게 없으면 측정이 아니다.**
+// "전부 검출됨"은 검출기가 아무 프레임에나 visible 을 켜는 것일 수도 있다.
+const negatives = (await fetch('./marker-images/negatives.json').then((r) => r.json()))
+  .concat(cases.filter((c) => c.barcode === OTHER && c.deg === 0 && c.px >= 60)
+    .map((c) => ({ file: c.file, desc: `상대 마커 #${OTHER} (${c.px}px)` })));
+const negRows = [];
+for (const n of negatives) {
+  const r = await probe(n.file, -1); // 어떤 등록 번호도 있어서는 안 된다
+  negRows.push({ ...n, ...r });
+  const tr = document.createElement('tr');
+  tr.innerHTML = `<td>${n.file}</td><td>대조군</td><td colspan="2">${n.desc}</td>`
+    + `<td class="${r.detected ? 'no' : 'ok'}">${r.detected ? `✗ ${r.readAs} 로 오검출` : '○ 검출 안 됨'}</td>`
+    + `<td>${r.frames}</td>`;
+  tbody.appendChild(tr);
+}
+const falsePositives = negRows.filter((r) => r.detected);
+
+// --- 마커별 요약. **모든 기울기에서 잡히는 가장 작은 변** 이 실제 인식 한계다.
+const summary = {};
+for (const bc of [TARGET]) {
+  const mine = rows.filter((r) => r.barcode === bc);
+  const sizes = [...new Set(mine.map((r) => r.px))].sort((a, b) => a - b);
+  let minAll = null;
+  for (const px of sizes) {
+    if (mine.filter((r) => r.px === px).every((r) => r.correct)) { minAll = px; break; }
+  }
+  summary[bc] = {
+    맞게검출: mine.filter((r) => r.correct).length,
+    전체: mine.length,
+    오독: mine.filter((r) => r.detected && !r.correct).length,
+    최소검출px: Math.min(...mine.filter((r) => r.correct).map((r) => r.px), Infinity),
+    모든기울기최소px: minAll,
+  };
+}
+document.getElementById('sum').textContent = Object.entries(summary)
+  .map(([bc, v]) => `마커 #${bc}  맞게검출 ${v.맞게검출}/${v.전체}  오독 ${v.오독}`
+    + `  ·  최소 ${Number.isFinite(v.최소검출px) ? v.최소검출px + 'px' : '검출 실패'}`
+    + `  ·  모든 기울기에서 ${v.모든기울기최소px ?? '—'}px`).join('\n')
+  + `\n\n음성 대조군 ${negRows.length}건 중 오검출 ${falsePositives.length}건`
+  + (falsePositives.length ? ` — ${falsePositives.map((r) => r.file).join(', ')}` : ' (정상)')
+  + '\n최소 px 이 작을수록 멀리서 인식된다. 오독·오검출이 1건이라도 있으면 그 결과는 못 믿는다.';
+
+document.getElementById('sum').textContent += '\n\n[스트레스] 조건별 검출 최소 변\n'
+  + Object.entries(stByCond)
+      .map(([c, list]) => `  ${c} → ${list.length ? Math.min(...list) + 'px' : '전부 실패'}`)
+      .join('\n');
+
+// 크기별로 검출에 필요한 최소 명도차
+const ctByPx = {};
+for (const px of [...new Set(ctRows.map((r) => r.px))].sort((a, b) => b - a)) {
+  const ok = ctRows.filter((r) => r.px === px && r.correct).map((r) => r.sep);
+  ctByPx[px] = ok.length ? Math.min(...ok) : null;
+}
+document.getElementById('sum').textContent += `\n\n워밍업 ${warm} 회 후 측정 시작 —`
+  + ' 검출기는 첫 검출까지 수십 프레임을 먹어야 한다. 실행마다 다르다.'
+  + (ctCases.length
+      ? '\n\n[대비] 검출에 필요한 최소 명도차 (0~255)\n'
+        + Object.entries(ctByPx).map(([px, sep]) => `  ${px}px → ${sep ?? '전부 실패'}`).join('\n')
+      : `\n\n[스트레스·대비] 이미지가 정본 마커용이라 #${TARGET} 판에서는 건너뜀`);
+
+document.getElementById('sum').textContent += qzCases.length
+  ? '\n\n[흰 여백] 어두운 배경에서 검출되는 최소 여백 (마커 한 변 대비 %)\n'
+    + Object.entries(qzByPx).map(([px, q]) => `  마커 ${px}px → ${q === null ? '전부 실패' : q + '%'}`).join('\n')
+  : '';
+
+Object.assign(window, { rows, negRows, stRows, stByCond, ctRows, ctByPx, qzRows, qzByPx, summary, falsePositives, probe, TARGET, done: true });
+</script>
+</body>
+</html>

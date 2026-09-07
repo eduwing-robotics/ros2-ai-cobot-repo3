@@ -1,0 +1,104 @@
+/* 「터틀봇」 탭 — 옛 터틀봇 웹앱 주행 탭의 스타일을 `.tbpanel` 아래로 좁혀 옮겼다 (D182).
+ * 색은 전부 공용 토큰 — 안전 표시가 화면마다 다르면 오판한다. 340px 패널 한 칸에 세로로 쌓는다.
+ * ⚠ `.estop` 은 FR5 안전 바가 쓴다 — 여기 비상 버튼은 `.tb-estop` 이다(이름이 겹치면 둘 중
+ * 하나의 색이 조용히 바뀐다). */
+.tbpanel { display: flex; flex-direction: column; gap: var(--s-3); padding: var(--s-3); }
+.tbpanel section { border-top: 1px solid var(--c-line); padding-top: var(--s-2); }
+.tbpanel h3 { margin: 0 0 var(--s-2); font-size: 13px; }
+.tbpanel .dim { color: var(--c-fg-mute); font-size: 12px; }
+.tbpanel .mono { font-family: var(--ff-mono); font-size: 12px; }
+.tbpanel .row { display: flex; align-items: center; gap: var(--s-2); flex-wrap: wrap; margin-bottom: var(--s-1); }
+.tbpanel code { font-family: var(--ff-mono); font-size: 12px; background: var(--c-sunken); padding: 0 4px; }
+.tbpanel button { font: inherit; cursor: pointer; padding: 6px 12px; background: var(--c-btn); color: var(--c-btn-fg);
+                  border: 1px solid var(--c-line-strong); border-radius: var(--r-ctl); font-size: 13px; }
+.tbpanel button.primary { background: var(--c-fg); color: var(--c-bg); border-color: var(--c-fg); }
+.tbpanel button.danger  { background: var(--c-danger); color: var(--c-bg); border-color: var(--c-danger); }
+.tbpanel button:disabled { opacity: .4; cursor: default; }
+.tbpanel input, .tbpanel select { padding: 6px 8px; border: 1px solid var(--c-line-strong); border-radius: var(--r-ctl);
+                                  background: var(--c-panel); color: var(--c-fg); font: inherit; }
+.tbpanel input[list] { flex: 1; min-width: 8em; }
+.tbpanel select { width: 100%; }
+
+/* ── 로봇 카드 ── */
+.tbpanel .robot-cards { display: flex; flex-direction: column; gap: var(--s-2); }
+.tbpanel .robot-card { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2); padding: var(--s-2) var(--s-3);
+                       background: var(--c-panel); border: 1px solid var(--c-line); border-radius: var(--r-box);
+                       font-size: 13px; text-align: left; }
+.tbpanel .robot-card[aria-selected="true"] { border-color: var(--c-info); outline: 1px solid var(--c-info); }
+.tbpanel .bridge-health { margin: 0; }
+
+.tbpanel .badge { padding: 2px 8px; border-radius: 99px; font-size: 11px;
+                  border: 1px solid var(--c-line-strong); color: var(--c-fg-dim); }
+.tbpanel .badge.ok     { color: var(--c-ok); border-color: var(--c-ok); }
+.tbpanel .badge.warn   { color: var(--c-warn); border-color: var(--c-warn); }
+.tbpanel .badge.danger { color: var(--c-danger); border-color: var(--c-danger); }
+.tbpanel .badge.info   { color: var(--c-info); border-color: var(--c-info); }
+
+.tbpanel .notice { margin: 0; padding: var(--s-2) var(--s-3); font-size: 12px;
+                   background: var(--c-danger-soft); color: var(--c-danger); border-radius: var(--r-box); }
+.tbpanel .notice.warn { background: var(--c-warn-soft, #f0b86218); color: var(--c-warn); }
+
+.tbpanel button.tb-estop { padding: var(--s-3); font-size: 15px; font-weight: 700;
+                           background: var(--c-danger); color: var(--c-bg); border: 0; border-radius: var(--r-box); }
+
+/* ── 슬롯 · 경로 ── */
+.tbpanel .slot-list { display: flex; flex-direction: column; gap: var(--s-1); margin-bottom: var(--s-2); }
+.tbpanel .slot-card { display: flex; flex-direction: column; align-items: flex-start; gap: 2px;
+                      padding: var(--s-2) var(--s-3); background: var(--c-panel); text-align: left;
+                      border: 1px solid var(--c-line); border-radius: var(--r-box); }
+.tbpanel .slot-card[aria-selected="true"] { border-color: var(--c-info); outline: 1px solid var(--c-info); }
+.tbpanel .path-chips { display: flex; flex-wrap: wrap; gap: 4px; margin-top: var(--s-2); }
+.tbpanel .chip-path { padding: 3px 10px; border-radius: 99px; font-size: 11px; }
+.tbpanel .chip-path[aria-selected="true"] { background: var(--c-fg); color: var(--c-bg); border-color: var(--c-fg); }
+.tbpanel .chip-path[aria-selected="true"] .dim { color: var(--c-bg); }
+.tbpanel .path-points { margin: var(--s-2) 0 0; padding-left: 18px; font-size: 12px; }
+.tbpanel .path-points li { margin-bottom: 2px; }
+.tbpanel .path-points .ok { color: var(--c-ok); }
+
+/* ── 조종 (WASD) ── */
+.tbpanel .teleop { display: flex; flex-wrap: wrap; gap: var(--s-3); align-items: flex-start; }
+.tbpanel .teleop-keys { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.tbpanel .teleop-keyrow { display: flex; gap: 6px; }
+.tbpanel .teleop-key { width: 52px; height: 44px; display: flex; flex-direction: column; align-items: center;
+                       justify-content: center; gap: 2px; padding: 0; border-radius: 8px; background: var(--c-bg);
+                       touch-action: none; user-select: none; }
+.tbpanel .teleop-key b { font-size: 16px; font-family: var(--ff-mono); }
+.tbpanel .teleop-key span { font-size: 10px; color: var(--c-fg-mute); }
+.tbpanel .teleop-key[aria-pressed="true"] { background: var(--c-selected); color: var(--c-selected-fg); border-color: var(--c-selected); }   /* 눌림은 선택색 — 초록은 「정상」의 색이다 */
+.tbpanel .teleop-key[aria-pressed="true"] span { color: var(--c-selected-fg); }
+.tbpanel .teleop-stop { margin-top: 4px; padding: 6px 14px; border-radius: 8px; }
+.tbpanel .teleop-readout { font-size: 12px; color: var(--c-fg-dim); display: flex; flex-direction: column; gap: 2px; }
+.tbpanel .teleop-readout b { font-family: var(--ff-mono); font-size: 15px; color: var(--c-fg); }
+.tbpanel .teleop-note { font-size: 11px; color: var(--c-fg-mute); }
+.tbpanel .teleop-reason { color: var(--c-danger); }
+.tbpanel .teleop-pad { position: relative; border-radius: 50%; background: var(--c-sunken);
+                       border: 1px solid var(--c-line-strong); touch-action: none; flex: none; }
+.tbpanel .teleop-knob { position: absolute; left: 50%; top: 50%; width: 34px; height: 34px;
+                        margin: -17px 0 0 -17px; border-radius: 50%; background: var(--c-fg); }
+
+/* ── 로그 ── 토큰만 쓴다 — 예전엔 터틀봇 웹앱의 다크 hex 11개를 그대로 들고 와 라이트 테마에 다크 판이 박혀 있었다
+ * (UX 감사 2026-09-05). 출처별 색은 상태 토큰의 뜻과 맞춘다: slot=ok · nav=info · rosout=warn · bridge=danger */
+.tbpanel .logpanel { border: 1px solid var(--c-line); background: var(--c-sunken); color: var(--c-fg);
+                     border-radius: var(--r-box); overflow: hidden; }
+.tbpanel .logpanel-head { display: flex; align-items: center; gap: var(--s-2); flex-wrap: wrap;
+                          padding: var(--s-2) var(--s-3); }
+.tbpanel .logpanel-head h3 { margin: 0; font-size: 12px; }
+.tbpanel .logpanel-note { margin-left: auto; font-size: 11px; color: var(--c-fg-mute); }
+.tbpanel .chip { padding: 2px 10px; border-radius: 99px; font-size: 11px; background: var(--c-btn);
+                 color: var(--c-btn-fg); border: 1px solid var(--c-line-strong); }
+.tbpanel .chip[aria-selected="true"] { background: var(--c-selected); color: var(--c-selected-fg); }
+.tbpanel .logpanel-body { height: 140px; overflow: auto; padding: var(--s-1) var(--s-3) var(--s-2);
+                          font: var(--f-mono); }
+.tbpanel .logline { display: flex; gap: var(--s-2); white-space: nowrap; }
+.tbpanel .log-t { color: var(--c-fg-mute); }
+.tbpanel .log-robot { color: var(--c-fg-dim); width: 4em; }
+.tbpanel .log-src { width: 5em; }
+.tbpanel .src-slot   { color: var(--c-ok); }
+.tbpanel .src-nav    { color: var(--c-info); }
+.tbpanel .src-rosout { color: var(--c-warn); }
+.tbpanel .src-bridge { color: var(--c-danger); }
+.tbpanel .log-warn { color: var(--c-warn); }
+
+/* 되감기 절 — 시뮬 탭에서 옮겨 온 RunPanel 이 쓰는 클래스(.hint · .kv). 시뮬 탭 규칙(`main.css .sim …`)과 같은 값 */
+.tbpanel [data-t="tb-runs"] .hint { font-size: 12px; color: var(--c-fg-dim); margin: var(--s-1) 0 0; }
+.tbpanel [data-t="tb-runs"] .kv { display: grid; grid-template-columns: max-content 1fr; gap: 2px var(--s-2); font-size: 12px; margin: var(--s-1) 0 0; }

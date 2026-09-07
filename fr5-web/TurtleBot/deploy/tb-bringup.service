@@ -1,0 +1,12 @@
+[Unit]
+Description=TB3 namespaced bringup (tb3_2, domain 210)
+After=network-online.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+User=kim
+ExecStart=/usr/bin/bash /home/kim/robot_runtime/bringup/_robot_bringup_ns.sh tb3_2
+
+[Install]
+WantedBy=multi-user.target

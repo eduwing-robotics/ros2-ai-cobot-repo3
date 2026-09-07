@@ -1,0 +1,95 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1360 720" width="1360" height="720" font-family="'Pretendard','Apple SD Gothic Neo',system-ui,sans-serif">
+<!-- fr5:verified=2026-09-06 fr5:sources=FR5/src/features/sim|Shared/data/sim|Shared/view3d/sim-scene.js|scripts/check/sim-tab.mjs -->
+<rect width="1360" height="720" fill="#faf9f7"/>
+<defs><marker id="mREST" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#ba1a1a"/></marker><marker id="mWS" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#1c71d8"/></marker><marker id="mTCP" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#b06d00"/></marker><marker id="mUSB" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#2f7d32"/></marker><marker id="mFILE" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#9141ac"/></marker><marker id="mLAN" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#1a7f7a"/></marker></defs>
+<text x="34" y="46" font-size="25" font-weight="700" fill="#1a1c1b">시뮬 탭 — 파일 지도 (누가 누구를 부르나)</text>
+<rect x="1090" y="420" width="230" height="116" rx="8" fill="#f4f3f1" stroke="#c6c6c6"/>
+<path d="M1108,454 L1168,454" stroke="#1c71d8" stroke-width="2.6" marker-end="url(#mWS)"/>
+<text x="1182" y="459" font-size="13" font-weight="600" fill="#1a1c1b">import / 호출</text>
+<path d="M1108,484 L1168,484" stroke="#ba1a1a" stroke-width="2.6" marker-end="url(#mREST)"/>
+<text x="1182" y="489" font-size="13" font-weight="600" fill="#1a1c1b">HTTP</text>
+<path d="M1108,514 L1168,514" stroke="#9141ac" stroke-width="2.6" marker-end="url(#mFILE)"/>
+<text x="1182" y="519" font-size="13" font-weight="600" fill="#1a1c1b">파일 읽기</text>
+<rect x="40" y="86" width="400" height="300" rx="10" stroke="#1f5f9e" stroke-width="1.6" fill="#ffffff"/>
+<text x="56" y="112" font-size="15.5" font-weight="700" fill="#1a1c1b">FR5/src/features</text>
+<text x="56" y="130" font-size="11.5" fill="#6b6b6b">화면</text>
+<rect x="64" y="136" width="352" height="44" rx="6" fill="#ffffff" stroke="#c6c6c6"/>
+<text x="240.0" y="154.0" font-size="13" font-weight="600" text-anchor="middle" fill="#1a1c1b">sim/SimPanel.jsx</text>
+<text x="240.0" y="172.0" font-size="11" text-anchor="middle" fill="#6b6b6b">절 하나 · evaluateStop · 사이클 재생</text>
+<rect x="64" y="190" width="352" height="44" rx="6" fill="#ffffff" stroke="#c6c6c6"/>
+<text x="240.0" y="208.0" font-size="13" font-weight="600" text-anchor="middle" fill="#1a1c1b">sim/contact.js</text>
+<text x="240.0" y="226.0" font-size="11" text-anchor="middle" fill="#6b6b6b">runContactCheck — 브라우저 무조코</text>
+<rect x="64" y="244" width="352" height="44" rx="6" fill="#ffffff" stroke="#c6c6c6"/>
+<text x="240.0" y="262.0" font-size="13" font-weight="600" text-anchor="middle" fill="#1a1c1b">live/RobotTwin.jsx</text>
+<text x="240.0" y="280.0" font-size="11" text-anchor="middle" fill="#6b6b6b">고스트 · 거치대 · 터틀봇 · 발자국 · 판 클릭</text>
+<rect x="64" y="298" width="352" height="44" rx="6" fill="#ffffff" stroke="#c6c6c6"/>
+<text x="240.0" y="316.0" font-size="13" font-weight="600" text-anchor="middle" fill="#1a1c1b">data/datasource/http.js</text>
+<text x="240.0" y="334.0" font-size="11" text-anchor="middle" fill="#6b6b6b">ik(pose, ref) · robots() · sceneXml(id)</text>
+<rect x="500" y="86" width="400" height="460" rx="10" stroke="#c6c6c6" stroke-width="1.6" fill="#ffffff"/>
+<text x="516" y="112" font-size="15.5" font-weight="700" fill="#1a1c1b">Shared/data/sim</text>
+<text x="516" y="130" font-size="11.5" fill="#6b6b6b">순수 함수 · node --test 가 잠근다</text>
+<rect x="524" y="136" width="352" height="44" rx="6" fill="#ffffff" stroke="#c6c6c6"/>
+<text x="700.0" y="154.0" font-size="13" font-weight="600" text-anchor="middle" fill="#1a1c1b">load-steps.js</text>
+<text x="700.0" y="172.0" font-size="11" text-anchor="middle" fill="#6b6b6b">9칸 정본</text>
+<rect x="524" y="190" width="352" height="44" rx="6" fill="#ffffff" stroke="#c6c6c6"/>
+<text x="700.0" y="208.0" font-size="13" font-weight="600" text-anchor="middle" fill="#1a1c1b">stop-select.js</text>
+<text x="700.0" y="226.0" font-size="11" text-anchor="middle" fill="#6b6b6b">후보 7 · 우선순위</text>
+<rect x="524" y="244" width="352" height="44" rx="6" fill="#ffffff" stroke="#c6c6c6"/>
+<text x="700.0" y="262.0" font-size="13" font-weight="600" text-anchor="middle" fill="#1a1c1b">view-pose.js</text>
+<text x="700.0" y="280.0" font-size="11" text-anchor="middle" fill="#6b6b6b">관측 자세 · rz 최근접 roll</text>
+<rect x="524" y="298" width="352" height="44" rx="6" fill="#ffffff" stroke="#c6c6c6"/>
+<text x="700.0" y="316.0" font-size="13" font-weight="600" text-anchor="middle" fill="#1a1c1b">cycle.js</text>
+<text x="700.0" y="334.0" font-size="11" text-anchor="middle" fill="#6b6b6b">26구간 · observedStop · unloadSteps</text>
+<rect x="524" y="352" width="352" height="44" rx="6" fill="#ffffff" stroke="#c6c6c6"/>
+<text x="700.0" y="370.0" font-size="13" font-weight="600" text-anchor="middle" fill="#1a1c1b">scene-compose.js</text>
+<text x="700.0" y="388.0" font-size="11" text-anchor="middle" fill="#6b6b6b">MJCF 합성</text>
+<rect x="524" y="406" width="352" height="44" rx="6" fill="#ffffff" stroke="#c6c6c6"/>
+<text x="700.0" y="424.0" font-size="13" font-weight="600" text-anchor="middle" fill="#1a1c1b">contact-check.js</text>
+<text x="700.0" y="442.0" font-size="11" text-anchor="middle" fill="#6b6b6b">길 표본 · 관통</text>
+<rect x="524" y="460" width="352" height="44" rx="6" fill="#ffffff" stroke="#c6c6c6"/>
+<text x="700.0" y="478.0" font-size="13" font-weight="600" text-anchor="middle" fill="#1a1c1b">cam-view.js</text>
+<text x="700.0" y="496.0" font-size="11" text-anchor="middle" fill="#6b6b6b">글로벌캠 예측기 (camLab 안)</text>
+<rect x="960" y="86" width="360" height="300" rx="10" stroke="#c6c6c6" stroke-width="1.6" fill="#ffffff"/>
+<text x="976" y="112" font-size="15.5" font-weight="700" fill="#1a1c1b">Shared/view3d · 자산</text>
+<rect x="984" y="136" width="312" height="44" rx="6" fill="#ffffff" stroke="#c6c6c6"/>
+<text x="1140.0" y="154.0" font-size="13" font-weight="600" text-anchor="middle" fill="#1a1c1b">sim-scene.js</text>
+<text x="1140.0" y="172.0" font-size="11" text-anchor="middle" fill="#6b6b6b">무조코 wasm · contactsAt · moveAmr</text>
+<rect x="984" y="190" width="312" height="44" rx="6" fill="#ffffff" stroke="#c6c6c6"/>
+<text x="1140.0" y="208.0" font-size="13" font-weight="600" text-anchor="middle" fill="#1a1c1b">robot.js · burger.js</text>
+<text x="1140.0" y="226.0" font-size="11" text-anchor="middle" fill="#6b6b6b">URDF 고스트 · tcp 노드 · 바퀴</text>
+<rect x="984" y="244" width="312" height="44" rx="6" fill="#ffffff" stroke="#c6c6c6"/>
+<text x="1140.0" y="262.0" font-size="13" font-weight="600" text-anchor="middle" fill="#1a1c1b">Sim/out/scene/&lt;id&gt;.xml</text>
+<text x="1140.0" y="280.0" font-size="11" text-anchor="middle" fill="#6b6b6b">구운 장면 (build-scene)</text>
+<rect x="984" y="298" width="312" height="44" rx="6" fill="#ffffff" stroke="#c6c6c6"/>
+<text x="1140.0" y="316.0" font-size="13" font-weight="600" text-anchor="middle" fill="#1a1c1b">workcell.js · props.js · catalog.js</text>
+<text x="1140.0" y="334.0" font-size="11" text-anchor="middle" fill="#6b6b6b">실측 SSOT — 새 좌표 0</text>
+<rect x="40" y="430" width="400" height="116" rx="10" stroke="#c6c6c6" stroke-width="1.6" fill="#ffffff"/>
+<text x="56" y="456" font-size="15.5" font-weight="700" fill="#1a1c1b">FR5/bridge :5055</text>
+<rect x="64" y="480" width="168" height="44" rx="6" fill="#ffffff" stroke="#c6c6c6"/>
+<text x="148.0" y="498.0" font-size="13" font-weight="600" text-anchor="middle" fill="#1a1c1b">main.py /ik</text>
+<text x="148.0" y="516.0" font-size="11" text-anchor="middle" fill="#6b6b6b">refJointsDeg · dry_run 게이트</text>
+<rect x="248" y="480" width="168" height="44" rx="6" fill="#ffffff" stroke="#c6c6c6"/>
+<text x="332.0" y="498.0" font-size="13" font-weight="600" text-anchor="middle" fill="#1a1c1b">robot_adapter/mock.py</text>
+<text x="332.0" y="516.0" font-size="11" text-anchor="middle" fill="#6b6b6b">URDF FK · 수치 IK</text>
+<rect x="40" y="590" width="1280" height="100" rx="10" stroke="#c6c6c6" stroke-width="1.6" fill="#ffffff"/>
+<text x="56" y="616" font-size="15.5" font-weight="700" fill="#1a1c1b">게이트 · 시험</text>
+<rect x="64" y="636" width="280" height="40" rx="6" fill="#ffffff" stroke="#c6c6c6"/>
+<text x="204.0" y="652.0" font-size="13" font-weight="600" text-anchor="middle" fill="#1a1c1b">scripts/check/sim-tab.mjs</text>
+<text x="204.0" y="670.0" font-size="11" text-anchor="middle" fill="#6b6b6b">CDP 실렌더 · 훅으로 잰다</text>
+<rect x="360" y="636" width="280" height="40" rx="6" fill="#ffffff" stroke="#c6c6c6"/>
+<text x="500.0" y="652.0" font-size="13" font-weight="600" text-anchor="middle" fill="#1a1c1b">scripts/check/sim-contact.mjs</text>
+<text x="500.0" y="670.0" font-size="11" text-anchor="middle" fill="#6b6b6b">Node 무조코 · 낮의 충돌 재현</text>
+<rect x="656" y="636" width="280" height="40" rx="6" fill="#ffffff" stroke="#c6c6c6"/>
+<text x="796.0" y="652.0" font-size="13" font-weight="600" text-anchor="middle" fill="#1a1c1b">Shared/data/sim/*.test.js</text>
+<text x="796.0" y="670.0" font-size="11" text-anchor="middle" fill="#6b6b6b">node --test</text>
+<rect x="952" y="636" width="344" height="40" rx="6" fill="#ffffff" stroke="#c6c6c6"/>
+<text x="1124.0" y="652.0" font-size="13" font-weight="600" text-anchor="middle" fill="#1a1c1b">scripts/dev/amr-stop-mujoco.mjs</text>
+<text x="1124.0" y="670.0" font-size="11" text-anchor="middle" fill="#6b6b6b">같은 모듈로 오프라인 정차 후보 훑기</text>
+<path d="M416,158 L500,158" fill="none" stroke="#1c71d8" stroke-width="2.4" marker-end="url(#mWS)"/>
+<path d="M416,212 L460,212 L460,428 L500,428" fill="none" stroke="#1c71d8" stroke-width="2.4" marker-end="url(#mWS)"/>
+<path d="M876,428 L930,428 L930,158 L984,158" fill="none" stroke="#1c71d8" stroke-width="2.4" marker-end="url(#mWS)"/>
+<path d="M416,266 L470,266 L470,78 L930,78 L930,212 L984,212" fill="none" stroke="#1c71d8" stroke-width="1.8" marker-end="url(#mWS)"/>
+<path d="M240,342 L240,430" fill="none" stroke="#ba1a1a" stroke-width="2.4" marker-end="url(#mREST)" marker-start="url(#mREST)"/>
+<path d="M876,158 L945,158 L945,320 L984,320" fill="none" stroke="#9141ac" stroke-width="2.4" marker-end="url(#mFILE)"/>
+<text x="40" y="704" font-size="12" fill="#6b6b6b">규칙: 좌표는 SSOT 에서만 · 변환은 frames.js 한 곳 · 시뮬(Sim/)은 실기가 정한 것만 읽는다(D96) — 여기 화면은 트윈 층이다</text>
+</svg>

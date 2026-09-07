@@ -1,0 +1,122 @@
+/* 맵을 실제 바닥에 얹는 화면 — 폰만으로 돈다. 맥도 케이블도 없어야 강의실에서 쓴다.
+   색은 3D 쪽과 한 벌이다 — 초록은 조준 링, 파랑은 유령벽 모서리, 노랑은 바닥 안전 테이프. */
+:root {
+  --ground: #14161a;
+  --surface: #1c2026;
+  --raised: #232830;
+  --line: #343c46;
+  --text: #eef1f4;
+  --muted: #97a1ac;
+  --go: #7fd88f;
+  --go-ink: #0d1a11;
+  --hazard: #d9a323;
+  --info: #8fb6d9;
+  --bad: #ff8b8b;
+  --sans: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+  --mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+* { box-sizing: border-box; }
+/* **`body` 에 배경을 주지 않는다** — `html` 에만 (D13 · `AGENTS.md`). */
+html { background: var(--ground); }
+html, body { margin: 0; height: 100%; color: var(--text); font: 16px/1.6 var(--sans);
+  -webkit-font-smoothing: antialiased; }
+
+/* ── 시작 화면 ─────────────────────────────────────────────────────────────
+   미리보기가 화면을 채우고 조작이 그 위 아래쪽에 얹힌다. XR 세션이 열리면 통째로 숨는다. */
+#app { position: fixed; inset: 0; display: grid; grid-template-rows: auto 1fr auto; }
+#app[hidden] { display: none; }
+#preview { position: absolute; inset: 0; z-index: 0; }
+#preview canvas { display: block; }
+
+#topbar { grid-row: 1; z-index: 1; display: flex; align-items: center; gap: 8px;
+  padding: calc(12px + env(safe-area-inset-top)) 16px 0; }
+#dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); flex: none; }
+#dot.ok { background: var(--go); }
+#dot.bad { background: var(--bad); }
+#sup { margin: 0; font-size: 12.5px; color: var(--muted); }
+
+#sheet { grid-row: 3; z-index: 1; background: var(--surface); border-top: 1px solid var(--line);
+  border-radius: 18px 18px 0 0; padding: 12px 14px calc(14px + env(safe-area-inset-bottom));
+  display: grid; gap: 11px; max-height: 74vh; overflow-y: auto; }
+#grab { width: 34px; height: 4px; border-radius: 2px; background: var(--line); justify-self: center; }
+
+/* 모드 칩 — 가로로 눕는다. 모드가 하나 더 늘어도 레이아웃이 안 무너진다 */
+#chips { display: flex; gap: 7px; overflow-x: auto; scrollbar-width: none;
+  margin: 0 -14px; padding: 0 14px 2px; }
+#chips::-webkit-scrollbar { display: none; }
+#chips button { flex: none; min-height: 44px; margin: 0; padding: 10px 15px; border-radius: 999px;
+  font: 600 14px var(--sans); color: var(--muted); background: var(--raised);
+  border: 1px solid var(--line); }
+#chips button[aria-pressed="true"] { background: var(--go); color: var(--go-ink); border-color: var(--go); }
+#chips button[data-off="1"] { opacity: .5; }
+
+#blurb { margin: 0; min-height: 40px; font-size: 13px; color: var(--muted); }
+#blurb b { color: var(--text); }
+#blurb .no { color: var(--bad); }
+
+.field { display: grid; gap: 6px; font-size: 12.5px; color: var(--muted); letter-spacing: .03em; }
+select, button { font: inherit; color: var(--text); background: var(--raised);
+  border: 1px solid var(--line); border-radius: 11px; }
+/* **폭을 통일한다.** 내용 길이에 따라 컨트롤이 계단처럼 어긋나 있었다 (215/371/122px 실측). */
+select { width: 100%; min-height: 48px; padding: 12px; font-size: 15px; appearance: none;
+  background-image: linear-gradient(45deg, transparent 50%, currentColor 50%),
+                    linear-gradient(135deg, currentColor 50%, transparent 50%);
+  background-position: right 17px center, right 12px center;
+  background-size: 5px 5px, 5px 5px; background-repeat: no-repeat; }
+
+#go { width: 100%; min-height: 54px; font-weight: 700; font-size: 17px;
+  color: var(--go-ink); background: var(--go); border: 0; border-radius: 13px; }
+#go:disabled { background: var(--raised); color: var(--muted); border: 1px solid var(--line); }
+
+#more { display: flex; gap: 8px; }
+#more button { flex: 1; min-height: 44px; color: var(--muted); background: none; }
+
+#log { font-size: 13px; max-height: 34vh; overflow-y: auto; }
+#log[hidden] { display: none; }
+#log div { padding: 3px 0; border-bottom: 1px solid var(--line); }
+.ok { color: var(--go); }
+.bad { color: var(--bad); }
+
+:where(button, select):focus-visible { outline: 2px solid var(--info); outline-offset: 2px; }
+
+/* 답사 캔버스 — XR 세션이 아니라 그냥 전체화면이다. `touch-action` 을 끄지 않으면
+   끌어서 둘러볼 때 브라우저가 스크롤로 가져간다. */
+#walk { position: fixed; inset: 0; width: 100%; height: 100%; touch-action: none; z-index: 1; }
+
+/* ── 세션 중 오버레이 ───────────────────────────────────────────────────────
+   **`z-index` 를 여기 줘야 한다.** `position: fixed` 는 그 자체로 스택 문맥을 만들어서,
+   안쪽 자식의 `z-index: 2` 는 이 상자 *안*에서만 2 다 — 밖에서 이 상자는 0 이라
+   답사 캔버스(1) 밑에 깔렸다. 계기가 통째로 안 보였다 (실렌더가 잡았다 · 2026-08-06). */
+#ov { position: fixed; left: 0; top: 0; width: 0; height: 0; z-index: 3; }
+#hud, #fps, #hint, #bar, #steps { position: fixed; text-shadow: 0 1px 4px #000; z-index: 2; }
+/* **글자에 배경을 깐다.** 방이 흰 모형이라 흰 글자가 통째로 묻힌다.
+   폭은 글자만큼만 준다 — 화면을 가로지르는 띠가 되면 촬영본에 그대로 찍힌다. */
+#hud, #fps, #hint { background: rgba(18, 20, 24, .58); padding: 3px 10px; border-radius: 9px;
+  backdrop-filter: blur(4px); width: fit-content; }
+#hud { left: 12px; top: calc(12px + env(safe-area-inset-top)); font-weight: 600; }
+#fps { right: 12px; top: calc(12px + env(safe-area-inset-top));
+  font-variant-numeric: tabular-nums; opacity: .8; }
+#hint { left: 0; right: 0; margin-inline: auto; bottom: 96px; text-align: center; font-weight: 600;
+  max-width: calc(100% - 32px); pointer-events: none; }
+/* **빈 칩을 띄우지 않는다.** 배경이 붙어 있어서 내용이 없으면 회색 얼룩만 남는다
+   (시작 화면 우상단에 실제로 떠 있었다 · 2026-08-06). */
+#hud:empty, #fps:empty, #hint:empty { display: none; }
+
+/* 촬영은 탭 2회다. 어디까지 했는지 로그가 아니라 화면이 말해야 한다. */
+#steps { left: 0; right: 0; margin-inline: auto; top: calc(46px + env(safe-area-inset-top));
+  display: flex; gap: 5px; width: fit-content; }
+#steps[hidden] { display: none; }
+.step { width: 22px; height: 4px; border-radius: 2px; background: rgba(255, 255, 255, .3); }
+.step.on { background: var(--go); }
+
+/* 조작바 — 여기 탭만 DOM 이 가져간다 (`beforexrselect`). 나머지 화면은 맵 놓기다. */
+#bar { left: 0; right: 0; bottom: calc(16px + env(safe-area-inset-bottom)); display: flex;
+  gap: 6px; justify-content: center; flex-wrap: wrap; padding: 0 8px; }
+#bar button { min-width: 46px; min-height: 46px; padding: 10px 14px;
+  background: rgba(35, 40, 48, .92); backdrop-filter: blur(6px); }
+/* **`display:flex` 가 `[hidden]` 을 이긴다.** 아이디 선택자라 UA 의 `[hidden]{display:none}`
+   보다 세서, `bar.hidden = true` 가 한 번도 먹은 적이 없었다 — 시작 화면에 조작바가 떠 있었고
+   촬영 중 **"탭하면 조작바가 숨는다" 가 통째로 죽어 있었다**. 그 기능의 존재 이유가
+   "영상에 버튼이 안 찍히게" 였다 (2026-08-06 UI 감사). 개별 버튼은 `display` 규칙이 없어
+   멀쩡했기 때문에 더 안 보였다. */
+#bar[hidden] { display: none; }

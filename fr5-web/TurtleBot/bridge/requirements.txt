@@ -1,0 +1,6 @@
+fastapi
+# [standard] 가 필수다 (2026-08-06 실기) — 없으면 uvicorn 이 **뜨긴 뜨고** `/ws/state` 만
+# 404 를 낸다. 상태가 WS 로만 오므로 화면은 로봇 0대에 배지만 뜬 채 조용히 죽는다.
+# dev(`tb-dev.sh`)는 `uv run --with 'uvicorn[standard]'` 라 이 차이가 dev 에서 안 보였다.
+uvicorn[standard]
+pyyaml

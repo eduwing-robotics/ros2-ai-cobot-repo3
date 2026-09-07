@@ -1,0 +1,261 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1360 880" width="1360" height="880" font-family="'Pretendard','Apple SD Gothic Neo',system-ui,sans-serif">
+<!-- fr5:verified=2026-08-27 fr5:sources=Database -->
+<rect width="1360" height="880" fill="#faf9f7"/>
+<defs><marker id="mREST" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#ba1a1a"/></marker><marker id="mWS" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#1c71d8"/></marker><marker id="mTCP" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#b06d00"/></marker><marker id="mUSB" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#2f7d32"/></marker><marker id="mFILE" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#9141ac"/></marker><marker id="mLAN" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#1a7f7a"/></marker></defs>
+<text x="34" y="46" font-size="25" font-weight="700" fill="#1a1c1b">ERD — SQLite 10 테이블</text>
+<rect x="1000" y="692" width="230" height="86" rx="8" fill="#f4f3f1" stroke="#c6c6c6"/>
+<path d="M1018,726 L1078,726" stroke="#9141ac" stroke-width="2.6" marker-end="url(#mFILE)"/>
+<text x="1092" y="731" font-size="13" font-weight="600" fill="#1a1c1b">외래키 (1:N)</text>
+<path d="M1018,756 L1078,756" stroke="#b06d00" stroke-width="2.6" marker-end="url(#mTCP)"/>
+<text x="1092" y="761" font-size="13" font-weight="600" fill="#1a1c1b">논리 참조 (FK 없음)</text>
+<text x="60" y="104" font-size="12.5" font-weight="700" fill="#6b6b6b">마스터 — 거의 안 변한다</text>
+<text x="520" y="104" font-size="12.5" font-weight="700" fill="#6b6b6b">트랜잭션 — 한 번의 일이 한 행</text>
+<text x="980" y="104" font-size="12.5" font-weight="700" fill="#6b6b6b">로그 — 시간에 따라 쌓인다</text>
+<path d="M380,197.0 L450,197.0 L450,197.0 L514,197.0" fill="none" stroke="#9141ac" stroke-width="1.8" marker-end="url(#mFILE)"/>
+<text x="388" y="191.0" font-size="11" font-weight="700" fill="#6b6b6b">1</text>
+<text x="498" y="191.0" font-size="11" font-weight="700" fill="#6b6b6b">N</text>
+<path d="M380,197.0 L450,197.0 L450,385.0 L514,385.0" fill="none" stroke="#9141ac" stroke-width="1.8" marker-end="url(#mFILE)"/>
+<text x="388" y="191.0" font-size="11" font-weight="700" fill="#6b6b6b">1</text>
+<text x="498" y="379.0" font-size="11" font-weight="700" fill="#6b6b6b">N</text>
+<path d="M380,197.0 L450,197.0 L450,573.0 L514,573.0" fill="none" stroke="#9141ac" stroke-width="1.8" marker-end="url(#mFILE)"/>
+<text x="388" y="191.0" font-size="11" font-weight="700" fill="#6b6b6b">1</text>
+<text x="498" y="567.0" font-size="11" font-weight="700" fill="#6b6b6b">N</text>
+<path d="M380,197.0 L450,197.0 L450,761.0 L514,761.0" fill="none" stroke="#9141ac" stroke-width="1.8" marker-end="url(#mFILE)"/>
+<text x="388" y="191.0" font-size="11" font-weight="700" fill="#6b6b6b">1</text>
+<text x="498" y="755.0" font-size="11" font-weight="700" fill="#6b6b6b">N</text>
+<path d="M380,385.0 L486,385.0 L486,385.0 L514,385.0" fill="none" stroke="#b06d00" stroke-width="1.8" stroke-dasharray="5 4" marker-end="url(#mTCP)"/>
+<text x="388" y="379.0" font-size="11" font-weight="700" fill="#6b6b6b">1</text>
+<text x="498" y="379.0" font-size="11" font-weight="700" fill="#6b6b6b">N</text>
+<path d="M840,197.0 L910,197.0 L910,197.0 L974,197.0" fill="none" stroke="#9141ac" stroke-width="1.8" marker-end="url(#mFILE)"/>
+<text x="848" y="191.0" font-size="11" font-weight="700" fill="#6b6b6b">1</text>
+<text x="958" y="191.0" font-size="11" font-weight="700" fill="#6b6b6b">N</text>
+<path d="M840,385.0 L910,385.0 L910,385.0 L974,385.0" fill="none" stroke="#9141ac" stroke-width="1.8" marker-end="url(#mFILE)"/>
+<text x="848" y="379.0" font-size="11" font-weight="700" fill="#6b6b6b">1</text>
+<text x="958" y="379.0" font-size="11" font-weight="700" fill="#6b6b6b">N</text>
+<path d="M840,385.0 L910,385.0 L910,573.0 L974,573.0" fill="none" stroke="#9141ac" stroke-width="1.8" marker-end="url(#mFILE)"/>
+<text x="848" y="379.0" font-size="11" font-weight="700" fill="#6b6b6b">1</text>
+<text x="958" y="567.0" font-size="11" font-weight="700" fill="#6b6b6b">N</text>
+<path d="M840,573.0 L934,573.0 L934,573.0 L974,573.0" fill="none" stroke="#9141ac" stroke-width="1.8" marker-end="url(#mFILE)"/>
+<text x="848" y="567.0" font-size="11" font-weight="700" fill="#6b6b6b">1</text>
+<text x="958" y="567.0" font-size="11" font-weight="700" fill="#6b6b6b">N</text>
+<rect x="60" y="116" width="320" height="162" rx="4" fill="#ffffff" stroke="#1f5f9e" stroke-width="1.4"/>
+<path d="M60,150 h320" stroke="#1f5f9e" stroke-width="1.4"/>
+<rect x="60" y="116" width="320" height="34" rx="4" fill="#f4f3f1"/>
+<path d="M60,150 h320" stroke="#1f5f9e" stroke-width="1.4"/>
+<text x="72" y="139" font-size="14" font-weight="700" fill="#1a1c1b">robot</text>
+<text x="72" y="166" font-size="10.5" font-weight="700" fill="#b06d00">PK</text>
+<text x="104" y="166" font-size="11.5" fill="#1a1c1b">robot_id</text>
+<text x="368" y="166" font-size="10.5" text-anchor="end" fill="#6b6b6b">TEXT</text>
+<text x="72" y="186" font-size="10.5" font-weight="700" fill="#6b6b6b"></text>
+<text x="104" y="186" font-size="11.5" fill="#1a1c1b">kind</text>
+<text x="368" y="186" font-size="10.5" text-anchor="end" fill="#6b6b6b">TEXT NN</text>
+<text x="72" y="206" font-size="10.5" font-weight="700" fill="#6b6b6b"></text>
+<text x="104" y="206" font-size="11.5" fill="#1a1c1b">name · model</text>
+<text x="368" y="206" font-size="10.5" text-anchor="end" fill="#6b6b6b">TEXT</text>
+<text x="72" y="226" font-size="10.5" font-weight="700" fill="#6b6b6b"></text>
+<text x="104" y="226" font-size="11.5" fill="#1a1c1b">endpoint</text>
+<text x="368" y="226" font-size="10.5" text-anchor="end" fill="#6b6b6b">TEXT</text>
+<text x="72" y="246" font-size="10.5" font-weight="700" fill="#6b6b6b"></text>
+<text x="104" y="246" font-size="11.5" fill="#1a1c1b">first_seen · last_seen</text>
+<text x="368" y="246" font-size="10.5" text-anchor="end" fill="#6b6b6b">REAL</text>
+<text x="72" y="266" font-size="10.5" font-weight="700" fill="#6b6b6b"></text>
+<text x="104" y="266" font-size="11.5" fill="#1a1c1b">raw_json</text>
+<text x="368" y="266" font-size="10.5" text-anchor="end" fill="#6b6b6b">TEXT</text>
+<rect x="60" y="304" width="320" height="162" rx="4" fill="#ffffff" stroke="#c6c6c6" stroke-width="1.4"/>
+<path d="M60,338 h320" stroke="#c6c6c6" stroke-width="1.4"/>
+<rect x="60" y="304" width="320" height="34" rx="4" fill="#f4f3f1"/>
+<path d="M60,338 h320" stroke="#c6c6c6" stroke-width="1.4"/>
+<text x="72" y="327" font-size="14" font-weight="700" fill="#1a1c1b">layout</text>
+<text x="72" y="354" font-size="10.5" font-weight="700" fill="#b06d00">PK</text>
+<text x="104" y="354" font-size="11.5" fill="#1a1c1b">layout_id</text>
+<text x="368" y="354" font-size="10.5" text-anchor="end" fill="#6b6b6b">TEXT</text>
+<text x="72" y="374" font-size="10.5" font-weight="700" fill="#6b6b6b"></text>
+<text x="104" y="374" font-size="11.5" fill="#1a1c1b">name · revision</text>
+<text x="368" y="374" font-size="10.5" text-anchor="end" fill="#6b6b6b">TEXT</text>
+<text x="72" y="394" font-size="10.5" font-weight="700" fill="#6b6b6b"></text>
+<text x="104" y="394" font-size="11.5" fill="#1a1c1b">frame</text>
+<text x="368" y="394" font-size="10.5" text-anchor="end" fill="#6b6b6b">'lab-floor'</text>
+<text x="72" y="414" font-size="10.5" font-weight="700" fill="#6b6b6b"></text>
+<text x="104" y="414" font-size="11.5" fill="#1a1c1b">plan_json</text>
+<text x="368" y="414" font-size="10.5" text-anchor="end" fill="#6b6b6b">TEXT</text>
+<text x="72" y="434" font-size="10.5" font-weight="700" fill="#6b6b6b"></text>
+<text x="104" y="434" font-size="11.5" fill="#1a1c1b">created_at</text>
+<text x="368" y="434" font-size="10.5" text-anchor="end" fill="#6b6b6b">REAL</text>
+<text x="72" y="454" font-size="10.5" font-weight="700" fill="#6b6b6b"></text>
+<text x="104" y="454" font-size="11.5" fill="#1a1c1b">raw_json</text>
+<text x="368" y="454" font-size="10.5" text-anchor="end" fill="#6b6b6b">TEXT</text>
+<rect x="60" y="492" width="320" height="82" rx="4" fill="#ffffff" stroke="#c6c6c6" stroke-width="1.4"/>
+<path d="M60,526 h320" stroke="#c6c6c6" stroke-width="1.4"/>
+<rect x="60" y="492" width="320" height="34" rx="4" fill="#f4f3f1"/>
+<path d="M60,526 h320" stroke="#c6c6c6" stroke-width="1.4"/>
+<text x="72" y="515" font-size="14" font-weight="700" fill="#1a1c1b">schema_meta</text>
+<text x="72" y="542" font-size="10.5" font-weight="700" fill="#6b6b6b"></text>
+<text x="104" y="542" font-size="11.5" fill="#1a1c1b">version</text>
+<text x="368" y="542" font-size="10.5" text-anchor="end" fill="#6b6b6b">INTEGER NN</text>
+<text x="72" y="562" font-size="10.5" font-weight="700" fill="#6b6b6b"></text>
+<text x="104" y="562" font-size="11.5" fill="#1a1c1b">applied_at</text>
+<text x="368" y="562" font-size="10.5" text-anchor="end" fill="#6b6b6b">REAL NN</text>
+<rect x="520" y="116" width="320" height="162" rx="4" fill="#ffffff" stroke="#c6c6c6" stroke-width="1.4"/>
+<path d="M520,150 h320" stroke="#c6c6c6" stroke-width="1.4"/>
+<rect x="520" y="116" width="320" height="34" rx="4" fill="#f4f3f1"/>
+<path d="M520,150 h320" stroke="#c6c6c6" stroke-width="1.4"/>
+<text x="532" y="139" font-size="14" font-weight="700" fill="#1a1c1b">session</text>
+<text x="532" y="166" font-size="10.5" font-weight="700" fill="#b06d00">PK</text>
+<text x="564" y="166" font-size="11.5" fill="#1a1c1b">id</text>
+<text x="828" y="166" font-size="10.5" text-anchor="end" fill="#6b6b6b">INTEGER</text>
+<text x="532" y="186" font-size="10.5" font-weight="700" fill="#1f5f9e">FK</text>
+<text x="564" y="186" font-size="11.5" fill="#1a1c1b">robot_id</text>
+<text x="828" y="186" font-size="10.5" text-anchor="end" fill="#6b6b6b">→ robot</text>
+<text x="532" y="206" font-size="10.5" font-weight="700" fill="#6b6b6b"></text>
+<text x="564" y="206" font-size="11.5" fill="#1a1c1b">opened_at · closed_at</text>
+<text x="828" y="206" font-size="10.5" text-anchor="end" fill="#6b6b6b">REAL</text>
+<text x="532" y="226" font-size="10.5" font-weight="700" fill="#6b6b6b"></text>
+<text x="564" y="226" font-size="11.5" fill="#1a1c1b">observe_only</text>
+<text x="828" y="226" font-size="10.5" text-anchor="end" fill="#6b6b6b">INT =1</text>
+<text x="532" y="246" font-size="10.5" font-weight="700" fill="#6b6b6b"></text>
+<text x="564" y="246" font-size="11.5" fill="#1a1c1b">owner · end_phase</text>
+<text x="828" y="246" font-size="10.5" text-anchor="end" fill="#6b6b6b">TEXT</text>
+<text x="532" y="266" font-size="10.5" font-weight="700" fill="#6b6b6b"></text>
+<text x="564" y="266" font-size="11.5" fill="#1a1c1b">raw_json</text>
+<text x="828" y="266" font-size="10.5" text-anchor="end" fill="#6b6b6b">TEXT</text>
+<rect x="520" y="304" width="320" height="162" rx="4" fill="#ffffff" stroke="#c6c6c6" stroke-width="1.4"/>
+<path d="M520,338 h320" stroke="#c6c6c6" stroke-width="1.4"/>
+<rect x="520" y="304" width="320" height="34" rx="4" fill="#f4f3f1"/>
+<path d="M520,338 h320" stroke="#c6c6c6" stroke-width="1.4"/>
+<text x="532" y="327" font-size="14" font-weight="700" fill="#1a1c1b">run</text>
+<text x="532" y="354" font-size="10.5" font-weight="700" fill="#b06d00">PK</text>
+<text x="564" y="354" font-size="11.5" fill="#1a1c1b">id</text>
+<text x="828" y="354" font-size="10.5" text-anchor="end" fill="#6b6b6b">INTEGER</text>
+<text x="532" y="374" font-size="10.5" font-weight="700" fill="#1f5f9e">FK</text>
+<text x="564" y="374" font-size="11.5" fill="#1a1c1b">robot_id</text>
+<text x="828" y="374" font-size="10.5" text-anchor="end" fill="#6b6b6b">→ robot</text>
+<text x="532" y="394" font-size="10.5" font-weight="700" fill="#6b6b6b"></text>
+<text x="564" y="394" font-size="11.5" fill="#1a1c1b">layout_id</text>
+<text x="828" y="394" font-size="10.5" text-anchor="end" fill="#6b6b6b">TEXT ⇢ layout</text>
+<text x="532" y="414" font-size="10.5" font-weight="700" fill="#6b6b6b"></text>
+<text x="564" y="414" font-size="11.5" fill="#1a1c1b">started_at · ended_at</text>
+<text x="828" y="414" font-size="10.5" text-anchor="end" fill="#6b6b6b">REAL</text>
+<text x="532" y="434" font-size="10.5" font-weight="700" fill="#6b6b6b"></text>
+<text x="564" y="434" font-size="11.5" fill="#1a1c1b">outcome</text>
+<text x="828" y="434" font-size="10.5" text-anchor="end" fill="#6b6b6b">TEXT</text>
+<text x="532" y="454" font-size="10.5" font-weight="700" fill="#6b6b6b"></text>
+<text x="564" y="454" font-size="11.5" fill="#1a1c1b">path_json · raw_json</text>
+<text x="828" y="454" font-size="10.5" text-anchor="end" fill="#6b6b6b">TEXT</text>
+<rect x="520" y="492" width="320" height="162" rx="4" fill="#ffffff" stroke="#c6c6c6" stroke-width="1.4"/>
+<path d="M520,526 h320" stroke="#c6c6c6" stroke-width="1.4"/>
+<rect x="520" y="492" width="320" height="34" rx="4" fill="#f4f3f1"/>
+<path d="M520,526 h320" stroke="#c6c6c6" stroke-width="1.4"/>
+<text x="532" y="515" font-size="14" font-weight="700" fill="#1a1c1b">trajectory</text>
+<text x="532" y="542" font-size="10.5" font-weight="700" fill="#b06d00">PK</text>
+<text x="564" y="542" font-size="11.5" fill="#1a1c1b">id</text>
+<text x="828" y="542" font-size="10.5" text-anchor="end" fill="#6b6b6b">INTEGER</text>
+<text x="532" y="562" font-size="10.5" font-weight="700" fill="#1f5f9e">FK</text>
+<text x="564" y="562" font-size="11.5" fill="#1a1c1b">robot_id</text>
+<text x="828" y="562" font-size="10.5" text-anchor="end" fill="#6b6b6b">→ robot</text>
+<text x="532" y="582" font-size="10.5" font-weight="700" fill="#6b6b6b"></text>
+<text x="564" y="582" font-size="11.5" fill="#1a1c1b">source · purpose</text>
+<text x="828" y="582" font-size="10.5" text-anchor="end" fill="#6b6b6b">TEXT</text>
+<text x="532" y="602" font-size="10.5" font-weight="700" fill="#6b6b6b"></text>
+<text x="564" y="602" font-size="11.5" fill="#1a1c1b">fps · duration_sec</text>
+<text x="828" y="602" font-size="10.5" text-anchor="end" fill="#6b6b6b">REAL</text>
+<text x="532" y="622" font-size="10.5" font-weight="700" fill="#6b6b6b"></text>
+<text x="564" y="622" font-size="11.5" fill="#1a1c1b">stamp_json · frames_json</text>
+<text x="828" y="622" font-size="10.5" text-anchor="end" fill="#6b6b6b">TEXT</text>
+<text x="532" y="642" font-size="10.5" font-weight="700" fill="#6b6b6b"></text>
+<text x="564" y="642" font-size="11.5" fill="#1a1c1b">comparable</text>
+<text x="828" y="642" font-size="10.5" text-anchor="end" fill="#6b6b6b">생성열</text>
+<rect x="520" y="680" width="320" height="162" rx="4" fill="#ffffff" stroke="#c6c6c6" stroke-width="1.4"/>
+<path d="M520,714 h320" stroke="#c6c6c6" stroke-width="1.4"/>
+<rect x="520" y="680" width="320" height="34" rx="4" fill="#f4f3f1"/>
+<path d="M520,714 h320" stroke="#c6c6c6" stroke-width="1.4"/>
+<text x="532" y="703" font-size="14" font-weight="700" fill="#1a1c1b">slot_execution</text>
+<text x="532" y="730" font-size="10.5" font-weight="700" fill="#b06d00">PK</text>
+<text x="564" y="730" font-size="11.5" fill="#1a1c1b">id</text>
+<text x="828" y="730" font-size="10.5" text-anchor="end" fill="#6b6b6b">INTEGER</text>
+<text x="532" y="750" font-size="10.5" font-weight="700" fill="#1f5f9e">FK</text>
+<text x="564" y="750" font-size="11.5" fill="#1a1c1b">robot_id</text>
+<text x="828" y="750" font-size="10.5" text-anchor="end" fill="#6b6b6b">→ robot</text>
+<text x="532" y="770" font-size="10.5" font-weight="700" fill="#6b6b6b"></text>
+<text x="564" y="770" font-size="11.5" fill="#1a1c1b">slot_name · step_index</text>
+<text x="828" y="770" font-size="10.5" text-anchor="end" fill="#6b6b6b">TEXT·INT</text>
+<text x="532" y="790" font-size="10.5" font-weight="700" fill="#6b6b6b"></text>
+<text x="564" y="790" font-size="11.5" fill="#1a1c1b">point_name</text>
+<text x="828" y="790" font-size="10.5" text-anchor="end" fill="#6b6b6b">TEXT</text>
+<text x="532" y="810" font-size="10.5" font-weight="700" fill="#6b6b6b"></text>
+<text x="564" y="810" font-size="11.5" fill="#1a1c1b">executed_at</text>
+<text x="828" y="810" font-size="10.5" text-anchor="end" fill="#6b6b6b">REAL NN</text>
+<text x="532" y="830" font-size="10.5" font-weight="700" fill="#6b6b6b"></text>
+<text x="564" y="830" font-size="11.5" fill="#1a1c1b">who · result</text>
+<text x="828" y="830" font-size="10.5" text-anchor="end" fill="#6b6b6b">TEXT</text>
+<rect x="980" y="116" width="320" height="162" rx="4" fill="#ffffff" stroke="#c6c6c6" stroke-width="1.4"/>
+<path d="M980,150 h320" stroke="#c6c6c6" stroke-width="1.4"/>
+<rect x="980" y="116" width="320" height="34" rx="4" fill="#f4f3f1"/>
+<path d="M980,150 h320" stroke="#c6c6c6" stroke-width="1.4"/>
+<text x="992" y="139" font-size="14" font-weight="700" fill="#1a1c1b">state_sample</text>
+<text x="992" y="166" font-size="10.5" font-weight="700" fill="#b06d00">PK</text>
+<text x="1024" y="166" font-size="11.5" fill="#1a1c1b">id</text>
+<text x="1288" y="166" font-size="10.5" text-anchor="end" fill="#6b6b6b">INTEGER</text>
+<text x="992" y="186" font-size="10.5" font-weight="700" fill="#1f5f9e">FK</text>
+<text x="1024" y="186" font-size="11.5" fill="#1a1c1b">robot_id</text>
+<text x="1288" y="186" font-size="10.5" text-anchor="end" fill="#6b6b6b">→ robot NN</text>
+<text x="992" y="206" font-size="10.5" font-weight="700" fill="#1f5f9e">FK</text>
+<text x="1024" y="206" font-size="11.5" fill="#1a1c1b">session_id</text>
+<text x="1288" y="206" font-size="10.5" text-anchor="end" fill="#6b6b6b">→ session</text>
+<text x="992" y="226" font-size="10.5" font-weight="700" fill="#6b6b6b"></text>
+<text x="1024" y="226" font-size="11.5" fill="#1a1c1b">t</text>
+<text x="1288" y="226" font-size="10.5" text-anchor="end" fill="#6b6b6b">REAL NN</text>
+<text x="992" y="246" font-size="10.5" font-weight="700" fill="#6b6b6b"></text>
+<text x="1024" y="246" font-size="11.5" fill="#1a1c1b">joints_json · tcp_json</text>
+<text x="1288" y="246" font-size="10.5" text-anchor="end" fill="#6b6b6b">TEXT</text>
+<text x="992" y="266" font-size="10.5" font-weight="700" fill="#6b6b6b"></text>
+<text x="1024" y="266" font-size="11.5" fill="#1a1c1b">gripper_pct · safety_json</text>
+<text x="1288" y="266" font-size="10.5" text-anchor="end" fill="#6b6b6b">REAL·TEXT</text>
+<rect x="980" y="304" width="320" height="162" rx="4" fill="#ffffff" stroke="#c6c6c6" stroke-width="1.4"/>
+<path d="M980,338 h320" stroke="#c6c6c6" stroke-width="1.4"/>
+<rect x="980" y="304" width="320" height="34" rx="4" fill="#f4f3f1"/>
+<path d="M980,338 h320" stroke="#c6c6c6" stroke-width="1.4"/>
+<text x="992" y="327" font-size="14" font-weight="700" fill="#1a1c1b">event</text>
+<text x="992" y="354" font-size="10.5" font-weight="700" fill="#b06d00">PK</text>
+<text x="1024" y="354" font-size="11.5" fill="#1a1c1b">id</text>
+<text x="1288" y="354" font-size="10.5" text-anchor="end" fill="#6b6b6b">INTEGER</text>
+<text x="992" y="374" font-size="10.5" font-weight="700" fill="#1f5f9e">FK</text>
+<text x="1024" y="374" font-size="11.5" fill="#1a1c1b">run_id</text>
+<text x="1288" y="374" font-size="10.5" text-anchor="end" fill="#6b6b6b">→ run</text>
+<text x="992" y="394" font-size="10.5" font-weight="700" fill="#1f5f9e">FK</text>
+<text x="1024" y="394" font-size="11.5" fill="#1a1c1b">robot_id</text>
+<text x="1288" y="394" font-size="10.5" text-anchor="end" fill="#6b6b6b">→ robot</text>
+<text x="992" y="414" font-size="10.5" font-weight="700" fill="#6b6b6b"></text>
+<text x="1024" y="414" font-size="11.5" fill="#1a1c1b">t_server · t_run_sec</text>
+<text x="1288" y="414" font-size="10.5" text-anchor="end" fill="#6b6b6b">REAL</text>
+<text x="992" y="434" font-size="10.5" font-weight="700" fill="#6b6b6b"></text>
+<text x="1024" y="434" font-size="11.5" fill="#1a1c1b">station · kind</text>
+<text x="1288" y="434" font-size="10.5" text-anchor="end" fill="#6b6b6b">TEXT NN</text>
+<text x="992" y="454" font-size="10.5" font-weight="700" fill="#6b6b6b"></text>
+<text x="1024" y="454" font-size="11.5" fill="#1a1c1b">payload_json</text>
+<text x="1288" y="454" font-size="10.5" text-anchor="end" fill="#6b6b6b">TEXT</text>
+<rect x="980" y="492" width="320" height="162" rx="4" fill="#ffffff" stroke="#c6c6c6" stroke-width="1.4"/>
+<path d="M980,526 h320" stroke="#c6c6c6" stroke-width="1.4"/>
+<rect x="980" y="492" width="320" height="34" rx="4" fill="#f4f3f1"/>
+<path d="M980,526 h320" stroke="#c6c6c6" stroke-width="1.4"/>
+<text x="992" y="515" font-size="14" font-weight="700" fill="#1a1c1b">media</text>
+<text x="992" y="542" font-size="10.5" font-weight="700" fill="#b06d00">PK</text>
+<text x="1024" y="542" font-size="11.5" fill="#1a1c1b">id</text>
+<text x="1288" y="542" font-size="10.5" text-anchor="end" fill="#6b6b6b">INTEGER</text>
+<text x="992" y="562" font-size="10.5" font-weight="700" fill="#1f5f9e">FK</text>
+<text x="1024" y="562" font-size="11.5" fill="#1a1c1b">robot_id</text>
+<text x="1288" y="562" font-size="10.5" text-anchor="end" fill="#6b6b6b">→ robot</text>
+<text x="992" y="582" font-size="10.5" font-weight="700" fill="#1f5f9e">FK</text>
+<text x="1024" y="582" font-size="11.5" fill="#1a1c1b">run_id</text>
+<text x="1288" y="582" font-size="10.5" text-anchor="end" fill="#6b6b6b">→ run</text>
+<text x="992" y="602" font-size="10.5" font-weight="700" fill="#1f5f9e">FK</text>
+<text x="1024" y="602" font-size="11.5" fill="#1a1c1b">trajectory_id</text>
+<text x="1288" y="602" font-size="10.5" text-anchor="end" fill="#6b6b6b">→ trajectory</text>
+<text x="992" y="622" font-size="10.5" font-weight="700" fill="#6b6b6b"></text>
+<text x="1024" y="622" font-size="11.5" fill="#1a1c1b">path</text>
+<text x="1288" y="622" font-size="10.5" text-anchor="end" fill="#6b6b6b">TEXT NN</text>
+<text x="992" y="642" font-size="10.5" font-weight="700" fill="#6b6b6b"></text>
+<text x="1024" y="642" font-size="11.5" fill="#1a1c1b">kind · t_server</text>
+<text x="1288" y="642" font-size="10.5" text-anchor="end" fill="#6b6b6b">TEXT·REAL</text>
+<text x="60" y="846" font-size="12" fill="#6b6b6b">PK 기본키 · FK 외래키 · NN NOT NULL · 생성열은 STORED · 인덱스 3개(state_sample·trajectory·event)</text>
+<text x="60" y="864" font-size="12" fill="#6b6b6b">state_sample·event·media 의 robot_id 는 칸 옆에 「→ robot」 으로 적었다 — 선을 다 그으면 읽히지 않는다</text>
+</svg>

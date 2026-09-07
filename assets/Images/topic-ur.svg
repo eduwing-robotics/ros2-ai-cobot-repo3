@@ -1,0 +1,81 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 586" width="1280" height="586" font-family="'Pretendard','Apple SD Gothic Neo',system-ui,sans-serif">
+<!-- fr5:verified=2026-08-31 fr5:sources=docs/ref/product/USER-REQUIREMENTS.md|docs/ref/product/PRD.md|docs/ref/product/FEATURE-SPEC.md -->
+<rect width="1280" height="586" fill="#faf9f7"/>
+<text x="34" y="44" font-size="25" font-weight="700" fill="#1a1c1b">사용자 요구사항 — 조립 과정 표현과 생산성 비교</text>
+<text x="34" y="68" font-size="13" fill="#6b6b6b">주제 두 줄(D51·D66)이 정본 — 수단은 USER-REQUIREMENTS.md · 기능 번호는 PRD.md F1~F9</text>
+<rect x="1161" y="26" width="75" height="26" rx="2" fill="#c6c6c6" opacity="0.14"/>
+<rect x="1161" y="26" width="4" height="26" fill="#c6c6c6"/>
+<text x="1173" y="44" font-size="14" fill="#1a1c1b">미착수 1</text>
+<rect x="1087" y="26" width="64" height="26" rx="2" fill="#b06d00" opacity="0.14"/>
+<rect x="1087" y="26" width="4" height="26" fill="#b06d00"/>
+<text x="1099" y="44" font-size="14" fill="#1a1c1b">부분 2</text>
+<rect x="1024" y="26" width="53" height="26" rx="2" fill="#2f7d32" opacity="0.14"/>
+<rect x="1024" y="26" width="4" height="26" fill="#2f7d32"/>
+<text x="1036" y="44" font-size="14" fill="#1a1c1b">됨 7</text>
+<rect x="34" y="100" width="1212" height="44" fill="#ffffff"/>
+<rect x="34" y="100" width="3.5" height="44" fill="#2f7d32"/>
+<text x="50" y="128" font-size="14" font-weight="700" fill="#1a1c1b">UR_01</text>
+<text x="140" y="128" font-size="14.5" fill="#1a1c1b">사용자는 조립 라인 전체를 3D 화면에서 볼 수 있어야 한다.</text>
+<text x="1132" y="128" font-size="12.5" fill="#6b6b6b">F2</text>
+<text x="1188" y="128" font-size="12.5" fill="#2f7d32" font-weight="600">됨</text>
+<line x1="34" y1="144" x2="1246" y2="144" stroke="#e4e2df"/>
+<rect x="34" y="144" width="3.5" height="44" fill="#2f7d32"/>
+<text x="50" y="172" font-size="14" font-weight="700" fill="#1a1c1b">UR_02</text>
+<text x="140" y="172" font-size="14.5" fill="#1a1c1b">사용자는 탄두 1발이 조립되는 과정을 타임라인으로 재생할 수 있어야 한다.</text>
+<text x="1132" y="172" font-size="12.5" fill="#6b6b6b">F2</text>
+<text x="1188" y="172" font-size="12.5" fill="#2f7d32" font-weight="600">됨</text>
+<line x1="34" y1="188" x2="1246" y2="188" stroke="#e4e2df"/>
+<rect x="34" y="188" width="1212" height="44" fill="#ffffff"/>
+<rect x="34" y="188" width="3.5" height="44" fill="#2f7d32"/>
+<text x="50" y="216" font-size="14" font-weight="700" fill="#1a1c1b">UR_03</text>
+<text x="140" y="216" font-size="14.5" fill="#1a1c1b">실물 로봇이 움직이면 화면 속 로봇도 같이 움직여야 한다.</text>
+<text x="1132" y="216" font-size="12.5" fill="#6b6b6b">F2</text>
+<text x="1188" y="216" font-size="12.5" fill="#2f7d32" font-weight="600">됨</text>
+<line x1="34" y1="232" x2="1246" y2="232" stroke="#e4e2df"/>
+<rect x="34" y="232" width="3.5" height="44" fill="#2f7d32"/>
+<text x="50" y="260" font-size="14" font-weight="700" fill="#1a1c1b">UR_04</text>
+<text x="140" y="260" font-size="14.5" fill="#1a1c1b">사용자는 로봇 없이도 화면에서 조립 과정을 시험할 수 있어야 한다.</text>
+<text x="1132" y="260" font-size="12.5" fill="#6b6b6b">F2</text>
+<text x="1188" y="260" font-size="12.5" fill="#2f7d32" font-weight="600">됨</text>
+<line x1="34" y1="276" x2="1246" y2="276" stroke="#e4e2df"/>
+<rect x="34" y="276" width="1212" height="44" fill="#ffffff"/>
+<rect x="34" y="276" width="3.5" height="44" fill="#2f7d32"/>
+<text x="50" y="304" font-size="14" font-weight="700" fill="#1a1c1b">UR_05</text>
+<text x="140" y="304" font-size="14.5" fill="#1a1c1b">사용자는 평면도에서 팔·작업대·AMR 경로를 옮겨 맵을 만들 수 있어야 한다.</text>
+<text x="1132" y="304" font-size="12.5" fill="#6b6b6b">F7</text>
+<text x="1188" y="304" font-size="12.5" fill="#2f7d32" font-weight="600">됨</text>
+<line x1="34" y1="320" x2="1246" y2="320" stroke="#e4e2df"/>
+<rect x="34" y="320" width="3.5" height="44" fill="#2f7d32"/>
+<text x="50" y="348" font-size="14" font-weight="700" fill="#1a1c1b">UR_06</text>
+<text x="140" y="348" font-size="14.5" fill="#1a1c1b">스테이션이 팔의 도달 범위를 벗어나면 경고해야 한다.</text>
+<text x="1132" y="348" font-size="12.5" fill="#6b6b6b">F7</text>
+<text x="1188" y="348" font-size="12.5" fill="#2f7d32" font-weight="600">됨</text>
+<line x1="34" y1="364" x2="1246" y2="364" stroke="#e4e2df"/>
+<rect x="34" y="364" width="1212" height="44" fill="#ffffff"/>
+<rect x="34" y="364" width="3.5" height="44" fill="#c6c6c6"/>
+<text x="50" y="392" font-size="14" font-weight="700" fill="#1a1c1b">UR_07</text>
+<text x="140" y="392" font-size="14.5" fill="#1a1c1b">사용자는 맵 두 개를 나란히 보고 어느 쪽이 몇 % 나은지 알 수 있어야 한다.</text>
+<text x="1132" y="392" font-size="12.5" fill="#6b6b6b">F8</text>
+<text x="1188" y="392" font-size="12.5" fill="#c6c6c6" font-weight="600">미착수</text>
+<line x1="34" y1="408" x2="1246" y2="408" stroke="#e4e2df"/>
+<rect x="34" y="408" width="3.5" height="44" fill="#2f7d32"/>
+<text x="50" y="436" font-size="14" font-weight="700" fill="#1a1c1b">UR_08</text>
+<text x="140" y="436" font-size="14.5" fill="#1a1c1b">사용자는 지표가 실측인지 시뮬레이션인지 목업인지 구분할 수 있어야 한다.</text>
+<text x="1132" y="436" font-size="12.5" fill="#6b6b6b">F8</text>
+<text x="1188" y="436" font-size="12.5" fill="#2f7d32" font-weight="600">됨</text>
+<line x1="34" y1="452" x2="1246" y2="452" stroke="#e4e2df"/>
+<rect x="34" y="452" width="1212" height="44" fill="#ffffff"/>
+<rect x="34" y="452" width="3.5" height="44" fill="#b06d00"/>
+<text x="50" y="480" font-size="14" font-weight="700" fill="#1a1c1b">UR_09</text>
+<text x="140" y="480" font-size="14.5" fill="#1a1c1b">사용자는 폰으로 맵을 실제 바닥에 배치해 충돌을 확인할 수 있어야 한다.</text>
+<text x="1132" y="480" font-size="12.5" fill="#6b6b6b">F9</text>
+<text x="1188" y="480" font-size="12.5" fill="#b06d00" font-weight="600">부분</text>
+<line x1="34" y1="496" x2="1246" y2="496" stroke="#e4e2df"/>
+<rect x="34" y="496" width="3.5" height="44" fill="#b06d00"/>
+<text x="50" y="524" font-size="14" font-weight="700" fill="#1a1c1b">UR_10</text>
+<text x="140" y="524" font-size="14.5" fill="#1a1c1b">시스템은 실행을 기록하고 사용자가 지난 시퀀스를 되돌려 볼 수 있어야 한다.</text>
+<text x="1132" y="524" font-size="12.5" fill="#6b6b6b">F6</text>
+<text x="1188" y="524" font-size="12.5" fill="#b06d00" font-weight="600">부분</text>
+<line x1="34" y1="540" x2="1246" y2="540" stroke="#e4e2df"/>
+<text x="34" y="570" font-size="12" fill="#6b6b6b">UR_07 이 주제의 결론이다 — 맵을 바꿨을 때 생산성이 얼마나 달라지나</text>
+</svg>

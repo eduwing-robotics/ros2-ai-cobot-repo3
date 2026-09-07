@@ -1,0 +1,22 @@
+{
+  "name": "@fr5/dashboard",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "관제화면 — 배치안 편집 · 생산성 지표 비교. React (CONSOLE-REACT.md)",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@fr5/shared": "*",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "three": "^0.185.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^5.0.0",
+    "vite": "^8.0.0"
+  }
+}

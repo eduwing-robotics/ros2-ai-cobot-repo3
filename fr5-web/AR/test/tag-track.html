@@ -1,0 +1,236 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>태그 정합 킬-실험 — 폰이 카트 태그를 잡나</title>
+<!--
+  킬-실험 (2026-09-07 · rnd/PIP-GHOST-CONVERGE-LOOP 다음 수 · 「폰이 실물 자리를 아는 법」).
+
+  묻는 것 하나 — **폰(WebXR 이미지 추적)이 카트 상판의 AprilTag 36h11(145mm)을 잡고, 그 자리에서 로봇 베이스 원이
+  실물 베이스 위에 앉나.** 흑백 격자는 이미지 추적 품질이 낮을 수 있어(ARCore 는 무늬가 많은 그림을 좋아한다)
+  잡히는지 자체가 실험이다. 기하는 전부 기존 실측이다 — `Shared/assets/tag/track/geometry.json`
+  (= `calib-shots/tag-layout.json` + `robot-base-in-tag.json` 사본 · 새 실측 0).
+
+  판정선 — 1.5m 에서 태그가 잡히고(`tracked`) 베이스 떨림(30프레임 표준편차) ≤ 10mm · 다른 태그 예측 사각형이 실물 태그 위에
+  앉으면 **태그 정합 채택**. 안 잡히면 무늬 포스터 → 그것도 안 되면 두 점 탭.
+
+  Android Chrome 전제 — `chrome://flags/#webxr-incubations` 켜야 `image-tracking` 이 열린다(스펙 초안 · 2026-09 기준).
+  이 화면은 **관전만** 한다 — 브리지에 아무것도 보내지 않는다(하드 룰 4).
+-->
+<style>
+  html { background: #0b0f14; color: #e6edf3; font: 15px/1.4 -apple-system, system-ui, sans-serif; }
+  body { margin: 0; }
+  #app { padding: 16px; max-width: 640px; margin: 0 auto; }
+  h1 { font-size: 18px; margin: 0 0 8px; }
+  p { margin: 6px 0; color: #b6c2cf; }
+  button { font: inherit; padding: 12px 18px; border-radius: 10px; border: 0; background: #2f6fd0; color: #fff; }
+  button[disabled] { background: #3a4552; color: #9aa7b4; }
+  #log { margin-top: 12px; font: 12px/1.5 ui-monospace, monospace; white-space: pre-wrap; color: #9fb3c8; }
+  #log .ok { color: #6fd39a; } #log .bad { color: #ff8a80; }
+  #ov { position: fixed; inset: 0; pointer-events: none; display: none; }
+  #ov[data-on="1"] { display: block; }
+  #hud { position: absolute; left: 10px; top: 10px; right: 10px; background: rgba(0,0,0,.55); padding: 8px 10px; border-radius: 10px;
+         font: 13px/1.45 ui-monospace, monospace; white-space: pre-wrap; }
+  #bar { position: absolute; left: 0; right: 0; bottom: 18px; display: flex; gap: 8px; justify-content: center; pointer-events: auto; }
+  #bar button { background: rgba(20,30,40,.85); border: 1px solid #3a4552; }
+  #bar button[aria-pressed="true"] { background: #2f6fd0; }
+</style>
+</head>
+<body>
+<div id="app">
+  <h1>태그 정합 킬-실험</h1>
+  <p>카트 상판의 AprilTag(145mm)을 폰이 잡으면 그 자리에 <b>로봇 베이스 원(주황)·Z축(파랑)</b>과 <b>다른 태그의 예측 사각형(초록)</b>을 그린다.
+     실물 베이스·실물 태그 위에 앉으면 정합 OK. 로봇을 비추기만 하면 된다 — 명령은 보내지 않는다.</p>
+  <p id="sup">확인 중…</p>
+  <button id="go" type="button" disabled>AR 시작</button>
+  <button id="copy" type="button">기록 복사</button>
+  <div id="log"></div>
+</div>
+<div id="ov">
+  <div id="hud">…</div>
+  <div id="bar">
+    <button id="flip" type="button" aria-pressed="false">Y 뒤집기</button>
+    <button id="exit" type="button">나가기</button>
+  </div>
+</div>
+<script type="module">
+import * as THREE from 'three';
+
+const $ = (id) => document.getElementById(id);
+const lines = [];
+const say = (m, cls = '') => {
+  lines.push(`${new Date().toISOString().slice(11, 19)} ${m}`);
+  const d = document.createElement('div'); d.className = cls; d.textContent = m; $('log').prepend(d);
+};
+$('copy').onclick = async () => { try { await navigator.clipboard.writeText(lines.join('\n')); say('기록을 복사했다', 'ok'); } catch { say('복사 실패 — 화면을 캡처하세요', 'bad'); } };
+
+// ── 기하 — 새 실측 0. 정본 둘의 사본이다 (파일 머리 참조)
+const geo = await fetch('/tag/track/geometry.json', { cache: 'no-store' }).then((r) => r.json());
+const TAG_M = geo.tagSizeMm / 1000;
+const ids = Object.keys(geo.tags).map(Number);
+say(`기하 — 태그 ${ids.join(',')} · ${geo.tagSizeMm}mm · 베이스 (${geo.base.xMm}, ${geo.base.yMm}) yaw ${geo.base.yawDeg}°`);
+
+// ── 지원 확인. `image-tracking` 은 requestSession 에서만 드러난다 — isSessionSupported 는 모듈을 모른다
+let ok = false;
+if (!navigator.xr) { $('sup').textContent = 'WebXR 없음 — Android Chrome 에서 여세요'; }
+else {
+  ok = await navigator.xr.isSessionSupported('immersive-ar').catch(() => false);
+  $('sup').textContent = ok ? 'immersive-ar 지원 · 플래그 webxr-incubations 가 켜져 있어야 이미지 추적이 열린다' : 'immersive-ar 미지원';
+}
+$('go').disabled = !ok;
+window.__tagTrack = { ok, ids, geo };   // 헤드리스 확인용 — 폰 없이 볼 수 있는 것은 여기까지다
+
+// 태그 비트맵 → ImageBitmap (검은 사각형 8칸 = 145mm 그대로. 여백을 넣으면 widthInMeters 도 그만큼 커져야 한다)
+const bitmaps = await Promise.all(ids.map(async (i) => {
+  const blob = await fetch(`/tag/track/id${i}.png`).then((r) => r.blob());
+  return createImageBitmap(blob);
+}));
+
+let flipY = false;
+$('flip').onclick = () => { flipY = !flipY; $('flip').setAttribute('aria-pressed', String(flipY)); say(`Y 뒤집기 ${flipY ? '켬' : '끔'}`); };
+
+$('go').onclick = async () => {
+  let session;
+  try {
+    session = await navigator.xr.requestSession('immersive-ar', {
+      requiredFeatures: ['local', 'image-tracking'],
+      optionalFeatures: ['dom-overlay'],
+      domOverlay: { root: $('ov') },
+      trackedImages: bitmaps.map((image) => ({ image, widthInMeters: TAG_M })),
+    });
+  } catch (e) {
+    // 원인을 가른다 — 이미지 추적 없이도 안 열리면 AR 자체(ARCore·권한) 문제, 열리면 `image-tracking` 만 막힌 것(= 플래그)
+    say(`세션 시작 실패 [${e?.name ?? '?'}]: ${e?.message ?? e}`, 'bad');
+    try {
+      const probe = await navigator.xr.requestSession('immersive-ar', { requiredFeatures: ['local'] });
+      await probe.end();
+      say('→ AR 은 열린다. image-tracking 만 막혔다 = chrome://flags/#webxr-incubations 를 켜고 Chrome 을 완전히 종료 후 다시', 'bad');
+    } catch (e2) {
+      say(`→ 이미지 추적 없이도 안 열린다 [${e2?.name ?? '?'}]: ${e2?.message ?? e2} — 카메라 권한·Google Play 서비스 for AR·다른 앱의 카메라 점유를 확인`, 'bad');
+    }
+    return;
+  }
+  $('app').hidden = true; $('ov').dataset.on = '1';
+  // 카메라가 안 비치면 여기 값이 답이다 — 'alpha-blend'/'additive' 여야 실영상 위에 합성된다. 'opaque' 면 이 세션은 AR 이 아니다
+  say(`세션 시작 · blend=${session.environmentBlendMode} · 태그를 비추세요`, 'ok');
+  const htmlBg = document.documentElement.style.background;
+  document.documentElement.style.background = 'transparent';   // 배경이 카메라를 덮는 경우를 원천 배제 (D13 계열)
+
+  const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+  renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+  renderer.xr.enabled = true;
+  renderer.setClearColor(0x000000, 0);          // 클리어 알파 0 — 안 그리면 검은 판이 카메라를 덮는다
+  // ⛔ three 의 기본 기준공간은 `local-floor` 다 — 이 세션은 `local` 만 요청했으므로 그대로 두면 `setSession` 이
+  //    NotSupportedError 로 죽고 화면은 검게 남는다 (실측 2026-09-07 · 폰 CDP 로그). xr.js 는 local-floor 를 요구해서 안 걸렸다
+  renderer.xr.setReferenceSpaceType('local');
+  try { await renderer.xr.setSession(session); }
+  catch (e) { say(`렌더러 세션 실패 [${e?.name}]: ${e?.message}`, 'bad'); await session.end().catch(() => {}); return; }
+  say(`레이어 ${session.renderState?.baseLayer?.framebufferWidth ?? '?'}×${session.renderState?.baseLayer?.framebufferHeight ?? '?'} · alpha=${renderer.getContext().getContextAttributes()?.alpha}`);
+  document.body.appendChild(renderer.domElement);
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera();
+  const ref = await session.requestReferenceSpace('local');
+
+  // ── 태그마다 「이미지 자세 → lab」 사슬 한 벌. 이미지 공간: +x 오른쪽 · +y 종이 밖(법선) · +z 아래변 쪽.
+  //    lab: x 오른쪽 · y 종이 위변 쪽 · z 법선. 그래서 rotation.x = -90° (= planToScene 규약과 같은 축 맞춤).
+  //    태그 i 는 lab 에서 (t_i, yaw_i) 에 있으므로 lab 점 p 는 태그 i 프레임에서 R(-yaw_i)(p - t_i).
+  const mm = (v) => v / 1000;
+  const content = new THREE.Group();          // lab 좌표(m) 내용 — 모든 태그가 같은 내용을 공유하지 않고 태그마다 복제한다
+  const build = () => {
+    const g = new THREE.Group();
+    // lab 축 300mm (id0 원점)
+    g.add(new THREE.AxesHelper(0.3));
+    // 다른 태그 예측 사각형(초록) — 실물 태그 위에 앉아야 한다
+    for (const i of ids) {
+      const t = geo.tags[i];
+      const sq = new THREE.LineLoop(
+        new THREE.BufferGeometry().setFromPoints([[-1, -1], [1, -1], [1, 1], [-1, 1]].map(([a, b]) => new THREE.Vector3(a * TAG_M / 2, b * TAG_M / 2, 0.002))),
+        new THREE.LineBasicMaterial({ color: 0x2ecc71 }));
+      sq.position.set(mm(t.xMm), mm(t.yMm), mm(t.zMm ?? 0));
+      sq.rotation.z = (t.yawDeg * Math.PI) / 180;
+      g.add(sq);
+    }
+    // 로봇 베이스 — 원 r=78mm(자리 확인용 · 치수 주장 아님 · 08-10 과 같다) + Z축 300mm
+    const b = geo.base;
+    const ring = new THREE.LineLoop(
+      new THREE.BufferGeometry().setFromPoints(Array.from({ length: 48 }, (_, k) => { const a = (k / 48) * Math.PI * 2; return new THREE.Vector3(Math.cos(a) * 0.078, Math.sin(a) * 0.078, 0.003); })),
+      new THREE.LineBasicMaterial({ color: 0xff9f1a }));
+    const zAxis = new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), new THREE.Vector3(0, 0, 0.3)]),
+      new THREE.LineBasicMaterial({ color: 0x3b82f6 }));
+    const baseG = new THREE.Group(); baseG.position.set(mm(b.xMm), mm(b.yMm), mm(b.zMm)); baseG.rotation.z = (b.yawDeg * Math.PI) / 180;
+    baseG.add(ring, zAxis); baseG.name = 'base';
+    g.add(baseG);
+    return g;
+  };
+  const rigs = ids.map((i) => {
+    const t = geo.tags[i];
+    const pose = new THREE.Group(); pose.matrixAutoUpdate = false; pose.visible = false;
+    const inner = new THREE.Group(); inner.rotation.x = -Math.PI / 2;
+    const yaw = new THREE.Group(); yaw.rotation.z = -(t.yawDeg * Math.PI) / 180;
+    const lab = build(); lab.position.set(-mm(t.xMm), -mm(t.yMm), -mm(t.zMm ?? 0));
+    yaw.add(lab); inner.add(yaw); pose.add(inner); scene.add(pose);
+    return { id: i, pose, inner, lab };
+  });
+
+  // 떨림 — 베이스 원점의 세계 좌표를 30프레임 모아 표준편차(mm)
+  const baseWorld = new THREE.Vector3();
+  const hist = [];
+  const std = (arr) => { const n = arr.length; if (n < 5) return null; const m = arr.reduce((a, v) => a.add(v), new THREE.Vector3()).multiplyScalar(1 / n);
+    return Math.sqrt(arr.reduce((a, v) => a + v.distanceToSquared(m), 0) / n) * 1000; };
+  let frames = 0, fpsAt = performance.now(), fps = 0, lastSay = 0, bestSeen = null;
+  $('exit').onclick = () => session.end();
+  session.addEventListener('end', () => { renderer.setAnimationLoop(null); renderer.domElement.remove(); $('ov').dataset.on = '0'; $('app').hidden = false; document.documentElement.style.background = htmlBg; say('세션 종료'); });
+
+  let loopErr = 0;
+  renderer.setAnimationLoop((t, frame) => { try { loop(t, frame); } catch (e) {
+    loopErr += 1; if (loopErr <= 3) { say(`루프 예외 #${loopErr} [${e?.name}]: ${e?.message}`, 'bad'); $('hud').textContent = `루프 예외: ${e?.message}`; }
+    try { renderer.render(scene, camera); } catch { /* 이것마저 죽으면 검은 화면이 답이다 */ }
+  } });
+  const dbg = window.__tagTrack.dbg = { n: 0, xr: 0, noFrame: 0, noMethod: 0, lastType: null, vis: null, presenting: null, results: null, err: null };
+  session.addEventListener('visibilitychange', () => say(`가시성 ${session.visibilityState}`));
+  const loop = (t, frame) => {
+    frames += 1; if (t - fpsAt > 1000) { fps = frames; frames = 0; fpsAt = t; }
+    dbg.n += 1; dbg.lastType = frame?.constructor?.name ?? null; dbg.vis = session.visibilityState; dbg.presenting = renderer.xr.isPresenting;
+    if (!frame) dbg.noFrame += 1; else if (typeof frame.getImageTrackingResults !== 'function') dbg.noMethod += 1; else dbg.xr += 1;
+    let results = null;
+    try { results = frame && typeof frame.getImageTrackingResults === 'function' ? frame.getImageTrackingResults() : null; } catch (e) { dbg.err = `${e?.name}: ${e?.message}`; }
+    dbg.results = results ? results.length : null;
+    if (!results) { $('hud').textContent = `XR 프레임 없음 (frame=${dbg.lastType} · 메서드 ${frame ? typeof frame.getImageTrackingResults : '-'} · presenting=${dbg.presenting} · vis=${dbg.vis}${dbg.err ? ' · ' + dbg.err : ''})`; renderer.render(scene, camera); return; }
+    const seen = [];
+    let best = null;
+    for (const r of results) {
+      const rig = rigs[r.index]; if (!rig) continue;
+      const p = frame.getPose(r.imageSpace, ref);
+      const tracked = r.trackingState === 'tracked';
+      rig.pose.visible = Boolean(p) && tracked;
+      if (!p) continue;
+      rig.pose.matrix.fromArray(p.transform.matrix);
+      rig.inner.rotation.x = flipY ? Math.PI / 2 : -Math.PI / 2;   // 현장에서 축 부호를 뒤집어 볼 수 있게
+      const d = Math.hypot(p.transform.position.x, p.transform.position.y, p.transform.position.z);
+      seen.push(`id${rig.id}:${tracked ? '추적' : '추정'} ${d.toFixed(2)}m`);
+      if (tracked && (!best || d < best.d)) best = { rig, d, wm: r.measuredWidthInMeters };
+    }
+    // 가장 가까운 태그 하나만 그린다 — 여러 장이 겹쳐 그리면 어느 것이 맞는지 아무도 모른다
+    for (const rig of rigs) if (best && rig !== best.rig) rig.pose.visible = false;
+    let jitter = null;
+    if (best) {
+      best.rig.pose.updateMatrixWorld(true);
+      best.rig.lab.getObjectByName('base').getWorldPosition(baseWorld);
+      hist.push(baseWorld.clone()); if (hist.length > 30) hist.shift();
+      jitter = std(hist);
+      bestSeen = { id: best.rig.id, d: best.d, wm: best.wm, jitter };
+    } else hist.length = 0;
+    $('hud').textContent = [
+      `${fps}fps · 보임 ${results.length ? seen.join(' · ') : '없음 — 태그를 비추세요'}`,
+      best ? `기준 id${best.rig.id} · 거리 ${best.d.toFixed(2)}m · 잰 폭 ${best.wm ? (best.wm * 1000).toFixed(0) + 'mm' : '—'} (선언 ${geo.tagSizeMm})`
+           + ` · 베이스 떨림 ${jitter == null ? '…' : jitter.toFixed(1) + 'mm'} ${jitter != null && jitter <= 10 ? '✓' : ''}` : '',
+      '주황 원 = 로봇 베이스 · 파랑 = Z축 · 초록 = 다른 태그 예측 · 어긋나면 「Y 뒤집기」',
+    ].filter(Boolean).join('\n');
+    if (best && t - lastSay > 3000) { lastSay = t; say(`id${best.rig.id} ${best.d.toFixed(2)}m · 폭 ${best.wm ? (best.wm * 1000).toFixed(0) : '?'}mm · 떨림 ${jitter?.toFixed?.(1) ?? '…'}mm · flip ${flipY}`); }
+    renderer.render(scene, camera);
+  };
+};
+</script>
+</body>
+</html>

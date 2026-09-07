@@ -1,0 +1,102 @@
+/* ar.html 전용 스타일. 공용 토큰은 @fr5/shared/tokens 에서 온다.
+ *
+ * **이 파일에서 D13 을 두 번 밟지 않는다** — 아래 두 주석이 그 함정이고,
+ * 둘 다 폰에서만 증상이 보인다(검은 화면 / 로봇이 마커에서 밀림).
+ * `scripts/check` 가 못 잡으므로 주석을 지우지 않는다.
+ */
+@import '@fr5/shared/tokens/tokens.css';
+
+:root { color-scheme: dark; }
+* { box-sizing: border-box; }
+
+/* **body 에 배경을 주면 카메라 영상이 안 보인다.**
+   AR.js 는 카메라 영상을 `z-index: -2` 인 <video id="arjs-video"> 로 화면에 깐다.
+   CSS 페인트 순서상 음수 z-index 요소는 **루트(html)의 배경 위**에 그려지지만
+   **body 의 배경 아래**에 그려진다. 그래서 body 가 불투명하면 영상이 통째로 가려지고,
+   투명한 캔버스만 남아 **화면이 검게만 보인다** — 카메라가 정상 동작해도 그렇다.
+   실제로 이 증상을 겪었다(D13). 배경은 html 에만 둔다. */
+html { background: #000; }
+body { margin: 0; height: 100%; overflow: hidden; background: transparent;
+       font: 14px/1.45 -apple-system, "Apple SD Gothic Neo", sans-serif; color: #fff;
+       -webkit-user-select: none; user-select: none; }
+canvas { display: block; position: absolute; top: 0; left: 0; }
+
+/* **영상 요소(#arjs-video)의 크기를 CSS로 건드리지 않는다.**
+   AR.js 가 `onResizeElement` + `copyElementSizeTo` 로 영상과 캔버스를 같은 크기로 맞춘다 —
+   그 대응이 깨지면 카메라 영상과 투영이 어긋나 로봇이 마커에서 밀린다.
+   `object-fit: cover` 로 화면을 꽉 채우고 싶은 유혹이 있지만 그게 정확히 그 대응을 깬다.
+   → 그래서 이 파일에 `#arjs-video` 규칙이 **하나도 없는 것이 정상**이다. */
+
+#hud { position: fixed; top: 0; left: 0; right: 0; z-index: 10;
+       /* safe-area 는 **위쪽**에 줘야 한다. 아래에 주면 노치가 상태 표시를 덮는다 */
+       padding: calc(10px + env(safe-area-inset-top)) 12px 10px;
+       display: flex; gap: var(--s-2); align-items: center;
+       background: linear-gradient(#000000cc, #0000); pointer-events: none; }
+#dot { width: 10px; height: 10px; border-radius: 50%; background: #6b7680; flex: none;
+       box-shadow: 0 0 0 3px #ffffff18; transition: background .15s; }
+#dot.on { background: var(--c-path); }
+#status { font-size: 12px; color: #cfd8de; text-shadow: 0 1px 3px #000; }
+
+#bar { position: fixed; bottom: 0; left: 0; right: 0; z-index: 10;
+       padding: 10px 12px calc(10px + env(safe-area-inset-bottom));
+       display: flex; flex-wrap: wrap; gap: 7px; justify-content: center;
+       background: linear-gradient(#0000, #000000d9); }
+button { padding: 9px 13px; min-height: 40px; border-radius: 9px;
+         background: #ffffff1c; color: #eaf1f6; border: 1px solid #ffffff30;
+         font-size: 13px; -webkit-tap-highlight-color: transparent; }
+button.on { background: var(--c-path); color: #06251a; border-color: var(--c-path); font-weight: 600; }
+button:disabled { opacity: .4; }
+
+/* --- 패널 숨기기.
+   폰에서는 하단 버튼바가 카메라 화면의 아래쪽을 가린다. 실물 옆에 마커를 놓고
+   겹쳐 보거나 사진을 찍을 때 그 부분이 정작 봐야 할 곳이다.
+   숨김 상태에서도 **토글 버튼 하나는 남긴다** — 다 사라지면 되돌릴 방법이 없다. */
+#hud, #bar { transition: opacity .18s, transform .18s; }
+body.clean #hud { opacity: 0; transform: translateY(-100%); pointer-events: none; }
+body.clean #bar { opacity: 0; transform: translateY(100%); pointer-events: none; }
+
+/* **우상단에 둔다.** 하단에 두면 좁은 화면에서 버튼바가 2줄로 접힐 때 겹친다 —
+   "버튼바 높이 + 여유"를 상수로 넣는 방식은 줄 수가 바뀌면 깨진다.
+   좌상단은 HUD(상태 표시)가 쓰므로 우상단이 비어 있다. */
+#toggle { position: fixed; z-index: 12; width: 44px; height: 44px; padding: 0;
+          top: calc(env(safe-area-inset-top) + 8px);
+          right: max(12px, env(safe-area-inset-right));
+          border-radius: 50%; background: #000000a6; border: 1px solid #ffffff33;
+          font-size: 17px; line-height: 1; display: grid; place-items: center; }
+
+/* 좁은 화면에서는 버튼을 조금 좁혀 한 줄에 담기게 한다 — 접히면 화면을 더 가린다 */
+@media (max-width: 420px) {
+  #bar { gap: 5px; padding-left: 8px; padding-right: 8px; }
+  #bar button { padding: 9px 8px; font-size: 12px; }
+}
+
+/* --- 조정판. 버튼바 바로 위에서 올라온다 */
+#tune { position: fixed; z-index: 11; left: 8px; right: 8px;
+        bottom: calc(env(safe-area-inset-bottom) + 62px);
+        max-height: 60vh; overflow: auto; padding: 12px 13px;
+        background: #0c1013f2; border: 1px solid #2b333a; border-radius: var(--r-sheet); }
+#tune[hidden] { display: none; }
+body.clean #tune { display: none; }
+#tune label { display: block; margin-bottom: 11px; font-size: 12px; color: #cfd8de; }
+#tune .hint { display: block; margin: 2px 0 5px; color: #7d888f; font-size: 11px; }
+#tune .ctl { display: flex; gap: 6px; align-items: center; }
+#tune input[type=range] { flex: 1; min-width: 0; }
+#tune input[type=number] { width: 74px; padding: 6px; background: var(--c-bg); color: var(--c-fg);
+                           border: 1px solid var(--c-line-strong); border-radius: var(--r-box);
+                           font: 13px ui-monospace, monospace; font-variant-numeric: tabular-nums; }
+#tune button { padding: 7px 11px; font-size: 12px; min-height: 36px; }
+#diag { margin: 0; padding: 9px 10px; background: #05080a; border: 1px solid #232b31;
+        border-radius: 7px; white-space: pre-wrap;
+        font: 11px/1.6 ui-monospace, monospace; color: #9fd8bd; }
+#diag[hidden] { display: none; }
+
+#boot { position: fixed; inset: 0; z-index: 20; display: flex; flex-direction: column;
+        gap: 10px; align-items: center; justify-content: center; padding: 24px;
+        background: #0b0e11; text-align: center; }
+#boot[hidden] { display: none; }   /* display 를 명시했으므로 hidden 도 명시해야 먹는다 */
+#boot h1 { margin: 0; font-size: 17px; }
+#boot p { margin: 0; max-width: 30ch; font-size: 13px; color: #97a3ac; }
+#bootBtn { background: var(--c-path); color: #06251a; border: 0; font-weight: 600;
+           padding: 13px 22px; font-size: 15px; }
+#pct { font-variant-numeric: tabular-nums; color: var(--c-path); }
+.err { color: #ff9b8a; }

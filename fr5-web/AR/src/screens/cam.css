@@ -1,0 +1,40 @@
+/* 글로벌 카메라 화면 — 영상 위에 3D 를 겹친다.
+   **영상과 캔버스는 같은 사각형을 덮어야 한다.** 하나라도 letterbox 되면 정합이 어긋난다.
+   색은 공용 토큰(어두운 기본 테마)이다 — 2026-09-05 phase 3 에서 하드코딩 9건을 토큰으로 갈았다.
+   상태 색(경고 등)이 FR5 PiP 와 같은 이름을 쓰므로 같은 뜻으로 읽힌다. */
+@import '@fr5/shared/tokens/tokens.css';
+
+:root { color-scheme: dark; }
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; background: var(--c-bg); color: var(--c-fg);
+  font: 15px/1.5 var(--ff-sans); }
+
+#stage {
+  position: relative; width: 100vw; max-width: 100vw;
+  aspect-ratio: 16 / 9;              /* 캘리브레이션 해상도의 비율. CSS 로만 맞춘다 */
+  margin: 0 auto; overflow: hidden; background: #000;   /* 영상 뒤는 검정 — 토큰이 아니라 「없음」이다 */
+}
+#feed, #host { position: absolute; inset: 0; width: 100%; height: 100%; }
+#feed { object-fit: fill; }           /* contain/cover 는 여백·잘림을 만들어 정합을 깬다 */
+#host canvas { display: block; width: 100% !important; height: 100% !important; }
+#host.off { display: none; }
+
+#hud { display: flex; gap: var(--s-3); align-items: center; padding: 10px 14px; flex-wrap: wrap; }
+#status, #scale { font-variant-numeric: tabular-nums; opacity: .85; }
+#status.warn, #scale.warn { color: var(--c-warn); opacity: 1; }   /* 축소 배율을 눈에 띄게 */
+/* 카메라 상태 띠 — 문장과 색은 `Shared/data/camera/state.js` 가 정한다 (FR5 PiP 와 같은 함수).
+ * 여기 CSS 는 그 `tone` 을 이 화면의 어두운 바탕에 맞게 칠할 뿐이다 */
+#camhud { display: flex; gap: 10px; flex-wrap: wrap; font-variant-numeric: tabular-nums; }
+#camhud [data-tone="ok"]   { opacity: .85; }
+#camhud [data-tone="mute"] { opacity: .55; }
+#camhud [data-tone="warn"] { color: var(--c-warn); opacity: 1; font-weight: 600; }
+.dim { opacity: .55; }
+#toggle, .btn { padding: 6px 12px; border-radius: var(--r-box); border: 1px solid var(--c-line-strong);
+  background: var(--c-btn); color: var(--c-btn-fg); cursor: pointer; font: inherit; }
+
+/* 범례 색 견본 — **색 뜻을 화면이 말한다.** 없으면 거꾸로 읽힌다:
+   사람은 진한 파랑을 「위험」으로 읽는데 거부가 시작되는 선은 주황이다 (2026-08-13) */
+#zones .swatch {
+  display: inline-block; width: 9px; height: 9px; margin: 0 3px 0 6px;
+  border: 1px solid rgba(0, 0, 0, .35); vertical-align: baseline;
+}

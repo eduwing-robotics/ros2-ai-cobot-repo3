@@ -1,0 +1,205 @@
+{
+  "_생성됨": "이 파일은 생성물이다 (node scripts/build/arm-hull.mjs). **직접 고치지 마라.** 정본은 Shared/assets/FAIRINO_FR5/fairino5_v6.urdf 와 그 meshes/*.STL 이다.",
+  "_단위": "밀리미터·도. 상자는 **각 링크의 자기 좌표계**, 체인은 부모 링크 기준 관절 원점이다.",
+  "_FK": "T_child = T_parent · Trans(xyzMm) · Rz(rpy.z)·Ry(rpy.y)·Rx(rpy.x) · Rz(axisSign·q). 관절은 여섯 다 로컬 Z 회전이라 마지막이 Rz 하나다. 검증은 scripts/check/arm-fk.mjs.",
+  "_근사": "상자는 링크 메시의 **경계상자**다 — 실물보다 크므로 판정은 안전한 쪽으로만 틀린다. 팔은 가늘고 긴 부품이라 경계상자가 실제보다 꽤 굵다(특히 upperarm·forearm).",
+  "baseLink": "base_link",
+  "chain": [
+    {
+      "joint": "j1",
+      "parent": "base_link",
+      "child": "shoulder_link",
+      "xyzMm": [
+        0,
+        0,
+        0
+      ],
+      "rpyDeg": [
+        0,
+        0,
+        0
+      ],
+      "axisSign": 1
+    },
+    {
+      "joint": "j2",
+      "parent": "shoulder_link",
+      "child": "upperarm_link",
+      "xyzMm": [
+        0,
+        0,
+        152
+      ],
+      "rpyDeg": [
+        90.00021,
+        0,
+        0
+      ],
+      "axisSign": 1
+    },
+    {
+      "joint": "j3",
+      "parent": "upperarm_link",
+      "child": "forearm_link",
+      "xyzMm": [
+        -425,
+        0,
+        0
+      ],
+      "rpyDeg": [
+        0,
+        0,
+        0
+      ],
+      "axisSign": 1
+    },
+    {
+      "joint": "j4",
+      "parent": "forearm_link",
+      "child": "wrist1_link",
+      "xyzMm": [
+        -395.01,
+        0,
+        0
+      ],
+      "rpyDeg": [
+        0,
+        0,
+        0
+      ],
+      "axisSign": 1
+    },
+    {
+      "joint": "j5",
+      "parent": "wrist1_link",
+      "child": "wrist2_link",
+      "xyzMm": [
+        0,
+        0,
+        102.1
+      ],
+      "rpyDeg": [
+        90.00021,
+        0,
+        0
+      ],
+      "axisSign": 1
+    },
+    {
+      "joint": "j6",
+      "parent": "wrist2_link",
+      "child": "wrist3_link",
+      "xyzMm": [
+        0,
+        0,
+        102
+      ],
+      "rpyDeg": [
+        -90.00021,
+        0,
+        0
+      ],
+      "axisSign": 1
+    }
+  ],
+  "links": [
+    {
+      "name": "base_link",
+      "centerMm": [
+        0.015,
+        0.016,
+        39.5
+      ],
+      "halfMm": [
+        74.484,
+        74.484,
+        39.5
+      ],
+      "source": "base_link.STL"
+    },
+    {
+      "name": "shoulder_link",
+      "centerMm": [
+        0,
+        -3.4,
+        145.696
+      ],
+      "halfMm": [
+        58,
+        61.4,
+        71.696
+      ],
+      "source": "shoulder_link.STL"
+    },
+    {
+      "name": "upperarm_link",
+      "centerMm": [
+        -212.5,
+        0,
+        131.696
+      ],
+      "halfMm": [
+        270.5,
+        58,
+        71.696
+      ],
+      "source": "upperarm_link.STL"
+    },
+    {
+      "name": "forearm_link",
+      "centerMm": [
+        -188.505,
+        0,
+        7.659
+      ],
+      "halfMm": [
+        246.505,
+        58,
+        57.141
+      ],
+      "source": "forearm_link.STL"
+    },
+    {
+      "name": "wrist1_link",
+      "centerMm": [
+        0,
+        -4.359,
+        97.7
+      ],
+      "halfMm": [
+        40,
+        53.841,
+        44.4
+      ],
+      "source": "wrist1_link.STL"
+    },
+    {
+      "name": "wrist2_link",
+      "centerMm": [
+        0,
+        4.359,
+        97.6
+      ],
+      "halfMm": [
+        40,
+        53.841,
+        44.4
+      ],
+      "source": "wrist2_link.STL"
+    },
+    {
+      "name": "wrist3_link",
+      "centerMm": [
+        -0.004,
+        0,
+        76.1
+      ],
+      "halfMm": [
+        39.994,
+        40,
+        22.9
+      ],
+      "source": "wrist3_link.STL"
+    }
+  ]
+}

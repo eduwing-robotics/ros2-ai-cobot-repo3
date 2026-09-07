@@ -1,0 +1,12 @@
+{
+  "name": "@fr5/shared",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "AR 과 Dashboard 가 같이 쓰는 것 — 갈라지면 프로젝트가 갈라진다 (docs/ref/contract/SHARED-CORE.md)",
+  "exports": {
+    "./view3d/*": "./view3d/*",
+    "./data/*": "./data/*",
+    "./tokens/*": "./tokens/*"
+  }
+}
