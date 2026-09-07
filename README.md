@@ -14,9 +14,9 @@
   <thead><tr><th width="20%" nowrap>팀원</th><th width="20%" nowrap>담당 영역</th><th width="60%" nowrap>주요 역할</th></tr></thead>
   <tbody>
     <tr><td align="center" nowrap>김주영</td><td nowrap>Web·Cobot Bridge·AR</td><td nowrap>FR5 웹 티칭 펜던트·안전 브리지, 폰 AR/XR 겹쳐 보기, 배치 관제·시뮬레이션</td></tr>
-    <tr><td align="center" nowrap>백은주</td><td nowrap>{{영역}}</td><td nowrap>{{역할 한 줄}}</td></tr>
-    <tr><td align="center" nowrap>김선일</td><td nowrap>{{영역}}</td><td nowrap>{{역할 한 줄}}</td></tr>
-    <tr><td align="center" nowrap>박인한</td><td nowrap>{{영역}}</td><td nowrap>{{역할 한 줄}}</td></tr>
+    <tr><td align="center" nowrap>백은주</td><td nowrap>강화학습</td><td nowrap>{{조립 작업 정책 학습(RL) · 시뮬 환경 · 학습된 정책의 실기 이관}}</td></tr>
+    <tr><td align="center" nowrap>김선일</td><td nowrap>3D 프린팅·모방학습</td><td nowrap>{{그리퍼 핑거·카메라 브래킷·거치대 설계와 출력 · 사람 시연 기반 모방학습}}</td></tr>
+    <tr><td align="center" nowrap>박인한</td><td nowrap>비전</td><td nowrap>{{작업물·거치대 검출, 카메라 캘리브레이션, 검출 결과의 브리지 연동}}</td></tr>
   </tbody>
 </table>
 
@@ -27,7 +27,8 @@
   <tbody>
     <tr><td nowrap>프로젝트 목표</td><td nowrap>{{조립 라인에서 로봇팔·AMR 의 배치와 동작 방식에 따라 생산성이 얼마나 달라지는지 측정}}</td></tr>
     <tr><td nowrap>운영 대상</td><td nowrap>FAIRINO FR5 협동로봇 1대 + PGEA-100-40 그리퍼 + 손목 D435 · TurtleBot3 Burger {{n}}대</td></tr>
-    <tr><td nowrap>핵심 구성</td><td nowrap>FR5 Bridge(FastAPI), 웹 티칭 펜던트, AR/XR 겹쳐 보기, 배치 관제(Dashboard), MuJoCo 시뮬, TurtleBot Bridge, Vision Bridge, SQLite 기록</td></tr>
+    <tr><td nowrap>핵심 구성</td><td nowrap>FR5 Bridge(FastAPI), 웹 티칭 펜던트, AR/XR 겹쳐 보기, 배치 관제(Dashboard), MuJoCo 시뮬, TurtleBot Bridge, Vision, 모방학습·강화학습 정책, 3D 프린팅 툴링, SQLite 기록</td></tr>
+    <tr><td nowrap>동작 축</td><td nowrap>같은 조립 작업을 사람 시연 그대로 → 후처리 궤적 → 모방학습 → 강화학습 정책 순으로 바꿔 시퀀스 타임 비교</td></tr>
     <tr><td nowrap>로봇 제어</td><td nowrap>FAIRINO 공식 Python SDK(xmlrpc) · 브리지 단일 관문 · 조종권 1인</td></tr>
     <tr><td nowrap>이동 방식</td><td nowrap>{{ROS 2 Nav2 · SLAM · 웨이포인트 슬롯}}</td></tr>
     <tr><td nowrap>정밀 작업</td><td nowrap>AprilTag 36h11 앵커 · 손목 뎁스 거치대 검출 · hand-eye 5.74mm · 조준 2단(거울 쌍 평균)</td></tr>
@@ -234,13 +235,27 @@
 │   ├── Database/       #   SQLite 스키마·마이그레이션·보존
 │   ├── scripts/        #   check(게이트) · dev · deploy · build · map · robot
 │   └── docs/           #   product · contract · arch · runbook · DECISION-LOG
-├── {{ros2-ws/}}        # {{팀원 — ROS 2 노드·Nav2·bringup}}
-├── {{ai/}}             # {{팀원 — 검출·학습}}
+├── vision/             # 박인한 — {{작업물·거치대 검출 · 캘리브레이션 · 브리지 연동}}
+├── hardware/           # 김선일 — {{3D 프린팅 CAD·STL·출력 설정 (핑거·브래킷·거치대)}}
+├── imitation/          # 김선일 — {{모방학습 — 시연 데이터 수집·학습·정책 내보내기}}
+├── rl/                 # 백은주 — {{강화학습 — 환경·학습·평가·정책 내보내기}}
+├── {{ros2-ws/}}        # {{ROS 2 워크스페이스 — TurtleBot bringup·Nav2 (담당 미정)}}
 ├── docs/               # 통합 계약·운영 문서
 └── assets/             # README·발표용 이미지·영상
 ```
 
-{{각 폴더는 자체 README 와 책임 경계 문서를 가진다. 최상단 문서는 배경·E2E 시나리오·통합 결과만 설명하고, API·설정·운영 절차는 폴더별 문서에서 관리한다.}}
+각 파트는 자기 폴더 안에서 완결되고, 파트 사이는 **파일과 HTTP 로만** 만납니다.
+
+<table width="100%">
+  <thead><tr><th width="22%" nowrap>파트</th><th width="38%" nowrap>fr5-web 에 주는 것</th><th width="40%" nowrap>fr5-web 에서 받는 것</th></tr></thead>
+  <tbody>
+    <tr><td nowrap>vision/</td><td nowrap>{{검출 결과 — <code>POST /proposal</code> 또는 파지점 JSON}}</td><td nowrap>손목 D435 프레임 (<code>Vision/bridge</code> · <code>/api/camera/*</code>) · hand-eye 값</td></tr>
+    <tr><td nowrap>hardware/</td><td nowrap>핑거·브래킷 STL → <code>Shared/assets/</code> · 치수 → <code>.env</code></td><td nowrap>툴 형상 게이트(<code>tool-hull</code>) · 실측 치수</td></tr>
+    <tr><td nowrap>imitation/ · rl/</td><td nowrap>{{정책이 낸 궤적 — 프로그램 JSON(<code>docs/ref/contract/PROGRAM-CONTRACT.md</code>)}}</td><td nowrap>시연 기록(<code>runs</code> jsonl) · 시뮬 장면(MJCF) · 안전 게이트 판정</td></tr>
+  </tbody>
+</table>
+
+최상단 문서는 배경·E2E 시나리오·통합 결과만 설명하고, API·설정·운영 절차는 파트별 README 에서 관리합니다.
 
 ---
 
@@ -324,7 +339,7 @@ API·안전 게이트·조종권·좌표 사슬·데이터 계약을 확인하�
     <tr><td nowrap>웹 티칭 펜던트</td><td nowrap><code>FR5/</code> · <code>:5176</code></td><td nowrap>Live · Teach · Program · 시뮬 · 터틀봇 탭</td></tr>
     <tr><td nowrap>관제화면</td><td nowrap><code>Dashboard/</code> · <code>:5187</code></td><td nowrap>배치안 편집 · 지표 비교</td></tr>
     <tr><td nowrap>AR 겹쳐 보기</td><td nowrap><code>AR/ar.html</code> · <code>xr.html</code></td><td nowrap>폰 카메라 · WebXR</td></tr>
-    <tr><td nowrap>{{팀원 화면}}</td><td nowrap>{{주소}}</td><td nowrap>{{범위}}</td></tr>
+    <tr><td nowrap>{{비전 · 학습 도구}}</td><td nowrap>{{주소}}</td><td nowrap>{{범위}}</td></tr>
   </tbody>
 </table>
 
@@ -343,8 +358,11 @@ bash fr5-web/scripts/deploy/cam-ubuntu.sh     # 카메라 관문 (:5058)
 bash fr5-web/scripts/deploy/fr5-ubuntu.sh     # 브리지 + 정적 서빙 (:5055)
 #   윈도우: fr5-web/scripts/deploy/fr5-bridge.win.cmd
 
-# {{팀원 — ROS 2 bringup}}
-{{ros2 launch ...}}
+# vision — {{박인한}}
+{{python vision/... }}
+
+# 정책 실행 — {{imitation / rl}}
+{{python rl/... --export program.json}}
 ```
 
 실물 명령 전 상태를 확인합니다.
@@ -396,12 +414,15 @@ bash fr5-web/scripts/dev/health.sh            # 브리지·카메라·TB 연결 
 ![Raspberry Pi 4](https://img.shields.io/badge/Raspberry%20Pi-4-A22846?style=for-the-badge&logo=raspberrypi&logoColor=white)
 ![RealSense D435](https://img.shields.io/badge/RealSense-D435-0071C5?style=for-the-badge&logo=intel&logoColor=white)
 
-### Perception & Simulation
+### Perception & Learning
 
 ![OpenCV](https://img.shields.io/badge/OpenCV-Vision-5C3EE8?style=for-the-badge&logo=opencv&logoColor=white)
 ![AprilTag](https://img.shields.io/badge/AprilTag-36h11-EF6C00?style=for-the-badge)
 ![MuJoCo](https://img.shields.io/badge/MuJoCo-3.11%20WASM-FF6F00?style=for-the-badge)
 {{![YOLO](https://img.shields.io/badge/YOLO-Object%20Detection-111F68?style=for-the-badge)}}
+{{![PyTorch](https://img.shields.io/badge/PyTorch-Imitation%20%2F%20RL-EE4C2C?style=for-the-badge&logo=pytorch&logoColor=white)}}
+{{![Stable-Baselines3](https://img.shields.io/badge/SB3-RL-2E7D32?style=for-the-badge)}}
+{{![FreeCAD / Fusion](https://img.shields.io/badge/CAD-3D%20Printing-FF6F00?style=for-the-badge)}}
 
 ### Backend & Data
 
