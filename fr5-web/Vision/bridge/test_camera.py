@@ -2,6 +2,13 @@
 # `pyrealsense2` 는 `Camera._session` 안에서만 import 되므로 `start()` 를 안 부르면
 # 이 파일은 하드웨어 없는 기계에서 그대로 돈다. 여기서 보는 것은 **계약 준수**다.
 import unittest
+from io import BytesIO
+import json
+import time
+import zipfile
+
+import numpy as np
+from PIL import Image
 
 from camera import Camera
 
@@ -74,7 +81,6 @@ class 미리보기(unittest.TestCase):
         self.assertIsNone(c.preview_jpeg())
 
     def test_방금_사진은_준다(self):
-        import time
         c = cam()
         c.jpeg = b'\xff\xd8new'
         c.jpeg_at = time.time()
@@ -87,6 +93,41 @@ class 미리보기(unittest.TestCase):
         c.jpeg_at = None
         self.assertIsNone(c.preview_jpeg())
 
+
+class RGBD묶음(unittest.TestCase):
+    def test_같은_모양의_최신_컬러와_깊이를_한_zip으로_낸다(self):
+        c = cam()
+        c.info = {"serial": "123", "firmware": "5.0", "usb": "3.2",
+                  "colorIntrinsics": {"fx": 8.0, "fy": 8.0, "ppx": 4.0, "ppy": 3.0},
+                  "colorToDepth": {"rotationRowMajor": [1, 0, 0, 0, 1, 0, 0, 0, 1],
+                                   "translationMm": [15, 0, 0]}}
+        c.rgbd_color = np.full((6, 8, 3), [180, 90, 40], dtype=np.uint8)
+        c.rgbd_depth_mm = np.full((6, 8), 321, dtype=np.uint16)
+        c.rgbd_at = time.time()
+        blob = c.rgbd_zip()
+        self.assertIsNotNone(blob)
+        with zipfile.ZipFile(BytesIO(blob)) as zf:
+            self.assertEqual(set(zf.namelist()), {"manifest.json", "color.jpg", "depth.png"})
+            meta = json.loads(zf.read("manifest.json"))
+            self.assertEqual((meta["alignment"], meta["widthPx"], meta["heightPx"]),
+                             ("depthToColor", 8, 6))
+            self.assertEqual(meta["intrinsics"]["fx"], 8.0)
+            self.assertEqual(meta["colorToDepth"]["translationMm"], [15, 0, 0])
+            depth = np.asarray(Image.open(BytesIO(zf.read("depth.png"))))
+            color = np.asarray(Image.open(BytesIO(zf.read("color.jpg"))))
+            self.assertEqual(depth.shape, (6, 8))
+            self.assertEqual(color.shape, (6, 8, 3))
+            self.assertEqual(depth.dtype, np.uint16)
+
+    def test_낡거나_모양이_다르면_안_낸다(self):
+        c = cam()
+        c.rgbd_color = np.zeros((6, 8, 3), np.uint8)
+        c.rgbd_depth_mm = np.zeros((6, 7), np.uint16)
+        c.rgbd_at = time.time()
+        self.assertIsNone(c.rgbd_zip())
+        c.rgbd_depth_mm = np.zeros((6, 8), np.uint16)
+        c.rgbd_at = time.time() - 5
+        self.assertIsNone(c.rgbd_zip())
 
 class Contract(unittest.TestCase):
     def test_계약_필드가_전부_있다(self):

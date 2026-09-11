@@ -12,6 +12,7 @@ import unittest
 from pathlib import Path
 
 import safety
+import scan_frames
 from runs import RunStore
 
 try:
@@ -117,6 +118,12 @@ class 목업_거울쌍(unittest.TestCase):
 
     def test_엔드포인트_문턱(self):
         c = TestClient(main.app)
+        frame = scan_frames.add(b"jpeg", 848, 480, 123.0)
+        image = c.get(frame["url"])
+        self.assertEqual(image.status_code, 200)
+        self.assertEqual(image.headers["content-type"], "image/jpeg")
+        self.assertEqual(image.headers["cache-control"], "no-store")
+        self.assertEqual(c.get("/scan/frame/not-found").status_code, 404)
         self.assertEqual(c.post("/scan", json={"target": "moon"}).status_code, 400)
         r = c.post("/runs", json={"runId": "../x", "line": {"a": 1}})
         self.assertEqual(r.status_code, 400)
@@ -129,5 +136,25 @@ class 목업_거울쌍(unittest.TestCase):
         self.assertEqual(c.get("/state").json()["amr"]["enabled"], False)   # 집 = 주소 없음 = 안 켠 것
 
 
+class ScanHudFrames(unittest.TestCase):
+    def test_only_four_recent_frames_keep_json_small(self):
+        refs = [scan_frames.add(f"jpeg-{i}".encode(), 848, 480, i) for i in range(5)]
+        self.assertIsNone(scan_frames.get(refs[0]["url"].rsplit("/", 1)[-1]))
+        for ref in refs[1:]:
+            self.assertEqual(set(ref), {"url", "widthPx", "heightPx", "capturedAt"})
+            self.assertLess(len(json.dumps(ref)), 200)
+            self.assertIsNotNone(scan_frames.get(ref["url"].rsplit("/", 1)[-1]))
+
+
 if __name__ == "__main__":
     unittest.main()
+
+
+@unittest.skipUnless(HAVE, "fastapi 없음")
+class 제안수명(unittest.TestCase):
+    """제안은 90초 뒤 죽는다 — 그새 팔·물건이 움직였을 수 있다. 수명 판정은 시각 하나로 결정된다."""
+    def test_수명(self):
+        p = {"expiresAt": 1000.0}
+        self.assertFalse(main.proposal_expired(p, now=999.9))
+        self.assertTrue(main.proposal_expired(p, now=1000.1))
+        self.assertGreaterEqual(main.PROPOSAL_TTL_S, 60.0)          # 사람이 고스트 보고 누를 시간

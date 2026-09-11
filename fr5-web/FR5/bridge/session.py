@@ -219,7 +219,10 @@ class RobotSession:
         if not isinstance(t, (list, tuple)) or len(t) < 3:
             return None
         return {"tMm": list(t)[:3], "spreadMm": he.get("spreadMm"),
-                "measuredAt": he.get("measuredAt")}
+                "measuredAt": he.get("measuredAt"),
+                # 2026-09-07 — 거울 쌍 재보정 고지 셋(계약 §hand-eye 유효성). `singleView` 만 화면이 판정에 쓴다(한 눈으로 끝)
+                "biasCorrectedAt": he.get("biasCorrectedAt"), "residualMm": he.get("residualMm"),
+                "singleView": bool(he.get("singleView", False))}
 
     def snapshot(self, owner_who):
         """미연결에도 같은 스키마 — 클라이언트가 빈 응답을 따로 처리하지 않는다 (D40)."""

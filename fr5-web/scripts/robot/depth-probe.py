@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """깊이 한 장에서 「책상 위로 솟은 것」을 찾는다 — GOAL-depth-tuning 칸 1 의 계기.
 
-**왜 평면 피팅인가** — 깊이·컬러가 정렬돼 있지 않아(`Vision/bridge/main.py` §천장 ③) 컬러에서
-찾은 총알 위치를 깊이에 옮길 수 없다. 그런데 옮길 필요가 없다: 책상은 평면이고 총알은 그 위에
-솟아 있으므로 **깊이 하나로** 갈린다. 그리고 이게 곧 사다리 5 의 검출 방법이다.
+**왜 평면 피팅인가** — 이 계기가 쓰는 `depth/frame`은 컬러와 정렬돼 있지 않다. 책상은 평면이고
+물체는 그 위에 솟아 있으므로 일반 높이 측정은 **깊이 하나로** 갈린다. 다만 황동 총알처럼 깊이가
+빠지는 대상은 D207의 `rgbd/frame`을 `carrier-find.py`가 따로 쓴다.
 
 **내부 파라미터가 필요 없다.** 평면을 3D 로 세우면 초점거리가 필요하지만, 평면 위 점들은
 **역깊이(1/z)가 화소 좌표의 1차식**이라는 성질이 있다 — (u,v)→(u',v') 가 어파인이라 선형성이
@@ -132,9 +132,15 @@ AVG_MIN_VALID = 0.6
 
 def fetch_avg(url, n):
     """`n` 장을 받아 화소별로 평균. 반환은 (깊이 mm, 메모)."""
-    st = []
-    for _ in range(n):
-        st.append(np.asarray(Image.open(BytesIO(fetch(url)))).astype(np.float32))
+    st = [np.asarray(Image.open(BytesIO(fetch(url)))).astype(np.float32) for _ in range(n)]
+    return average_frames(st)
+
+
+def average_frames(st):
+    """이미 받은 깊이 배열들을 `fetch_avg`와 같은 결측 규칙으로 평균한다."""
+    if not st:
+        raise ValueError("평균할 깊이 프레임이 없다")
+    n = len(st)
     Z = np.stack(st)
     ok = Z > 0
     cnt = ok.sum(0)

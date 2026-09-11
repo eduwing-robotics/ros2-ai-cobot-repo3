@@ -7,8 +7,10 @@
 # `pyrealsense2` 는 여기서만 import 한다. 판정 규칙은 `depth.py` 에 있고 그쪽은 카메라 없이
 # 돈다 — 규칙을 실기에서만 확인하게 되면 규칙이 늦게 틀린다.
 import atexit
+import json
 import threading
 import time
+import zipfile
 from io import BytesIO
 
 import numpy as np
@@ -47,6 +49,11 @@ class Camera:
         # 814KB 라 한 장은 들고 있어도 된다. PNG 인코딩은 요청이 올 때만 한다 — 매 프레임
         # 굽는 것은 아무도 안 부르면 통째로 낭비다
         self.depth_mm = None
+        # 같은 frameset의 깊이를 **컬러 화소계**에 맞춘 단발 RGB-D 묶음. `/preview`는 사람
+        # 확인용 원래 컬러를 유지하고, 검출기만 이 짝을 쓴다 (D207).
+        self.rgbd_color = None     # RGB uint8 · depth_mm와 같은 H×W
+        self.rgbd_depth_mm = None  # uint16 mm · 무효 0
+        self.rgbd_at = None
         # 계약 §적외선 원본 — 스테레오 두 이미저의 **원본 흑백**. 깊이가 빈 자리가
         # **가림인지 매칭 실패인지**를 가르는 창이다 (D151). 판정에는 안 쓴다
         self.ir = {}              # {1: ndarray uint8, 2: ...} · 없으면 빈 dict
@@ -155,6 +162,48 @@ class Camera:
         Image.fromarray(z).save(buf, "PNG")      # uint16 → mode `I;16` · 무손실
         return buf.getvalue()
 
+    def rgbd_zip(self):
+        """컬러 화소에 맞춘 컬러+깊이를 **같은 촬영 묶음** ZIP으로 낸다.
+
+        `/preview`와 `/depth/frame`을 차례로 받아 짝지으면 그 사이 장면이 바뀔 수 있다.
+        배열 둘과 시각을 잠금 안에서 한 번에 복사하고, 압축은 잠금 밖에서 한다.
+        """
+        with self.lock:
+            color, depth, at = self.rgbd_color, self.rgbd_depth_mm, self.rgbd_at
+            info = dict(self.info or {})
+            if color is not None:
+                color = color.copy()
+            if depth is not None:
+                depth = depth.copy()
+        if (color is None or depth is None or not info.get("colorIntrinsics")
+                or not info.get("colorToDepth")
+                or at is None or time.time() - at > STALE_S
+                or color.shape[:2] != depth.shape):
+            return None
+
+        h, w = depth.shape
+        cb = BytesIO()
+        Image.fromarray(color).save(cb, "JPEG", quality=int(self.cfg["color"].get("preview_quality", 70)))
+        db = BytesIO()
+        Image.fromarray(depth).save(db, "PNG")
+        manifest = {
+            "t": at,
+            "alignment": "depthToColor",
+            "widthPx": w,
+            "heightPx": h,
+            "depthUnit": "mm",
+            "intrinsics": info.get("colorIntrinsics"),
+            "colorToDepth": info.get("colorToDepth"),
+            "calibId": (f"d435-{info['serial']}-fw{info['firmware']}"
+                        if info.get("serial") and info.get("firmware") else None),
+        }
+        out = BytesIO()
+        with zipfile.ZipFile(out, "w", compression=zipfile.ZIP_STORED) as zf:
+            zf.writestr("manifest.json", json.dumps(manifest, ensure_ascii=False))
+            zf.writestr("color.jpg", cb.getvalue())
+            zf.writestr("depth.png", db.getvalue())
+        return out.getvalue()
+
     def ir_png(self, which=1):
         """계약 §적외선 원본 — 8비트 PNG 또는 `None`.
 
@@ -196,6 +245,7 @@ class Camera:
             # 파일을 손으로 읽을 이유를 없앤다. 해상도를 바꾸면 이 값도 같이 바뀐다.
             # 못 읽으면 `null` 이다 — **지어내지 않는다** (계약 §낼 수 없는 필드를 null 로)
             "depthIntrinsics": info.get("depthIntrinsics"),
+            "colorIntrinsics": info.get("colorIntrinsics"),
         }
 
     # ── 스레드 ───────────────────────────────────────────────────────────────
@@ -240,6 +290,7 @@ class Camera:
             # 실제로 그랬고 `tuningNotes: []` 라 **필터가 안 걸린 줄 알았다.**
             # 조용한 실패를 잡으려는 필드가 순서 하나로 스스로 조용해지는 자리다
             self._filters = self._build_filters(rs)
+            align_to_color = rs.align(rs.stream.color)
             # **깊이 단위는 기기에서 읽는다.** 0.001 로 박으면 다른 개체에서 조용히 틀린다
             scale_mm = sensor.get_depth_scale() * 1000.0
             # 프레임 시각을 호스트 epoch 로 받는다. 이게 꺼져 있으면 `get_timestamp()` 가
@@ -258,14 +309,16 @@ class Camera:
                     # 화각에서 유도했는데, 유도값은 **주점이 3~7화소 틀렸고**(cx 424 vs 427.0 ·
                     # cy 240 vs 247.3) 해상도를 바꾸면 통째로 다시 적어야 했다.
                     # 관문이 내면 소비처가 추측할 이유가 없다 (제1원칙)
-                    "depthIntrinsics": self._intr(profile, rs),
+                    "depthIntrinsics": self._intr(profile, rs, rs.stream.depth),
+                    "colorIntrinsics": self._intr(profile, rs, rs.stream.color),
+                    "colorToDepth": self._extr(profile, rs, rs.stream.color, rs.stream.depth),
                 }
                 self.min_z = D.min_z_mm(self.cfg["min_z_mm"], dcfg["resolution"])
                 self.error = None
 
             while not self._stop.is_set():
                 frames = pipe.wait_for_frames(FRAME_TIMEOUT_MS)
-                self._absorb(rs, frames, scale_mm, sensor)
+                self._absorb(rs, frames, scale_mm, sensor, align_to_color)
         finally:
             self._pipe = None
             try:
@@ -274,13 +327,28 @@ class Camera:
                 pass
 
 
-    def _intr(self, profile, rs):
-        """깊이 스트림의 내부 파라미터. 못 읽으면 `None` — **지어내지 않는다.**"""
+    def _intr(self, profile, rs, stream):
+        """요청한 비디오 스트림의 내부 파라미터. 못 읽으면 `None` — 지어내지 않는다."""
         try:
-            v = profile.get_stream(rs.stream.depth).as_video_stream_profile().get_intrinsics()
+            v = profile.get_stream(stream).as_video_stream_profile().get_intrinsics()
             return {"widthPx": v.width, "heightPx": v.height,
                     "fx": v.fx, "fy": v.fy, "ppx": v.ppx, "ppy": v.ppy,
                     "model": str(v.model), "coeffs": list(v.coeffs)}
+        except Exception:                                # noqa: BLE001
+            return None
+
+    @staticmethod
+    def _extr(profile, rs, source, target):
+        """두 D435 광학 좌표계 사이 외부 파라미터. translation은 SDK m를 mm로 바꾼다."""
+        try:
+            a = profile.get_stream(source)
+            b = profile.get_stream(target)
+            e = a.get_extrinsics_to(b)
+            # librealsense 구조체는 column-major다. 소비자가 다시 추측하지 않게 manifest는
+            # 이름 그대로 row-major로 정규화한다.
+            r = list(e.rotation)
+            return {"rotationRowMajor": [r[0], r[3], r[6], r[1], r[4], r[7], r[2], r[5], r[8]],
+                    "translationMm": [float(v) * 1000.0 for v in e.translation]}
         except Exception:                                # noqa: BLE001
             return None
 
@@ -374,11 +442,21 @@ class Camera:
             self.tuning_notes.append("필터(스냅샷 전용) " + "·".join(n for n, _ in out))
         return out
 
-    def _absorb(self, rs, frames, scale_mm, sensor):
+    def _absorb(self, rs, frames, scale_mm, sensor, align_to_color=None):
         dframe = frames.get_depth_frame()
         cframe = frames.get_color_frame()
         if not dframe:
             return
+        # 총알 윗면은 깊이가 비어 있다. 컬러를 깊이에 맞추면 그 화소의 컬러까지 검게 사라지므로
+        # **깊이를 컬러에** 맞춘다. 기존 depth/frame은 아래 raw 경로를 그대로 유지한다.
+        aligned_depth = aligned_color = None
+        if align_to_color is not None and cframe:
+            try:
+                aligned = align_to_color.process(frames)
+                aligned_depth = aligned.get_depth_frame()
+                aligned_color = aligned.get_color_frame()
+            except Exception:                           # noqa: BLE001 — 결측=rgbd 차단
+                aligned_depth = aligned_color = None
         z = np.asanyarray(dframe.get_data()).astype(np.float32) * scale_mm
         min_z = self.min_z
         max_mm = self.cfg.get("max_mm", D.DEFAULT_MAX_MM)
@@ -401,12 +479,18 @@ class Camera:
         # 비율과 **같은 규칙**으로 비운다 (계약 §깊이 스냅샷). Min-Z 를 모르면 `None` 이라
         # 스냅샷도 안 나간다 — 비율이 fail-closed 인데 스냅샷만 나가면 판정이 갈린다
         clean = D.clean_mm(zf, min_z, max_mm)
+        aligned_clean = None
+        if aligned_depth is not None and aligned_color is not None:
+            za = np.asanyarray(aligned_depth.get_data()).astype(np.float32) * scale_mm
+            aligned_clean = D.clean_mm(za, min_z, max_mm)
 
         at = self._stamp(rs, dframe)
         # **컬러 시각은 따로 찍는다** — 깊이 것을 물려 쓰면 컬러가 멎어도 사진이 안 늙는다.
         # 그게 이 파일에서 고치려는 바로 그 버그다
         jpeg = self._encode(cframe) if cframe else None
         jpeg_at = self._stamp(rs, cframe) if cframe else None
+        rgbd_color = (np.asanyarray(aligned_color.get_data()).copy()
+                      if aligned_color is not None and aligned_clean is not None else None)
         ir = {}
         for which in (self.cfg["depth"].get("infrared") or []):
             f = frames.get_infrared_frame(int(which))
@@ -420,6 +504,10 @@ class Camera:
             self.frame_at = at
             self.ratios = ratios
             self.depth_mm = clean
+            if rgbd_color is not None and rgbd_color.shape[:2] == aligned_clean.shape:
+                self.rgbd_color = rgbd_color
+                self.rgbd_depth_mm = aligned_clean
+                self.rgbd_at = at
             self.ir = ir
             if jpeg is not None:
                 self.jpeg = jpeg

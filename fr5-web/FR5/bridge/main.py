@@ -17,7 +17,7 @@ from pathlib import Path
 
 import yaml
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 
 import amr
@@ -26,6 +26,7 @@ import fixture
 import follow
 import preflight
 import safety
+import scan_frames
 from commands import GRIPPER_FORCE_PCT, Commands
 from owner import Owner
 from robot_adapter import make_adapter
@@ -33,6 +34,7 @@ from runs import RunStore
 from session import RobotSession
 from slots import SlotStore
 from teach import TeachService, frame_mismatch, run_recording
+from visualization import VisualGhostStore
 
 HERE = Path(__file__).parent
 # 인코딩을 명시한다 — 윈도우 한국어 로케일의 기본은 cp949 라 한글 주석에서 터진다 (2026-08-11)
@@ -134,6 +136,7 @@ def _owner_lost(who):
 
 
 owner = Owner(_owner_lost, lambda e, d: log(e, d))
+visuals = VisualGhostStore()
 
 
 def refuse(reasons, status=409):
@@ -219,7 +222,7 @@ def follow_target_tag(cfg):
         return None, "robot-base-in-tag.json 이 없다 — lab→로봇 환산을 못 한다"
     # ⛔ **user1 을 모르면 안 낸다** (2026-08-28 실측 — 여기서 한 번 틀렸다).
     # 처음엔 없는 속성(`session.user1`)을 찾다 `[0,0,0]` 으로 떨어져 **베이스 좌표를 user1
-    # 이라 이름 붙여** 내보냈다. 홈에 선 터틀봇이 460·654·432mm 어긋나 보였고, 실기 담당자가
+    # 이라 이름 붙여** 내보냈다. 홈에 선 터틀봇이 460·654·432mm 어긋나 보였고, 주인님이
     # 「지금 위치는 원점」 한마디로 잡으셨다. 이름이 맞는데 값이 틀린 게 제일 나쁘다 —
     # 없으면 **없다고 말한다**(제1원칙). 정본은 `coordDefs.user` 다 (`session._coord_defs`).
     user = ((getattr(session, "coordDefs", None) or {}).get("user"))
@@ -256,7 +259,7 @@ def follow_target(cfg):
         if tag is not None:
             return {**tag, "correctedAgoS": None, "fit": None, "odomAgeS": None}, None
         # ⭐ **재획득** — 표적을 잃으면 바퀴가 가리키는 곳으로 (계약 §재획득 · D180).
-        # 실기 담당자 *"표적이 없어지면 터틀봇 위치로 알아서 찾아가야 하는 거 아닌가"*.
+        # 주인님 *"표적이 없어지면 터틀봇 위치로 알아서 찾아가야 하는 거 아닌가"*.
         # ⛔ **몰래 갈아타지 않는다** — `source: "odom"` · `grade: "재획득"` 으로 글자로 말한다.
         # ⛔ **파지가 아니다** — 표적 위 standoff 로 가서 **화각에 담기만** 한다. `AMR_HOME`
         #    이 140mm 어긋나 있어도(09-04) 화각 반지름 안이면 눈을 돌려 주기엔 충분하다.
@@ -466,7 +469,8 @@ def follow_snapshot():
 
 
 def snapshot():
-    return {**session.snapshot(owner.get()), "follow": follow_snapshot()}
+    return {**session.snapshot(owner.get()), "follow": follow_snapshot(),
+            "visualGhost": visuals.snapshot()}
 
 
 def owner_gate(body):
@@ -826,6 +830,84 @@ async def ik(body: dict):
             "gate": {"ok": not reasons, "reasons": reasons}}
 
 
+
+# ── 제안 — 비전·화면이 낸 자리로 **한 번에** 간다 (계약 `VISION-CONTRACT.md` §제안 · D61 · 2026-09-07 사다리 7 열림) ──
+# **비전은 명령을 만들지 않는다 — 제안을 만든다.** 제안은 `/ik` 와 같은 함수(`cmds.motion(dry_run)`)로 경로를 훑어 판정만 받고,
+# 사람이 `approve` 를 눌러야 브리지가 `moveJ` 로 **번역**해 같은 게이트(조건 26·27 포함)를 처음부터 다시 탄다 — 비전 전용 실행 경로가 아니다.
+# 왜 지금: WS `moveJ` 는 한 명령 5° 상한이라 화면이 손목 반 바퀴를 5° 조각 38개(5분)로 보냈다(실기 2026-09-07). 경로를 훑는 창구는 상한이
+# 「정착 60초(D94)」뿐이라 189° 가 2번(약 70초)이 된다. `auto` 판정은 **열지 않는다** — 전부 `needsHumanConfirm`(계약 ⚠).
+PROPOSAL_TTL_S = 90.0          # 제안 수명 — 화면이 고스트를 보여 주고 사람이 누르기까지. 넘으면 `expired`: 팔·물건이 그새 움직였을 수 있다
+proposals = {}                 # proposalId → 제안. 메모리뿐 — 재시작이면 전부 무효가 맞다(그때 자세도 바뀐다)
+
+
+def proposal_expired(p, now=None):
+    return (now if now is not None else time.time()) > float(p.get("expiresAt", 0))
+
+
+def _proposals_prune():
+    now = time.time()
+    for k in [k for k, v in proposals.items() if proposal_expired(v, now)]:
+        proposals.pop(k, None)
+
+
+@app.post("/proposal")
+async def proposal_new(body: dict):
+    """제안을 받아 **판정만** 한다 — 로봇을 움직이지 않는다. 화면은 `/ik` 로 푼 관절해를 함께 보낸다(같은 참조 해로 가지가 안 갈린다)."""
+    b = body or {}
+    joints = b.get("jointsDeg")
+    if not (isinstance(joints, list) and len(joints) == 6
+            and all(isinstance(v, (int, float)) and math.isfinite(v) for v in joints)):
+        return refuse(["jointsDeg 는 6개 유한수다 — 화면은 `/ik` 가 푼 해를 보낸다"], 400)
+    if session.adapter is None:
+        return refuse(["연결이 없다 — 판정할 컨트롤러가 없다"])
+    _proposals_prune()
+    reasons = await asyncio.to_thread(cmds.motion, [float(v) for v in joints], safety.SPEED_CAP_PCT, True, True)
+    now = time.time()
+    pid = f"p-{os.urandom(3).hex()}"
+    p = {"proposalId": pid, "kind": b.get("kind") or "align", "source": b.get("source") or "unknown", "label": b.get("label"),
+         "jointsDeg": [round(float(v), 3) for v in joints],
+         "tcpMmDeg": ((b.get("targetPose") or {}).get("tcpMmDeg") if isinstance(b.get("targetPose"), dict) else None),
+         "createdAt": now, "expiresAt": now + PROPOSAL_TTL_S,
+         "verdict": "rejected" if reasons else "needsHumanConfirm", "reasons": reasons}
+    if not reasons:
+        proposals[pid] = p                       # 거부된 제안은 목록에 안 남긴다 — 누를 것이 없다
+    return {"ok": not reasons, "proposalId": pid, "verdict": p["verdict"], "reason": (reasons[0] if reasons else None),
+            "reasons": reasons, "expiresAt": p["expiresAt"], "speedPct": safety.SPEED_CAP_PCT}
+
+
+@app.get("/proposals")
+async def proposals_list():
+    _proposals_prune()
+    return {"proposals": sorted(proposals.values(), key=lambda p: p["createdAt"])}
+
+
+@app.post("/proposal/{pid}/approve")
+async def proposal_approve(pid: str, body: dict):
+    """여기서 `moveJ` 로 번역된다 — 조종권 + ARMED + 수명 안. 경로를 다시 훑고(scan_path) 한 번에 간다. 응답은 **도착 뒤**에 온다."""
+    if (bad := owner_gate(body)) is not None:
+        return bad
+    if not session.armed:
+        return refuse([f"ARMED 가 아니다 — phase={session.current_phase(owner.get())}"])
+    p = proposals.get(pid)
+    if p is None:
+        return refuse([f"없는 제안 — {pid} (거부됐거나 이미 실행됐거나 재시작으로 사라졌다)"], 404)
+    if proposal_expired(p):
+        proposals.pop(pid, None)
+        return refuse([f"expired — 제안이 {PROPOSAL_TTL_S:.0f}초를 넘었다 · 다시 제안한다"], 409)
+    proposals.pop(pid, None)                     # 한 제안은 한 번만 실행된다
+    reasons = await asyncio.to_thread(cmds.motion, p["jointsDeg"], safety.SPEED_CAP_PCT, True)
+    if reasons:
+        return refuse(reasons)
+    return {"ok": True, "proposalId": pid, "phase": session.current_phase(owner.get()), "reasons": [],
+            "readback": {"jointsDeg": (session.lastState or {}).get("jointsDeg")}}
+
+
+@app.post("/proposal/{pid}/reject")
+async def proposal_reject(pid: str, body: dict):
+    if (bad := owner_gate(body)) is not None:
+        return bad
+    return {"ok": proposals.pop(pid, None) is not None, "proposalId": pid}
+
 # ── 손목 스캔 — 2단 조준의 정밀 칸 (계약 §손목 스캔 · 2026-09-07 · D192) ────────────────
 # **로봇을 움직이지 않는다.** 풀이는 `scripts/robot/carrier-find.py`(`depth-probe.py` 위) 한 곳 —
 # 브리지는 그 `find` 를 부르고 hand-eye 로 user1 에 옮기기만 한다(색·손목 상주가 `color-find`·`wrist-find`
@@ -834,7 +916,7 @@ SCAN_TARGETS = {
     # 표적 → (분기, 치수 키 출처, 높이/깊이 창 mm). 치수 숫자는 `props.js` 가 정본 — 여기 안 박는다
     # 거치대 높이 창은 props.js 에서 — 뎁스는 윗면 테두리를 못 보고 **안쪽 바닥(28)** 을 본다(`CARRIER.depthSignature` · 2026-09-07 실측). 창 = (바닥 −10, 키 +15)
     "carrier":         {"mode": "raised", "size": "CARRIER", "h": None},
-    "basketFloor":     {"mode": "sunken", "size": "AMR_BASKET", "h": None},   # 깊이 창은 props.js innerHMm ±15 — 발판(2026-09-07 · 35)이 들어오면 같이 움직인다
+    "basketFloor":     {"mode": "plateau", "size": "AMR_BASKET", "h": None},  # 상판 기준 **솟은 판** rim−innerH = 115 ±15 (2026-09-07 19:50 실기 — 파임 분기는 이 높이에서 상판이 지배해 0 후보)
     "carrierInBasket": {"mode": "raised", "size": "CARRIER", "h": None},
 }
 # 목업 뎁스 — **툴 프레임에 고정된 편향**을 진값에 얹는다. 거울 쌍(rz±90) 평균이 진값으로 돌아오는 것을
@@ -890,9 +972,12 @@ def _scan_mock(target, truth, tcp):
     b = safety._apply(r, DEPTH_MOCK_BIAS_MM)
     p = [float(truth["user1Mm"][i]) + b[i] for i in range(3)]
     yaw = truth.get("yawDeg")
+    mock_bullets = truth.get("bulletsUser1Mm") if isinstance(truth.get("bulletsUser1Mm"), list) else []
     return {"target": target, "rzDeg": round(float(tcp[5]), 3), "tcpMmDeg": [round(float(v), 3) for v in tcp],
             "camMm": None, "user1Mm": [round(v, 2) for v in p],
             "yawDeg": None if yaw is None else round(_fold_yaw(yaw), 2),
+            "bulletsUser1Mm": mock_bullets, "bulletSource": "mock", "bulletWhy": "목업은 실기 안전 증거가 아니다",
+            "targetPx": None, "bulletsPx": [], "frame": None,
             "blob": {"kind": SCAN_TARGETS[target]["mode"], "areaPx": None, "sizeMm": None, "heightMm": None, "longAxisDeg": None},
             "source": "mock", "biasMm": list(DEPTH_MOCK_BIAS_MM), "t": time.time()}, []
 
@@ -906,21 +991,30 @@ def _scan_depth(target, tcp, hand_eye):
     K = info.get("depthIntrinsics")
     if not K:
         return None, ["/api/camera/info 에 depthIntrinsics 가 없다 — 카메라가 안 붙었다"]
-    z, _note = cf.dp.fetch_avg(f"http://{host}/api/camera/depth/frame", 5)
+    if target == "carrier":
+        z, rgb, _note = cf.fetch_rgbd_avg(
+            f"http://{host}/api/camera/rgbd/frame", cf.RGBD_AVG_FRAMES)
+        K = _note["intrinsics"]
+    else:
+        z, _note = cf.dp.fetch_avg(f"http://{host}/api/camera/depth/frame", 5)
+        rgb = None
     w, d = _props_size(spec["size"])
     if spec["h"]:
         h_range = spec["h"]
     elif spec["size"] == "AMR_BASKET":
-        h_range = (lambda h: (h - 15.0, h + 15.0))(_props_num("AMR_BASKET", "innerHMm"))
+        # 바구니 바닥은 **상판 위 rim − innerH**(150 − 35 = 115)에 있는 판이다 — 발판(riser)이 바뀌면 innerH 가 바뀌어 같이 움직인다
+        h_range = (lambda h: (h - 15.0, h + 15.0))(_props_num("AMR_BASKET", "rimAboveGroundMm") - _props_num("AMR_BASKET", "innerHMm"))
     else:
         h_range = (_props_num("CARRIER", "depthMinHeightMm"), _props_num("CARRIER", "hMm") + 15.0)
-    cands, why = cf.find(z.astype("float32"), K, w, d, mode=spec["mode"], h_range=h_range)
+    cands, why = cf.find(z.astype("float32"), K, w, d, mode=spec["mode"], h_range=h_range, rgb=rgb,
+                         color_to_depth=(_note.get("colorToDepth") if target == "carrier" else None))
     if why:
         return None, [why]
     picked = [c for c in cands if c["fits"]]
     if len(picked) != 1:
+        clipped = [c for c in cands if c.get("clipped")]
         return None, [f"{spec['size']} 크기·높이 판정선 안 후보가 {len(picked)}개 — 하나가 아니면 고르지 않는다"
-                      + (f" · 후보 {[c['sizeMm'] for c in cands][:4]}" if cands else "")]
+                      + (f" · {clipped[0]['why']}" if clipped else (f" · 후보 {[c['sizeMm'] for c in cands][:4]}" if cands else ""))]
     c = picked[0]
     t_mm = (hand_eye or {}).get("tMm")
     p, reason = follow.cam_to_robot(c["camMm"], tcp, t_mm)
@@ -930,8 +1024,22 @@ def _scan_depth(target, tcp, hand_eye):
     #    PCA 장축(`longAxisDeg`)은 구멍 판에서 프레임마다 86° 뒤집혀 폐기 — 껍질이 없으면(점 부족) 요각을 **모른다**고 한다
     axis = c.get("hullAxisDeg")
     yaw = _fold_yaw(axis + float(tcp[5])) if axis is not None else None
+    # 서 있는 총알(테두리보다 높은 점 무리) — user1 xy 로. 부르는 쪽이 그 벽을 피한다 (2026-09-07 20:19 충돌)
+    bullets = []
+    for bc in c.get("bulletsCamMm") or []:
+        pb, _r = follow.cam_to_robot(bc, tcp, t_mm)
+        if pb is not None:
+            bullets.append([round(float(pb[0]), 1), round(float(pb[1]), 1)])
+    frame = None
+    if rgb is not None:
+        encoded, jpeg = cf.cv2.imencode(".jpg", rgb, [int(cf.cv2.IMWRITE_JPEG_QUALITY), 88])
+        if encoded:
+            frame = scan_frames.add(jpeg.tobytes(), rgb.shape[1], rgb.shape[0],
+                                    _note.get("capturedAt", time.time()))
     return {"target": target, "rzDeg": round(float(tcp[5]), 3), "tcpMmDeg": [round(float(v), 3) for v in tcp],
             "camMm": c["camMm"], "user1Mm": [round(float(v), 2) for v in p], "yawDeg": None if yaw is None else round(yaw, 2),
+            "bulletsUser1Mm": bullets, "bulletSource": c.get("bulletSource"), "bulletWhy": c.get("bulletWhy"),
+            "targetPx": c.get("px"), "bulletsPx": c.get("bulletsPx") or [], "frame": frame,
             "blob": {"kind": spec["mode"], "areaPx": c["areaPx"], "sizeMm": c["sizeMm"], "heightMm": c["heightMm"],
                      "longAxisDeg": c["longAxisDeg"], "hullSizeMm": c.get("hullSizeMm"), "hullAxisDeg": c.get("hullAxisDeg")},
             "source": "depth", "t": time.time()}, []
@@ -964,6 +1072,15 @@ async def scan(body: dict):
         return {"ok": False, "view": None, "reasons": reasons}
     log("scan", f"{target} rz={view['rzDeg']} → {view['user1Mm']} yaw={view['yawDeg']} ({view['source']})")
     return {"ok": True, "view": view, "reasons": []}
+
+
+@app.get("/scan/frame/{frame_id}")
+async def scan_frame(frame_id: str):
+    """검출 좌표와 같은 정지화면. 최근 4장 밖이면 옛 화면을 대신 주지 않는다."""
+    jpeg = scan_frames.get(frame_id)
+    if jpeg is None:
+        return refuse(["스캔 프레임이 만료됐다 — 다시 스캔"], 404)
+    return Response(content=jpeg, media_type="image/jpeg", headers={"Cache-Control": "no-store"})
 
 
 # ── 단계 기록 — 버튼 한 번 = 기록 한 줄 (계약 §단계 기록 · 2026-09-07 · D191) ──────────
@@ -1316,6 +1433,31 @@ async def ws_state(ws: WebSocket):
         log("ws-close", str(ws.client))
 
 
+# 공동 고스트 게시 — **화면 전용 소켓**이다. handle_cmd·명령 큐·SDK로 내려가는 길이 없다.
+@app.websocket("/ws/visualization")
+async def ws_visualization(ws: WebSocket):
+    await ws.accept()
+    publisher = id(ws)
+    log("visual-open", str(ws.client))
+    try:
+        while True:
+            try:
+                msg = json.loads(await ws.receive_text())
+            except json.JSONDecodeError:
+                await ws.send_text(json.dumps({"ok": False, "reason": "JSON을 읽을 수 없다"}))
+                continue
+            who = str(msg.get("who") or "") or None
+            ok, reason = visuals.publish(
+                publisher, msg, owner.is_owner(who, msg.get("token")))
+            if not ok:
+                await ws.send_text(json.dumps({"ok": False, "reason": reason}))
+    except WebSocketDisconnect:
+        pass
+    finally:
+        visuals.close(publisher)       # 마지막 그림을 사실처럼 남기지 않는다
+        log("visual-close", str(ws.client))
+
+
 # ── 받침 추적 — **브리지 안에서 돈다** (계약 §움직이는 장애물 · D130)
 #
 # 왜 사이드카가 아닌가 (2026-08-13): 옆 프로세스로 세 번 세웠고 세 번 다 **조용히** 죽었다.
@@ -1363,7 +1505,7 @@ def _start_anchor_tracker():
         conf_url=f"http://127.0.0.1:{CONFIG.get('port', 5055)}/config/global-cam.json",
     )
     # ── 색으로 거치대 찾기 — **태그를 안 쓴다** (2026-09-04) ──────────────────
-    # 실기 담당자 *"애초에 글로벌캠에 잡히는데"*. 영상에 물건이 보이는데 코드가 태그만 찾아서
+    # 주인님 *"애초에 글로벌캠에 잡히는데"*. 영상에 물건이 보이는데 코드가 태그만 찾아서
     # 「보이는데 못 본다」였고, 그래서 표적이 물건이 아니라 **종이 태그**였다 —
     # 태그가 물건에 안 붙어 있으니 물건을 옮겨도 팔은 안 따라갔다.
     # ⛔ **파일을 가른다** (`carrier-pose.json`). 앵커 파일은 못 본 태그의 옛 값을 남기는데

@@ -5,7 +5,7 @@
     python3 scripts/map/color-find.py --json
     python3 scripts/map/color-find.py --watch --push <호스트경로>   # 상주 · 파일로 낸다
 
-## 왜 만드나 — 실기 담당자 *"애초에 글로벌캠에 잡히는데"* (2026-09-04)
+## 왜 만드나 — 주인님 *"애초에 글로벌캠에 잡히는데"* (2026-09-04)
 
 그날 화면은 이랬다: 폰 영상에 **분홍 거치대가 또렷이 보이는데** 팔은 엉뚱한 데를 봤다.
 이유는 하나였다 — **우리 코드가 그 영상에서 태그만 찾았다.** 색·형상으로 물건을 찾는
@@ -169,8 +169,8 @@ def locate(ctx, cam=None):
         if p_lab is None:
             continue
         u = fixture.lab_to_user1(p_lab, ctx["base"], user)
-        # 요각 (2026-09-07 · VISION-CONTRACT §color `yawDeg`) — 덩어리 `minAreaRect` 장축의 양 끝 화소를 **같은 평면에 쏴**
-        # user1 로 옮긴 뒤 atan2. 화소각을 그대로 쓰면 원근에 휜다. 못 내면 None(결측=고정각) — 지어내지 않는다
+        # 요각 (2026-09-07 · VISION-CONTRACT §color `yawDeg`) — 덩어리 `minAreaRect` 두 축을 **같은 평면에 쏴**
+        # user1 실거리로 장축을 다시 고른 뒤 atan2. 화소 길이를 믿으면 원근 때문에 장·단축이 뒤집힌다. 못 내면 None — 지어내지 않는다
         yaw = _yaw_user1(lab == i, cent[i], ctx, img.shape[1], z_plane, user, fixture)
         # ⛔ **일감 구역 밖은 버린다** — 배경에 같은 색이 널려 있다 (사람 옷·다른 책상)
         if any(bx["xMm"][0] <= u[0] <= bx["xMm"][1] and bx["yMm"][0] <= u[1] <= bx["yMm"][1]
@@ -194,18 +194,24 @@ def _yaw_user1(mask, cent_px, ctx, img_w, z_plane, user, fixture):
     if len(pts) < 20:
         return None
     (_, _), (w, h), ang = cv2.minAreaRect(pts)
-    if w <= 0 or h <= 0 or max(w, h) / min(w, h) < YAW_MIN_ASPECT:
-        return None                     # 정사각에 가까우면 장축이 잡음으로 뒤집힌다 — 모른다고 말한다
-    a = math.radians(ang if w >= h else ang + 90.0)
-    half = max(w, h) / 2.0
-    ends = []
-    for s in (-1.0, 1.0):
-        q = (cent_px[0] + s * half * math.cos(a), cent_px[1] + s * half * math.sin(a))
-        p_lab, _ = to_lab(q, ctx["cal"], img_w, z_plane)
-        if p_lab is None:
-            return None
-        ends.append(fixture.lab_to_user1(p_lab, ctx["base"], user))
-    yaw = math.degrees(math.atan2(ends[1][1] - ends[0][1], ends[1][0] - ends[0][0]))
+    if w <= 0 or h <= 0:
+        return None
+    axes = []
+    for px_len, deg in ((w, ang), (h, ang + 90.0)):
+        a = math.radians(deg)
+        ends = []
+        for s in (-1.0, 1.0):
+            q = (cent_px[0] + s * px_len / 2.0 * math.cos(a), cent_px[1] + s * px_len / 2.0 * math.sin(a))
+            p_lab, _ = to_lab(q, ctx["cal"], img_w, z_plane)
+            if p_lab is None:
+                return None
+            ends.append(fixture.lab_to_user1(p_lab, ctx["base"], user))
+        dx, dy = ends[1][0] - ends[0][0], ends[1][1] - ends[0][1]
+        axes.append((math.hypot(dx, dy), math.degrees(math.atan2(dy, dx))))
+    axes.sort(reverse=True)
+    if axes[0][0] / axes[1][0] < YAW_MIN_ASPECT:
+        return None                     # **실거리**가 정사각에 가까우면 장축이 잡음으로 뒤집힌다 — 모른다고 말한다
+    yaw = axes[0][1]
     return ((yaw + 90.0) % 180.0) - 90.0
 
 

@@ -16,10 +16,8 @@
 #    열리는 순서). **낼 수 없는 필드를 `null` 로 채운 라우트를 열어 두지 않는다.** 있으면
 #    누군가 부르고, `null` 은 "지금은 못 잡았다"로 읽힌다. record 는 저장 경로가 호스트에
 #    달려 있다(D61 잔여) — 시연 수집(B축) 차례에 연다
-# ③ **깊이·컬러가 정렬(`rs.align`)돼 있지 않다.** 두 스트림은 해상도도 화각도 달라 픽셀
-#    (x,y) 가 서로 다른 곳을 가리킨다. 정렬은 파이프라인에 처리 블록을 하나 더 얹는 일이고,
-#    **부를 주인이 「깊이와 컬러를 같이 보는 검출기」인데 아직 없다.** `depth/frame` 은
-#    정렬을 안 기다린다 — 깊이 하나만으로 「총알 표면에 값이 찍히나」를 판정할 수 있다
+# ③ **기존 `depth/frame`은 컬러와 정렬되지 않는다.** 호환성을 유지하고, 깊이와 컬러를 같이
+#    보는 검출기는 `rgbd/frame`의 같은 촬영 묶음만 쓴다(D207).
 #
 # `depth/frame` 은 2026-08-11 에 열었다 — 컬러 단독 분할이 이 작업물에서 실패하는 것을
 # 실측으로 확인했고(정반사 +154% / 그림자 −48%), 깊이를 볼 수단이 없어 **판정 자체가
@@ -87,6 +85,16 @@ def depth_frame():
         return JSONResponse({"error": "깊이 프레임 없음", "detail": cam.snapshot()["depth"]},
                             status_code=503)
     return Response(png, media_type="image/png", headers={"Cache-Control": "no-store"})
+
+
+@app.get("/api/camera/rgbd/frame")
+def rgbd_frame():
+    """같은 frameset의 컬러 화소계 컬러+깊이 ZIP. 둘 중 하나라도 없으면 안 낸다."""
+    blob = cam.rgbd_zip()
+    if blob is None:
+        return JSONResponse({"error": "정렬된 RGB·깊이 묶음 없음",
+                             "detail": cam.snapshot()["depth"]}, status_code=503)
+    return Response(blob, media_type="application/zip", headers={"Cache-Control": "no-store"})
 
 
 @app.get("/api/camera/ir/frame")
