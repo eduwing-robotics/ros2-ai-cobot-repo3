@@ -3,7 +3,7 @@
   "version": 1,
   "createdAt": "2026-09-11",
   "purpose": "S0 상태 확인부터 S8 종료까지 개발·실기 검증을 방해하지 않고 발표와 홍보 영상 원료를 함께 축적한다.",
-  "historicalSelection": "/Users/family/Downloads/fr5web-presentation-selection.json",
+  "historicalSelection": "external/local-selection.json (not committed)",
   "captureTool": "bash scripts/dev/shot.sh <slug> \"<caption>\" [--from <image> | --mov <video>]",
   "rules": {
     "sourceLabels": [

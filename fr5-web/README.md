@@ -4,7 +4,7 @@ FR5 조작 화면, 디지털 트윈, AR/XR, 작업 셀 관제, TurtleBot·카메
 
 프로젝트의 발전 과정과 실기 자료는 [상위 README](../README.md), 날짜·커밋별 색인은 [FR5 증거 타임라인](../docs/FR5-EVIDENCE-TIMELINE.md)에서 먼저 볼 수 있습니다.
 
-> 이 폴더는 2026-09-07 16:31에 반입한 코드 스냅샷입니다. 09-10 S0–S4 실기 결과와 09-11 작업 중 변경은 아직 이 브랜치 코드에 동기화되지 않았습니다.
+> 최초 반입 기준은 2026-09-07 16:31입니다. 이후 09-10 S0–S4와 09-11 로컬 기능을 17:36~17:43 스냅샷으로 동기화했으며, 범위는 [`docs/migration-manifest.yaml`](docs/migration-manifest.yaml)에 고정했습니다.
 
 ## 실행 화면
 
@@ -58,7 +58,7 @@ bash scripts/dev/fr5-dev.sh bridge  # FR5 Bridge만
 bash scripts/check/all.sh --fast
 ```
 
-2026-09-11 빠른 게이트에서 `grasp-rank`, `sim-batch` 두 검사가 기존 실측·픽스처 차이로 실패했습니다. `agree`는 로봇이 연결되지 않아 판정 재료가 없었습니다. 따라서 일부 검사 통과를 전체 실기 검증으로 확대해 말하지 않습니다.
+2026-09-11 동기화 후 빠른 게이트에서 `grasp-rank`, `sim-batch` 두 검사가 기존 실측·픽스처 차이로 실패했습니다. `agree`는 로봇이 연결되지 않아 판정 재료가 없었습니다. AR·Dashboard·FR5 빌드, S0–S4 실렌더 114/114, XR 실렌더 94/94는 통과했지만 이를 새 실기 검증으로 확대해 말하지 않습니다.
 
 ## 실물 운용
 
@@ -79,3 +79,4 @@ bash scripts/check/all.sh --fast
 | 좌표계 | [`docs/ref/contract/FRAMES.md`](docs/ref/contract/FRAMES.md) |
 | AR 문제 해결 | [`docs/ref/runbook/AR-DEBUG.md`](docs/ref/runbook/AR-DEBUG.md) |
 | 결정 배경 | [`docs/status/DECISION-LOG.md`](docs/status/DECISION-LOG.md) |
+| 이번 코드 동기화 범위 | [`docs/migration-manifest.yaml`](docs/migration-manifest.yaml) |

@@ -28,8 +28,8 @@
 ## Project Snapshot
 
 - Project: `FR5Web` — 실기 단계 테스트 축
-- One-line objective: **거치대를 판 위 아무 자리·아무 각도로 놓아도**, 글로벌캠(대강)→손목 뎁스(정밀·다각도)→풀기→한 칸 실행의 **2단 조준**으로 실기가 거치대를 집어 초록 바구니에 넣고, 그 모든 칸을 **주인님이 버튼 하나씩 눌러** 확인하며, 잰 값이 전부 저장돼 나중에 디버깅할 수 있다
-- Primary users: 랩에서 펜던트 옆에 서 있는 주인님
+- One-line objective: **거치대를 판 위 아무 자리·아무 각도로 놓아도**, 글로벌캠(대강)→손목 뎁스(정밀·다각도)→풀기→한 칸 실행의 **2단 조준**으로 실기가 거치대를 집어 초록 바구니에 넣고, 그 모든 칸을 **운영자가 버튼 하나씩 눌러** 확인하며, 잰 값이 전부 저장돼 나중에 디버깅할 수 있다
+- Primary users: 랩에서 펜던트 옆에 서 있는 운영자
 - Stack: FR5 브리지(FastAPI · FAIRINO SDK) · FR5 화면(Vite/React · `SimPanel`) · 글로벌캠 색 검출(`scripts/map/color-find.py`) · 손목 뎁스 D435(`scripts/robot/depth-probe.py` 평면·덩어리) · 브라우저 무조코 접촉 검사 · TB 브리지(`ws://<tb>/ws/state` velocity)
 - Repo boundary: `FR5/src/features/sim/` · `FR5/bridge/` · `Shared/data/sim/` · `scripts/map/` · `scripts/robot/` · `docs/`
 
@@ -83,7 +83,7 @@
 
 ## Dependencies
 
-- 랩(로봇 `192.168.57.2` · 브리지 `30.240:5055` · 폰 `5058` · 터틀봇 파이 `30.15:5056`) · 주인님 손(서보 ON · 태그0 짚기 · 거치대 5자리 짚기 · 높이 재티칭)
+- 랩(로봇 `192.168.57.2` · 브리지 `30.240:5055` · 폰 `5058` · 터틀봇 파이 `30.15:5056`) · 운영자 확인(서보 ON · 태그0 짚기 · 거치대 5자리 짚기 · 높이 재티칭)
 - `amr-pair.py` · `color-find.py` · `depth-probe.py` · `view-pose.js`(관측 자세 식 · 방위 인자) · `contact-check.js`
 
 ## Success Metrics
