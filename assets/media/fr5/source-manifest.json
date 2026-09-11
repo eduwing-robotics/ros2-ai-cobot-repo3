@@ -72,6 +72,16 @@
       "durationSec": 9.7,
       "claim": "글로벌 카메라와 손목 뎁스 관측, 경로 검토를 거쳐 거치대를 집고 안전 높이까지 들었다.",
       "evidence": "FR5Web working tree · docs/evidence/2026-09-10/s4-first-pick-lift.md"
+    },
+    {
+      "output": "xr-workcell-walkthrough.gif",
+      "capturedAt": "2026-09-11",
+      "sourceFile": "화면 기록 2026-09-11 오후 3.35.47.mov",
+      "sourceType": "실기 화면 · WebXR",
+      "playbackSpeed": 3.5,
+      "durationSec": 6.9,
+      "claim": "가상 작업 셀을 실제 복도 위에 1:1로 배치하고 설비 사이를 걸으며 통로와 시야를 확인했다.",
+      "evidence": "AR/src/screens/xr.js · scripts/check/xr-web-verify.mjs"
     }
   ]
 }
