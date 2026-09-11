@@ -82,6 +82,14 @@
       "durationSec": 6.9,
       "claim": "가상 작업 셀을 실제 복도 위에 1:1로 배치하고 설비 사이를 걸으며 통로와 시야를 확인했다.",
       "evidence": "AR/src/screens/xr.js · scripts/check/xr-web-verify.mjs"
+    },
+    {
+      "output": "turtlebot-drive-target.png",
+      "capturedAt": "2026-09-09",
+      "sourceFile": "docs/evidence/2026-09-09/twin-global-camera/amr-target.png",
+      "sourceType": "실기 화면 · 디지털 트윈",
+      "claim": "주행 전에 현재 TurtleBot은 검은색, 선택한 정차 목표는 초록색 고스트로 함께 표시했다.",
+      "evidence": "FR5Web source commit 8ac8e07 · docs/evidence/2026-09-09/twin-global-camera/README.md"
     }
   ]
 }
