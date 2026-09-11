@@ -1,136 +1,81 @@
-# FR5AR — 배치를 바꾸면 생산성이 얼마나 달라질까
+# FR5 Web Workspace
 
-**과학실험실에서 로봇팔과 자율주행로봇(AMR)의 배치에 따라 생산성이 얼마나 달라지는지** 재는
-웹 작업대. 배치안을 화면에서 바꿔 지표를 비교하고, **앱 설치 없이 폰 카메라로 그 배치안을
-실제 실험실 바닥에 겹쳐** 통로·작업대와 충돌하는지 확인한다.
+FR5 조작 화면, 디지털 트윈, AR/XR, 작업 셀 관제, TurtleBot·카메라 관문, MuJoCo 검토를 한 워크스페이스에서 개발합니다.
 
-## 이 저장소가 맡는 것
+프로젝트의 발전 과정과 실기 자료는 [상위 README](../README.md), 날짜·커밋별 색인은 [FR5 증거 타임라인](../docs/FR5-EVIDENCE-TIMELINE.md)에서 먼저 볼 수 있습니다.
 
-| | 누가 | 무엇 |
+> 이 폴더는 2026-09-07 16:31에 반입한 코드 스냅샷입니다. 09-10 S0–S4 실기 결과와 09-11 작업 중 변경은 아직 이 브랜치 코드에 동기화되지 않았습니다.
+
+## 실행 화면
+
+| 화면 | 개발 주소 | 역할 |
 |---|---|---|
-| **이 저장소** | 우리 | **시각화** — 배치안 편집 · 지표 비교 · 실물 위 겹쳐 보기 |
-| 다른 코드 | 팀원 | 생산성 수치를 내는 알고리즘 |
-| 다른 코드 | 팀원 | AMR 자율주행 |
+| FR5 | `:5176` | Live·Teach·Program·시뮬·TurtleBot 탭 |
+| Dashboard | `:5187` | 작업 셀 맵 편집, 배치·시뮬 결과 비교 |
+| AR | Vite 개발 주소의 `/ar.html`, `/cam.html`, `/xr.html` | 마커 AR, 글로벌 카메라 겹치기, WebXR 답사 |
+| FR5 Bridge | `:5055` | 상태·조종권·안전 검사·FR5 명령 |
+| TurtleBot Bridge | `:5056` | ROS 2 상태와 이동 슬롯 |
+| Camera Bridge | `:5058` | 손목 D435 RGB-D 프레임과 측정값 |
 
-**우리는 수치를 만들지 않는다. 받아서 보여준다.** 그래서 두 가지를 지킨다 —
-받는 모양을 우리가 먼저 제시하고(`docs/ref/contract/API-CONTRACT.md`), 나중에 백엔드·데이터베이스로
-바꿔 끼울 수 있게 한 곳으로 격리한다(`Shared/data/datasource/`).
+## 모듈 경계
 
-## 지금 바로 보기
-
-**브리지 호스트 주소** — `bash scripts/deploy/fr5-ubuntu.sh` 가 빌드된 화면을 브리지와 같은 주소(`:5055`)에서 LAN 서빙한다. 주소는 팀 채널 공지를 본다.
-
-로그인 없이 열린다. **겹쳐 보기 (AR)** → **시작** → 카메라 허용 → 마커를 비추고 **2~3초 기다린다**.
-
-> 바로 안 뜨는 것이 정상이다. 검출기가 첫 인식까지 수십 프레임을 먹는다.
-
-### 마커 인쇄
-
-`Shared/assets/marker/marker-print-A4-170mm-bc2.png` — **A4에 100% 배율**로 뽑는다.
-
-| 지켜야 할 것 | 왜 |
-|---|---|
-| **100% 배율.** "용지에 맞춤"·"축소" 끄기 | 크기가 틀리면 로봇 크기가 틀린다 |
-| **무광 용지** | 광택지 반사광이면 크기와 무관하게 안 잡힌다 |
-| **딱딱한 판에 평평하게** | 휘면 사각형 검출이 깨진다 |
-| **인쇄 후 자로 검은 사각형을 잰다** | 프린터가 축소한다. 실측 143mm 였다 (목표 170의 84%) |
-
-잰 값은 화면 **⚙** 또는 `.env` 의 `FR5_MARKER_MM` 에 넣는다.
-
-## 화면
-
-| 주소 | 하는 일 | 상태 |
+| 경로 | 소유하는 것 | 하지 않는 것 |
 |---|---|---|
-| `/ar.html` | **겹쳐 보기.** 상자 / 로봇 / 궤적 / 안전 범위 · ⚙ 조정판 · 진단 수치 | 동작 |
-| `/robot.html` | 카메라 없이 3D 로봇만. 그리퍼 장착값 맞추는 화면 | 동작 |
-| `/test/marker-detect.html` | 합성 이미지로 실제 검출기를 재는 검증 페이지 | 동작 |
-| `Dashboard/` | **관제화면** — 배치안 편집 · 생산성 지표 비교 (React) | 동작 |
-| `FR5/` | **웹 티칭 펜던트 + 브리지** — 조작 · 티칭 · 슬롯 · 경로 · 기록 | 문서성 골격 |
+| `Dashboard/` | 맵 편집, 배치 보기, 지표·시뮬 결과 표시 | 로봇 명령·안전 판단 |
+| `AR/` | 마커 인식, 실물 영상 겹치기, XR 배치·경로 표시 | FR5 SDK 직접 호출 |
+| `FR5/src/` | 로봇 조작 UI와 디지털 트윈 | 최종 안전 판정 |
+| `FR5/bridge/` | FAIRINO SDK, 상태기계, 조종권, 안전 게이트 | 센서 화면 렌더링 |
+| `Vision/` | D435 장치 접근과 관측 API | 로봇 명령 |
+| `TurtleBot/` | TurtleBot별 상태·이동 관문 | FR5 관문의 내부 호출 |
+| `Sim/` | IK·작업영역·접촉 검토 | 실기 성공 판정 |
+| `Shared/` | 좌표, 설정 산출물, 3D 자산, 공용 화면 코드 | 앱별 실행 정책 |
 
-화면·로봇 도메인은 `AR/` · `Dashboard/` · `FR5/` · `TurtleBot/`으로 갈리고 공용은
-`Shared/`다. FR5 조작은 Dashboard 탭이 아니라 `FR5/`가 웹+브리지로 수직 소유한다.
-경계는 `docs/ref/arch/BUILD-VITE.md`.
+브라우저는 로봇과 직접 통신하지 않습니다. FR5 동작은 `FR5/bridge/` 한 곳에서만 보내며, 화면과 센서가 만든 값은 제안 입력으로 취급합니다.
 
-**안 될 때는 `docs/ref/runbook/AR-DEBUG.md`** — 증상별 원인표와 진단 수치 읽는 법이 있다.
-
-## 로컬에서 돌리기
+## 로컬 실행
 
 ```bash
-cp .env.example .env               # 설정. .env 는 커밋하지 않는다
-npm install                        # workspaces (shared · AR) — 처음 한 번
-node scripts/build/config.mjs      # .env → Shared/data/config/*.json 생성 (필수)
-bash scripts/dev/serve.sh          # Vite dev 서버
+cp .env.example .env
+npm install
+npm run config
+bash scripts/dev/fr5-dev.sh
 ```
 
-> **`Shared/data/config/*.json` 은 생성물이다.** 직접 고치지 말고 `.env` 를 고친 뒤 다시 생성한다.
-> Vite 는 이 JSON 을 **빌드 시 import 한다** — 없거나 깨지면 런타임이 아니라 **빌드가 실패한다**.
-> 카메라는 HTTPS 에서만 열리므로 **폰 테스트는 배포본으로** 한다 (로컬 IP 로는 안 된다).
+명령별 용도는 다음과 같습니다.
 
-검증 페이지용 합성 이미지가 필요하면:
 ```bash
-python3 scripts/assets/make-marker-test-images.py
+npm run dev:fr5       # FR5 화면만
+npm run dev:dash      # 맵 편집·비교 화면
+npm run dev:ar        # AR/XR 화면
+bash scripts/dev/fr5-dev.sh bridge  # FR5 Bridge만
 ```
+
+`Shared/data/config/*.json`은 `.env`에서 생성되는 파일입니다. 직접 수정하지 말고 `.env`를 바꾼 뒤 `npm run config`를 다시 실행합니다.
 
 ## 검증
 
 ```bash
-bash scripts/check/all.sh          # 게이트 전부. 하나라도 실패하면 exit 1
+bash scripts/check/all.sh --fast
 ```
 
-문서·자산·하네스·기준값 네 게이트가 돈다. **숫자가 문서와 어긋나면 실패한다** —
-삼각형 수, 문서 등재 수, `.env` ↔ 생성된 JSON 등.
+2026-09-11 빠른 게이트에서 `grasp-rank`, `sim-batch` 두 검사가 기존 실측·픽스처 차이로 실패했습니다. `agree`는 로봇이 연결되지 않아 판정 재료가 없었습니다. 따라서 일부 검사 통과를 전체 실기 검증으로 확대해 말하지 않습니다.
 
-## 배포
+## 실물 운용
 
-```bash
-bash scripts/deploy/fr5-ubuntu.sh      # 우분투 호스트 — 브리지 + 빌드된 화면 (:5055)
-scripts/deploy/fr5-bridge.win.cmd      # 윈도우 호스트
-bash scripts/deploy/tb-pi.sh           # 터틀봇 파이 — tb-bridge (:5056)
-bash scripts/deploy/cam-ubuntu.sh      # 손목 카메라 관문 (:5058)
-```
+- 시작은 [`docs/ref/runbook/FR5-BRINGUP.md`](docs/ref/runbook/FR5-BRINGUP.md)를 따릅니다.
+- FR5는 observe-only로 먼저 연결합니다.
+- 한 명만 조종권을 가지며, 사람이 현장을 확인한 뒤에만 ARM 상태로 올립니다.
+- `stop`은 조종권이나 화면 상태와 무관하게 통과해야 합니다.
+- TurtleBot 정지와 센서 신선도를 확인할 수 없으면 동작 명령을 차단합니다.
+- AR 카메라와 WebXR은 HTTPS 또는 localhost에서 사용합니다.
 
-- 화면은 브리지가 같은 주소에서 정적 서빙한다 — 별도 호스팅 없음
-- AR 은 카메라 권한 때문에 **https 또는 localhost** 여야 한다 — `scripts/robot/ar-tls-service.sh`
+## 문서 지도
 
-## 무엇이 확인됐고 무엇이 안 됐나
-
-| 확인됨 | 근거 |
+| 목적 | 문서 |
 |---|---|
-| URDF + 그리퍼 웹 렌더 (128,584 삼각형) | `docs/archive/evidence-2026-07/2026-07-29/urdf-web-render.md` |
-| 그리퍼 장착값 — 플랜지 간격 0.00mm | `docs/archive/evidence-2026-07/2026-07-30/gripper-mount.md` |
-| 마커 검출 — **크기보다 대비가 결정한다** | `docs/archive/evidence-2026-07/2026-07-30/marker-detect.md` |
-| 폰에서 로봇이 겹쳐 보임 · 깜빡임 억제 '강' 안정 | 2026-07-30 실기 |
-| Vite 이관이 가능하다 — 빌드 통과, JS 전송량 −26% | `docs/archive/evidence-2026-07/2026-07-30/vite-gate.md` |
-
-| 아직 안 됨 |
-|---|
-| **배치안을 AR 로 겹쳐 보기** — 지금은 로봇 하나만 겹친다 |
-| 정합 오차 실측 (±5~15mm 는 **문헌값**) |
-| 실물 로봇 옆에 겹쳐 보기 |
-| FR5 웹·브리지 런타임 (`FR5/`는 문서성 골격만 있음) |
-
-## 팀원에게 물어야 하는 것 하나
-
-**"한 사이클이 무엇인가"** — 무엇을 하면 1개 처리로 세는가.
-이게 처리량의 분모라서, 어긋나면 **배치안 A와 B의 비교 자체가 무의미해진다.**
-나머지(전달 방법·지표 필드 목록)는 목업으로 넘어간다 —
-필수 필드는 `throughputPerHour`와 `cycleTimeSec.mean` 둘뿐이다
-(`docs/ref/contract/API-CONTRACT.md` §생산성 지표).
-
-## 문서
-
-`docs/INDEX.md` 가 지도다. 처음이면 이 순서로 본다.
-
-1. `docs/SESSION-START.md` — **폴더 라우터.** 무엇을 건드리는지 정하면 읽을 문서가 둘로 줄어든다
-2. `docs/ref/product/PRD.md` — 목표와 성공 판정
-3. `docs/status/PROJECT-STATUS.md` — 지금 어디까지
-4. `docs/status/DECISION-LOG.md` — 왜 그렇게 정했나 (D1~D17)
-5. `docs/ref/runbook/AR-DEBUG.md` — AR 이 안 될 때
-
-코드를 짜기 전에 보는 것 — `docs/ref/contract/SHARED-CORE.md`(배치안 모델·단위) ·
-`docs/ref/arch/BUILD-VITE.md`(폴더 경계) · `docs/ref/arch/CONSOLE-REACT.md`(관제화면)
-
-## 기술
-
-AR.js 3.4.8 (마커 방식 — **iOS 는 WebXR 을 안 열어준다**) · three.js 0.185.1 ·
-urdf-loader 0.13.1 · 빌드 단계 없는 정적 사이트 (importmap)
+| 시스템 경계 | [`docs/ref/arch/ARCHITECTURE.md`](docs/ref/arch/ARCHITECTURE.md) |
+| API·상태 계약 | [`docs/ref/contract/API-CONTRACT.md`](docs/ref/contract/API-CONTRACT.md) |
+| 안전 조건 | [`docs/ref/contract/SAFETY-RULES.md`](docs/ref/contract/SAFETY-RULES.md) |
+| 좌표계 | [`docs/ref/contract/FRAMES.md`](docs/ref/contract/FRAMES.md) |
+| AR 문제 해결 | [`docs/ref/runbook/AR-DEBUG.md`](docs/ref/runbook/AR-DEBUG.md) |
+| 결정 배경 | [`docs/status/DECISION-LOG.md`](docs/status/DECISION-LOG.md) |

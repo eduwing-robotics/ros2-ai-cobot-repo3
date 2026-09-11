@@ -1,0 +1,77 @@
+{
+  "version": 1,
+  "createdAt": "2026-09-11T16:45:00+09:00",
+  "policy": {
+    "originalsModified": false,
+    "gifFps": 10,
+    "note": "README용 파생본이다. 배속은 화면 전환을 줄이기 위한 것이며 로봇의 실제 속도를 뜻하지 않는다."
+  },
+  "assets": [
+    {
+      "output": "2026-07-31-marker-detection.jpg",
+      "capturedAt": "2026-07-31",
+      "sourceFile": "image (2).png",
+      "sourceType": "실기 화면",
+      "claim": "글로벌 카메라 영상에서 작업대 AprilTag 네 개를 검출해 셀 좌표의 기준을 세웠다."
+    },
+    {
+      "output": "2026-08-05-map-ar-floor.gif",
+      "capturedAt": "2026-08-05",
+      "sourceFile": "Screen_Recording_20260805_134250_Chrome.mp4",
+      "sourceType": "실기 화면 · AR",
+      "playbackSpeed": 1.8,
+      "durationSec": 5.9,
+      "claim": "편집한 작업 셀 맵을 실제 바닥에 불러와 배치와 이동 공간을 현장에서 확인했다."
+    },
+    {
+      "output": "2026-08-13-digital-twin-workcells.jpg",
+      "capturedAt": "2026-08-13",
+      "sourceFile": "image (3).png",
+      "sourceType": "렌더",
+      "claim": "작업대 세 개와 FR5의 상대 배치를 디지털 트윈 한 장면으로 구성했다."
+    },
+    {
+      "output": "2026-08-13-global-safety-overlay.jpg",
+      "capturedAt": "2026-08-13",
+      "sourceFile": "image.png",
+      "sourceType": "실기 화면 · AR",
+      "claim": "글로벌 카메라 영상 위에 작업대와 안전영역을 겹쳐 실제 셀과 트윈의 차이를 확인했다."
+    },
+    {
+      "output": "2026-09-04-live-follow.gif",
+      "capturedAt": "2026-09-04",
+      "sourceFile": "녹음 2026-09-04 211314.mp4",
+      "sourceType": "실기",
+      "playbackSpeed": 7,
+      "durationSec": 10.2,
+      "claim": "TurtleBot 이동을 다시 관측한 뒤 실물 FR5와 디지털 트윈이 연속 추종했다.",
+      "evidence": "FR5Web source commit dbca1c9 · docs/evidence/2026-09-04/wrist-follow-without-global-cam.md"
+    },
+    {
+      "output": "2026-09-07-global-ar-path.gif",
+      "capturedAt": "2026-09-07",
+      "sourceFile": "화면 기록 2026-09-07 오후 3.27.49.mov",
+      "sourceType": "실기 화면 · AR",
+      "playbackSpeed": 4,
+      "durationSec": 7.6,
+      "claim": "예정된 로봇팔 자세와 이동 경로를 트윈과 글로벌 카메라 화면에 함께 표시했다."
+    },
+    {
+      "output": "2026-09-10-collision-preview.jpg",
+      "capturedAt": "2026-09-10",
+      "sourceFile": "image (4).png",
+      "sourceType": "시뮬레이션",
+      "claim": "실행 전에 거치대와 총알을 포함한 장면으로 충돌 여부를 검토했다."
+    },
+    {
+      "output": "2026-09-10-s0-s4-pick-lift.gif",
+      "capturedAt": "2026-09-10",
+      "sourceFile": "화면 기록 2026-09-10 오후 3.14.23.mov",
+      "sourceType": "실기",
+      "playbackSpeed": 6,
+      "durationSec": 9.7,
+      "claim": "글로벌 카메라와 손목 뎁스 관측, 경로 검토를 거쳐 거치대를 집고 안전 높이까지 들었다.",
+      "evidence": "FR5Web working tree · docs/evidence/2026-09-10/s4-first-pick-lift.md"
+    }
+  ]
+}

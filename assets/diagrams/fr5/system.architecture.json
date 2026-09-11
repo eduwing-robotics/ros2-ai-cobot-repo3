@@ -1,0 +1,32 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "FR5 · TurtleBot 작업 셀",
+    "subtitle": "관측 → 디지털 트윈 검토 → 안전 게이트 → 실기",
+    "viewBox": [1080, 560],
+    "output": "system.html"
+  },
+  "components": [
+    { "id": "operator", "type": "external", "label": "운영자", "sublabel": "브라우저", "pos": [40, 220], "size": [140, 64] },
+    { "id": "web", "type": "frontend", "label": "FR5 관제 화면", "sublabel": "대시보드 · AR/XR · 트윈", "pos": [260, 220], "size": [180, 64] },
+    { "id": "bridge", "type": "backend", "label": "FR5 Bridge", "sublabel": "FastAPI · 안전 게이트 :5055", "pos": [520, 220], "size": [190, 64], "tag": "유일한 명령 관문" },
+    { "id": "fr5", "type": "external", "label": "FR5 + 그리퍼", "sublabel": "컨트롤러 :8080", "pos": [820, 220], "size": [180, 64] },
+    { "id": "global", "type": "cloud", "label": "글로벌 카메라", "sublabel": "작업 셀 · 안전영역", "pos": [260, 60], "size": [180, 64] },
+    { "id": "depth", "type": "cloud", "label": "손목 뎁스 관문", "sublabel": "D435 · RGB-D :5058", "pos": [520, 400], "size": [190, 64] },
+    { "id": "turtlebot", "type": "external", "label": "TurtleBot", "sublabel": "ROS 2 · tb-bridge :5056", "pos": [820, 400], "size": [180, 64] }
+  ],
+  "connections": [
+    { "from": "operator", "to": "web", "label": "확인 · 명령", "variant": "emphasis" },
+    { "from": "web", "to": "bridge", "label": "REST · WebSocket", "variant": "emphasis", "labelAt": [480, 216] },
+    { "from": "bridge", "to": "fr5", "label": "검사 통과분", "variant": "security" },
+    { "from": "global", "to": "web", "label": "영상 · 정합", "fromSide": "bottom", "toSide": "top", "labelAt": [350, 138] },
+    { "from": "depth", "to": "bridge", "label": "표적 · 깊이", "fromSide": "top", "toSide": "bottom" },
+    { "from": "turtlebot", "to": "bridge", "label": "위치 · 정지", "variant": "dashed", "fromSide": "left", "toSide": "right", "via": [[750, 432], [750, 252]], "labelAt": [750, 346] }
+  ],
+  "cards": [
+    { "dot": "cyan", "title": "관측", "items": ["글로벌 카메라는 작업 셀 전체를 정합", "손목 D435는 파지 직전 표적을 재관측"] },
+    { "dot": "emerald", "title": "검토", "items": ["브라우저에서 실물·트윈·예정 경로를 함께 확인", "TurtleBot 위치와 정지 상태를 팔 명령 조건으로 사용"] },
+    { "dot": "rose", "title": "실행", "items": ["FR5 Bridge 한 곳에서 조종권과 안전 조건 검사", "검사 실패 시 로봇 명령 없이 차단"] }
+  ]
+}
