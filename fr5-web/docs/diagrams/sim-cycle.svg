@@ -1,0 +1,83 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1360 700" width="1360" height="700" font-family="'Pretendard','Apple SD Gothic Neo',system-ui,sans-serif">
+<!-- fr5:verified=2026-09-09 fr5:sources=Shared/data/sim/cycle.js|FR5/src/features/live/RobotTwin.jsx -->
+<rect width="1360" height="700" fill="#faf9f7"/>
+<defs><marker id="mREST" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#ba1a1a"/></marker><marker id="mWS" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#1c71d8"/></marker><marker id="mTCP" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#b06d00"/></marker><marker id="mUSB" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#2f7d32"/></marker><marker id="mFILE" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#9141ac"/></marker><marker id="mLAN" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#1a7f7a"/></marker></defs>
+<text x="34" y="46" font-size="25" font-weight="700" fill="#1a1c1b">시뮬 탭 — 컨베이어 한 사이클 (구간 id 는 cycle.js 그대로)</text>
+<rect x="1110" y="66" width="230" height="116" rx="8" fill="#f4f3f1" stroke="#c6c6c6"/>
+<path d="M1128,100 L1188,100" stroke="#1a7f7a" stroke-width="2.6" marker-end="url(#mLAN)"/>
+<text x="1202" y="105" font-size="13" font-weight="600" fill="#1a1c1b">주행 (mocap 터틀봇)</text>
+<path d="M1128,130 L1188,130" stroke="#1c71d8" stroke-width="2.6" marker-end="url(#mWS)"/>
+<text x="1202" y="135" font-size="13" font-weight="600" fill="#1a1c1b">팔 (관절 보간)</text>
+<path d="M1128,160 L1188,160" stroke="#9141ac" stroke-width="2.6" marker-end="url(#mFILE)"/>
+<text x="1202" y="165" font-size="13" font-weight="600" fill="#1a1c1b">관측 → 자리 재풀기</text>
+<rect x="60" y="96" width="360" height="46" rx="6" fill="#ffffff" stroke="#c6c6c6"/>
+<text x="240.0" y="115.0" font-size="13" font-weight="600" text-anchor="middle" fill="#1a1c1b">⓪ 거치대를 본다 (이미 찾았으면 생략)</text>
+<text x="240.0" y="133.0" font-size="11" text-anchor="middle" fill="#6b6b6b">o-carrier</text>
+<rect x="60" y="156" width="360" height="46" rx="6" fill="#ffffff" stroke="#c6c6c6"/>
+<text x="240.0" y="175.0" font-size="13" font-weight="600" text-anchor="middle" fill="#1a1c1b">①~④ 집기 · 안전 높이까지 들기</text>
+<text x="240.0" y="193.0" font-size="11" text-anchor="middle" fill="#6b6b6b">approach → lift</text>
+<path d="M240,142 L240,156" fill="none" stroke="#1c71d8" stroke-width="2.4" marker-end="url(#mWS)"/>
+<rect x="60" y="216" width="360" height="46" rx="6" fill="#ffffff" stroke="#c6c6c6"/>
+<text x="240.0" y="235.0" font-size="13" font-weight="600" text-anchor="middle" fill="#1a1c1b">터틀봇 홈 → 정차 (팔·그리퍼 고정)</text>
+<text x="240.0" y="253.0" font-size="11" text-anchor="middle" fill="#6b6b6b">d-in</text>
+<path d="M240,202 L240,216" fill="none" stroke="#1a7f7a" stroke-width="2.4" marker-end="url(#mLAN)"/>
+<rect x="60" y="276" width="360" height="46" rx="6" fill="#ffffff" stroke="#c6c6c6"/>
+<text x="240.0" y="295.0" font-size="13" font-weight="600" text-anchor="middle" fill="#1a1c1b">⑤a 든 채 바구니를 본다</text>
+<text x="240.0" y="313.0" font-size="11" text-anchor="middle" fill="#6b6b6b">o-amr-in-move · o-amr-in / o-basket-held</text>
+<path d="M240,262 L240,276" fill="none" stroke="#1c71d8" stroke-width="2.4" marker-end="url(#mWS)"/>
+<rect x="60" y="336" width="360" height="46" rx="6" fill="#ffffff" stroke="#c6c6c6"/>
+<text x="240.0" y="355.0" font-size="13" font-weight="600" text-anchor="middle" fill="#1a1c1b">⑤~⑨ 바구니에 놓고 물러남</text>
+<text x="240.0" y="373.0" font-size="11" text-anchor="middle" fill="#6b6b6b">carry → retreat</text>
+<path d="M240,322 L240,336" fill="none" stroke="#1c71d8" stroke-width="2.4" marker-end="url(#mWS)"/>
+<rect x="60" y="396" width="360" height="46" rx="6" fill="#ffffff" stroke="#c6c6c6"/>
+<text x="240.0" y="415.0" font-size="13" font-weight="600" text-anchor="middle" fill="#1a1c1b">실은 채 앞 이송 · 되돌아옴</text>
+<text x="240.0" y="433.0" font-size="11" text-anchor="middle" fill="#6b6b6b">d-out · d-back</text>
+<path d="M240,382 L240,396" fill="none" stroke="#1a7f7a" stroke-width="2.4" marker-end="url(#mLAN)"/>
+<rect x="60" y="456" width="360" height="46" rx="6" fill="#ffffff" stroke="#c6c6c6"/>
+<text x="240.0" y="475.0" font-size="13" font-weight="600" text-anchor="middle" fill="#1a1c1b">⑩ 터틀봇을 본다 — 되돌아온 자리</text>
+<text x="240.0" y="493.0" font-size="11" text-anchor="middle" fill="#6b6b6b">o-amr-move · o-amr</text>
+<path d="M240,442 L240,456" fill="none" stroke="#1c71d8" stroke-width="2.4" marker-end="url(#mWS)"/>
+<rect x="60" y="516" width="360" height="46" rx="6" fill="#ffffff" stroke="#c6c6c6"/>
+<text x="240.0" y="535.0" font-size="13" font-weight="600" text-anchor="middle" fill="#1a1c1b">내리기 8칸 · 터틀봇 홈으로</text>
+<text x="240.0" y="553.0" font-size="11" text-anchor="middle" fill="#6b6b6b">u-over → u-retreat · d-home</text>
+<path d="M240,502 L240,516" fill="none" stroke="#1a7f7a" stroke-width="2.4" marker-end="url(#mLAN)"/>
+<rect x="480" y="96" width="300" height="250" rx="10" stroke="#1f5f9e" stroke-width="1.6" fill="#ffffff"/>
+<text x="496" y="122" font-size="15.5" font-weight="700" fill="#1a1c1b">거치대는 어디 있나</text>
+<text x="496" y="140" font-size="11.5" fill="#6b6b6b">한 곳에만 그린다</text>
+<rect x="504" y="146" width="252" height="40" rx="6" fill="#ffffff" stroke="#c6c6c6"/>
+<text x="630.0" y="162.0" font-size="13" font-weight="600" text-anchor="middle" fill="#1a1c1b">plate — 판 위</text>
+<text x="630.0" y="180.0" font-size="11" text-anchor="middle" fill="#6b6b6b">숫자 (파지 자세)</text>
+<rect x="504" y="196" width="252" height="40" rx="6" fill="#ffffff" stroke="#c6c6c6"/>
+<text x="630.0" y="212.0" font-size="13" font-weight="600" text-anchor="middle" fill="#1a1c1b">hand — 손 안</text>
+<text x="630.0" y="230.0" font-size="11" text-anchor="middle" fill="#6b6b6b">고스트 손끝 노드 FK · 요각도 따라간다</text>
+<rect x="504" y="246" width="252" height="40" rx="6" fill="#ffffff" stroke="#c6c6c6"/>
+<text x="630.0" y="262.0" font-size="13" font-weight="600" text-anchor="middle" fill="#1a1c1b">basket — 바구니 안</text>
+<text x="630.0" y="280.0" font-size="11" text-anchor="middle" fill="#6b6b6b">실제 터틀봇(유령) 기준 상대 자리</text>
+<text x="504" y="322" font-size="12" fill="#6b6b6b">③→손 · ⑧ 뒤→바구니 · ⑫→손 · ⑯ 뒤→판</text>
+<rect x="480" y="380" width="600" height="200" rx="10" stroke="#c6c6c6" stroke-width="1.6" fill="#ffffff"/>
+<text x="496" y="406" font-size="15.5" font-weight="700" fill="#1a1c1b">관측 반영 (스위치 · 기본 켬)</text>
+<text x="496" y="424" font-size="11.5" fill="#6b6b6b">observedStop — 유령과 같은 도착 오차 모델</text>
+<rect x="504" y="430" width="268" height="46" rx="6" fill="#ffffff" stroke="#c6c6c6"/>
+<text x="638.0" y="449.0" font-size="13" font-weight="600" text-anchor="middle" fill="#1a1c1b">⑤a 도착 자리 (in)</text>
+<text x="638.0" y="467.0" font-size="11" text-anchor="middle" fill="#6b6b6b">든 채 본 바구니로 투입 5칸을 다시 푼다</text>
+<rect x="788" y="430" width="268" height="46" rx="6" fill="#ffffff" stroke="#c6c6c6"/>
+<text x="922.0" y="449.0" font-size="13" font-weight="600" text-anchor="middle" fill="#1a1c1b">⑩ 되돌아온 자리 (back)</text>
+<text x="922.0" y="467.0" font-size="11" text-anchor="middle" fill="#6b6b6b">내리기 바구니 쪽 4칸을 이 자리로 푼다</text>
+<text x="504" y="556" font-size="12" fill="#6b6b6b">D205: lift 전에는 터틀봇이 움직이지 않는다 · 끄면 열린 루프라 투입·내리기 어긋남이 그림에 난다</text>
+<path d="M420,359 L480,299" fill="none" stroke="#1c71d8" stroke-width="2.4" marker-end="url(#mWS)"/>
+<path d="M420,299 L450,299 L450,453 L504,453" fill="none" stroke="#9141ac" stroke-width="1.8" marker-end="url(#mFILE)"/>
+<path d="M420,479 L462,479 L462,520 L920,520 L920,476" fill="none" stroke="#9141ac" stroke-width="1.8" marker-end="url(#mFILE)"/>
+<rect x="820" y="96" width="260" height="250" rx="10" stroke="#c6c6c6" stroke-width="1.6" fill="#ffffff"/>
+<text x="836" y="122" font-size="15.5" font-weight="700" fill="#1a1c1b">고스트 주인</text>
+<text x="836" y="140" font-size="11.5" fill="#6b6b6b">cycleT 하나</text>
+<rect x="844" y="146" width="212" height="40" rx="6" fill="#ffffff" stroke="#c6c6c6"/>
+<text x="950.0" y="162.0" font-size="13" font-weight="600" text-anchor="middle" fill="#1a1c1b">cycleT == null</text>
+<text x="950.0" y="180.0" font-size="11" text-anchor="middle" fill="#6b6b6b">고스트를 놓는다 (실물만)</text>
+<rect x="844" y="196" width="212" height="40" rx="6" fill="#ffffff" stroke="#c6c6c6"/>
+<text x="950.0" y="212.0" font-size="13" font-weight="600" text-anchor="middle" fill="#1a1c1b">cycleT = ms</text>
+<text x="950.0" y="230.0" font-size="11" text-anchor="middle" fill="#6b6b6b">sample(ms) 가 팔·그리퍼·거치대·터틀봇을 준다</text>
+<rect x="844" y="246" width="212" height="40" rx="6" fill="#ffffff" stroke="#c6c6c6"/>
+<text x="950.0" y="262.0" font-size="13" font-weight="600" text-anchor="middle" fill="#1a1c1b">구간을 누르면</text>
+<text x="950.0" y="280.0" font-size="11" text-anchor="middle" fill="#6b6b6b">그 구간 끝 시각으로</text>
+<text x="40" y="660" font-size="12" fill="#6b6b6b">시간축: 팔 = 관절 최대차 ÷ (실기 속도 × 10%) + 정착 · 주행 = 거리 ÷ 138.5mm/s 실측. 시연이다 — 실기 근거가 아니다</text>
+</svg>

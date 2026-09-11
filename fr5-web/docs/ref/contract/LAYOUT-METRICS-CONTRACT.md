@@ -138,10 +138,11 @@ POST /servo/stop    { who }
 아니라 D61 을 읽은 방식이었다"* 고 적은 자리가 여기다.
 
 ```
-GET  /api/camera/info          { model, serial, firmware, usb, calibId, depthIntrinsics }
+GET  /api/camera/info          { model, serial, firmware, usb, calibId, depthIntrinsics, colorIntrinsics }
 GET  /api/camera/state         아래 스키마 — ★ 제안 판정이 이걸 읽는다
 GET  /api/camera/preview       압축 컬러 (화면 확인용 · 저해상도)
 GET  /api/camera/depth/frame   깊이 **1회 스냅샷** — 16비트 PNG · 밀리미터 (아래 §깊이 스냅샷)
+GET  /api/camera/rgbd/frame    **같은 촬영 묶음** — 컬러에 정렬된 깊이+컬러 ZIP (아래 §RGB·뎁스 묶음)
 GET  /api/camera/ir/frame      **적외선 원본 1회** — 8비트 PNG (아래 §적외선 원본 · `?which=1|2`)
 POST /api/camera/measure       깊이 1회 측정 → { pose, depthValid, measuredAt }
 GET  /api/camera/frames?from=  시연 구간의 프레임 메타 (경로·촬영시각)
@@ -224,8 +225,8 @@ POST /api/camera/record/stop
 - **밀리미터 정수 · 무효는 `0`.** `minZmm`~상한(기본 4000mm) 밖은 — 포화 65535 를 포함해 —
   **서버가 0 으로 비운 뒤** 낸다. 비율을 낼 때 쓰는 규칙(§무효는 0 만이 아니다)과 **같은
   규칙을 같은 곳에서** 적용한다. 소비처가 판정을 다시 지으면 두 판정이 갈린다 (D103)
-- **컬러와 정렬돼 있지 않다.** 깊이·컬러는 해상도도 화각도 다르다. 픽셀 (x,y) 가 서로
-  다른 곳을 가리킨다 — 겹치려면 `rs.align` 이 선행이고 **그건 이 라우트가 아니다**
+- **컬러와 정렬돼 있지 않다.** 이 깊이 단독 라우트는 기존 계약을 유지한다. 컬러 화소와
+  짝지어야 하는 소비자는 아래 `/rgbd/frame` 한 묶음을 써야 한다
 - **`pose` 를 안 낸다.** 그래서 hand-eye 를 안 기다린다 — `measure` 가 못 열리는 이유
   (§낼 수 없는 필드를 `null` 로 채우지 않는다)가 여기엔 안 걸린다
 - **낡으면 503.** `preview` 와 같은 규약이다 — 옛 프레임을 200 으로 주지 않는다
@@ -235,6 +236,23 @@ POST /api/camera/record/stop
   **짝짓기 기준은 FR5 브리지의 시계 하나**다
 - 프레임은 `calibId` 로 그때의 캘리브레이션을 가리킨다 — 카메라를 옮기면 값이 바뀌므로
   옛 시연을 살리려면 이 참조가 필요하다
+
+#### RGB·뎁스 묶음 — `GET /api/camera/rgbd/frame` (2026-09-09 신설)
+
+총알처럼 컬러에서는 보이지만 깊이가 빠지는 물체의 xy를 3차원으로 옮기는 단발 스냅샷이다.
+RealSense의 같은 frameset에서 **깊이를 컬러 화소계에** 정렬한 뒤 아래 세 파일을 ZIP 하나로 낸다.
+반대로 컬러를 깊이에 맞추면 깊이가 빈 총알 화소의 컬러도 검게 사라지므로 쓰지 않는다.
+
+- `manifest.json` — `{ t, alignment:"depthToColor", widthPx, heightPx, depthUnit:"mm", calibId, intrinsics, colorToDepth }`
+- `color.jpg` — 전체 해상도 컬러
+- `depth.png` — 같은 묶음의 16비트 밀리미터 깊이. 무효값은 기존처럼 0
+
+세 파일은 **같은 응답 안의 한 묶음**이다. `/preview`와 `/depth/frame`을 따로 불러 시간으로
+짝짓지 않는다. 둘 중 하나가 없거나 모양이 다르거나 1초보다 낡으면 503이며, 소비자는 검출을
+차단한다. `intrinsics`는 컬러 화소계의 장치 실측값이고 소비자는 이것으로 역투영한다.
+그 점은 아직 컬러 렌즈 원점 기준이므로 `colorToDepth:{rotationRowMajor[9],translationMm[3]}`로 깊이
+렌즈 좌표로 옮긴 뒤 기존 hand-eye 변환에 넣는다. 이 변환을 생략하지 않는다.
+`/preview`는 사람 확인용 기존 화각을 유지하고 `/depth/frame`도 호환성을 위해 그대로 둔다.
 
 ### `depthIntrinsics` — **장치가 정본이다** (2026-08-27)
 

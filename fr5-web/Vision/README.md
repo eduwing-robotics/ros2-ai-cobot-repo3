@@ -1,8 +1,9 @@
 # Vision — 손목캠 관문 **가동** · `/proposal` 만 미착수 (검출·hand-eye 는 딴 폴더에 있다)
 
-`bridge/` 는 산다 — 읽기 넷뿐(`/api/camera/{info,state,preview,depth/frame}` · 우분투 `:5058` · D86).
+`bridge/` 는 산다 — 읽기 여섯(`/api/camera/{info,state,preview,depth/frame,rgbd/frame,ir/frame}` · `:5058` · D86·D207).
 `depth/frame` 은 **단발 스냅샷**이다 (2026-08-11 · 16비트 PNG · mm · 무효 0) — 컬러 단독 분할이
-이 작업물에서 실패해서 열었다(`docs/evidence/2026-08-11/round-detect-probe.md`). 스트림은 여전히 컬러뿐.
+이 작업물에서 실패해서 열었다(`docs/evidence/2026-08-11/round-detect-probe.md`). `rgbd/frame`은
+총알 xy용 동기화 ZIP이고 스트림은 여전히 컬러뿐이다.
 ⚠ **「검출·hand-eye 는 0줄」은 2026-08-27 에 거짓이 됐다.** 둘 다 있고, 다만 **이 폴더가 아니다** —
 검출은 `scripts/robot/depth-probe.py`(평면 피팅 · 계기), hand-eye 는 **풀려서**
 `FR5/bridge/config.yaml` 의 `handEye`(흩어짐 **5.74mm** · 08-13)에 등재돼 `/state` 로 나가고
@@ -46,7 +47,7 @@
 hand-eye 는 5.74mm 로 풀렸다. **다음은 사다리 7(`/proposal` 배선)** 이고, 조각은 다 있다 —
 검출·hand-eye·IK(`inverse_kin`)·이동(`move_j`)·추종 계산. **끊긴 곳은 배선 하나**다.
 
-⛔ **다만 물리 벽이 하나 서 있다** — 총알이 **세워 꽂히는 것이 정본**이 됐는데(실기 담당자 확정)
+⛔ **다만 물리 벽이 하나 서 있다** — 총알이 **세워 꽂히는 것이 정본**이 됐는데(주인님 확정)
 세운 총알은 위에서 **스테레오 그림자로 자기를 지운다**(받침 21% 무효 · 8개 중 4개만 · 2~5mm).
 옆(90°)은 08-13 에 이미 반증됐다(평면이 깨져 덩어리 0개 · 실용 상한 **40°**).
 근거 `docs/evidence/2026-08-27/standing-bullets-depth-holes.png`

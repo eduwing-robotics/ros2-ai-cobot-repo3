@@ -29,6 +29,6 @@ Vercel 쪽은 모노레포라 원격 빌드가 `@fr5/shared` 를 못 받고(`ver
 | `src/screens/` | 화면당 js+css 한 쌍 |
 | `src/features/` | `marker/` 인식 · `place/` 배치 · `preview/` 맵 미리보기 · `record/` 녹화 · `ui/` 입력 위젯 |
 | `src/external/` | AR.js 를 ESM 으로 구운 벤더 파일(1.5MB). **우리가 고치지 않는다** |
-| `test/` | 마커 감지 테스트 화면·이미지 · **`tag-track.html`** 폰 태그 정합 킬-실험(WebXR 이미지 추적 · Android 플래그 `webxr-incubations` · 기하는 `Shared/assets/tag/track/geometry.json` 사본) |
+| `test/` | 마커 감지 테스트 화면·이미지 · **`tag-track.html`** 실패한 WebXR 이미지 추적 기록 · **`tag-cv-track.html`** 기존 AprilTag 4장 직접 검출, 폰 내부 파라미터 캡처(`?calibrate=1`), 3태그 이상 평면 자세와 이동 발자국(`?pose=1` · 명령 0) |
 
 읽을 것 — `docs/ref/runbook/AR-DEBUG.md` (안 될 때) · `docs/ref/arch/BUILD-VITE.md` (경계)

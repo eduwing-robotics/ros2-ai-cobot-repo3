@@ -47,11 +47,12 @@ FR5 컨트롤러 :8080
 | `/ar/…` | `AR/dist` (라이브 셀·겹쳐보기) | 빌드 시점 |
 | `/…` | `FR5/dist` (조작 화면) | 빌드 시점 |
 
-**`/config` 가 내는 것 다섯** — `robot-base-in-tag.json` 빼고 전부 스크립트가 만들고 **손으로 안 고친다.**
+**`/config` 가 내는 것 여섯** — `robot-base-in-tag.json` 빼고 전부 스크립트가 만들고 **손으로 안 고친다.**
 
 | 파일 | 만드는 것 | 모양 |
 |---|---|---|
 | `global-cam.json` | `intrinsics.py` · `extrinsics.py` | `intrinsics` · `labToCam` · `verified` |
+| `phone-cam.json` | `phone_intrinsics.py` | `intrinsics{widthPx · heightPx · fx=fy · cx=widthPx/2 · cy=heightPx/2 · dist:[0,0,0,0,0] · rmsPx · shots}` · `source{kind:"tag-layout-corners" · model:"centered-square-zero-distortion" · tagIds · capturedAt · layout · coverageX · coverageY · focalSubsetSpread · subsetRmsMax}`. 움직이는 폰이라 `labToCam`은 저장하지 않는다. Vercel 검출 실험은 배포 스크립트가 이 파일 한 장을 `/config/phone-cam.json`으로 복사한 배포 시점 스냅샷을 쓰고, 브리지·dev는 위의 디스크 정본을 요청 때마다 읽는다 |
 | `global-cam-drift.json` | `watch-calib.py` (1Hz) | `t`(epoch 초) · `rmsPx`(못 쟀으면 `null`) · `maxPx` · `tags` · `reason` · `basis` |
 | `global-cam-host.json` | `calib-watch-run.sh` (기동 시 1회) | `t`(epoch 초) · `host`(`"192.168.30.4:8080"`) |
 | `robot-base-in-tag.json` | **사람** — 실측을 옮겨 적는다 | `xMm` · `yMm` · `zMm` · `yawDeg` · `tcpYawFromJ1Deg` · `source` · `measuredAt` |
@@ -188,6 +189,53 @@ WebSocket `/ws/state`로 브로드캐스트. 접속한 전원이 같은 것을 �
 - `stop` 은 목표를 바꾸지 않는다 — 멈춘 자리는 `jointsDeg` 가 말하고, 목표는 「가려던 곳」으로 남는다. `doneAt` 은 정착 대기가
   끝나면 찍히므로 stop 뒤에도 찍힌다 — **`doneAt` 은 도착이 아니라 「기다리기를 끝냈다」다.** 도착은 `jointsDeg` 와 대조한다.
 
+### 공동 시각화 고스트 — 구현됨 · 로컬 검증 단계 (D227)
+
+대시보드가 화면에 고른 **계획 고스트**를 글로벌카메라와 다른 사람의 폰 답사 화면이 같이 본다.
+현재 `/ws/state` 의 `motionTarget` 은 이미 보낸 이동 목표만 말하므로, 되감기·추종 시뮬·자세
+미리보기는 다른 기기로 전달되지 않는다. 화면마다 우선순위를 다시 구현하지 않고 **대시보드가
+최종 선택한 한 벌**만 브리지에 보낸다.
+
+게시 경계는 로봇 명령 WebSocket과 분리한 `/ws/visualization` 이다. 이 소켓의 메시지는
+`handle_cmd`·명령 큐·SDK에 절대 들어가지 않는다. 구현은 `FR5/bridge/visualization.py`와
+`Shared/data/visualization/ghost.js`에 있으며, 아직 실기 배포 확인 전이다.
+
+```jsonc
+// 대시보드 → /ws/visualization (활성 중 최소 1Hz, 최대 10Hz)
+{
+  "type": "ghost",
+  "robotId": "fr5-lab-a",
+  "kind": "preview",             // preview | replay | simulation
+  "jointsDeg": [0,0,0,0,0,0],
+  "gripperPct": 70,               // 모르면 null
+  "seq": 42,
+  "who": "kim",
+  "token": "<현재 조종권 토큰>"
+}
+
+// 구현 뒤 /ws/state 에 추가되는 서버 스탬프 필드
+"visualGhost": {
+  "robotId": "fr5-lab-a",
+  "kind": "preview",
+  "jointsDeg": [0,0,0,0,0,0],
+  "gripperPct": 70,
+  "seq": 42,
+  "operator": "kim",
+  "publishedAt": 1785329668.42,
+  "expiresAt": 1785329670.42
+}
+```
+
+- **게시자는 한 명이다.** 현재 조종권과 맞는 대시보드 연결만 게시한다. 폰과 글로벌카메라 화면은
+  읽기 전용이다. 두 번째 게시자는 기존 연결이 닫히거나 만료되기 전에는 거부 사유를 받는다.
+- **2초 임대다.** 게시 소켓이 닫히거나 `expiresAt` 을 넘으면 서버가 즉시 `null` 로 만든다.
+  마지막 고스트를 멈춘 사실처럼 붙들어 두지 않는다.
+- **소비 우선순위는 한 줄이다.** 진행 중 `motionTarget` → 유효한 `visualGhost` → 숨김.
+  실제로 보낸 목표를 화면 전용 미리보기가 덮지 못한다.
+- `visualGhost` 는 동작 승인·안전 판정·실기 기록의 근거가 아니며 서버 재시작 뒤 복구하지 않는다.
+- 첫 슬라이스는 로봇 관절과 그리퍼만 보낸다. 들고 있는 물체·궤적·작업영역은 소비자가 생긴 뒤
+  계약을 확장한다.
+
 ### 로봇 안전 설정 — 주인은 브리지다 (2026-08-04 · D53)
 
 우리 안전 게이트(조건 4·5·25)는 **컨트롤러가 설정돼 있어야** 값을 준다. 충돌 감지는 기본으로
@@ -300,7 +348,7 @@ workspace:
 
 ### 움직이는 장애물 — 비전이 **자리만** 준다 (2026-08-13 · D130)
 
-받침(거치대)은 **자주 옮겨진다**(실기 담당자 2026-08-13). 프로필에 박으면 옮길 때마다 사람이
+받침(거치대)은 **자주 옮겨진다**(주인님 2026-08-13). 프로필에 박으면 옮길 때마다 사람이
 고쳐야 하고, 안 고치면 게이트가 **빈 자리를 막고 진짜 받침은 안 막는다.** 둘째가 위험하다.
 
 작업대와 갈리는 이유 하나 — **받침에는 태그가 붙어 있다**(`tags.json` `fixtureTags`).
@@ -561,7 +609,7 @@ POST /disarm  { "who": "kim", "token": "…" }                        → 서보
 없던 때의 기록으로 남긴다 — **왜 조그를 18번 쪼갰는지**가 거기 적혀 있고, 그 이유가
 사라졌다는 사실이 이 계약에서 제일 중요한 변화이기 때문이다.
 
-⚠ **`POST /proposal`(§제안)은 여전히 구현 0줄이다.** `follow/step` 은 **추종 표적 하나**로
+✅ **`POST /proposal`(§제안)은 2026-09-07 저녁 열렸다** — 아래 §제안 요약. `follow/step` 은 **추종 표적 하나**로
 좁힌 길이라 임의 좌표를 받지 않는다 — 좌표를 본문으로 받는 순간 게이트 밖의 자리를
 누구나 밀어 넣을 수 있고, 그건 §제안이 사람 승인을 요구하는 이유 그대로다.
 
@@ -569,7 +617,28 @@ POST /disarm  { "who": "kim", "token": "…" }                        → 서보
 
 `POST /points` 는 **지금 자세만** 저장하고 `goto` 는 **저장된 지점만** 간다. 임의 목표는
 WS `moveJ`·`jog` 뿐이다. 즉 **「검출이 낸 좌표로 간다」가 계약에 없다** — 그 자리는
-`VISION-CONTRACT.md` §제안(`POST /proposal`)이고 **구현 0줄**이다(사다리 7).
+`VISION-CONTRACT.md` §제안(`POST /proposal`)이고 **2026-09-07 저녁에 열렸다**(사다리 7).
+
+#### 제안 요약 — 구현된 모양 (2026-09-07 · 정본은 `VISION-CONTRACT.md` §제안)
+
+```text
+POST /proposal   { kind, source, label, jointsDeg[6], targetPose?{tcpMmDeg} }
+                 → { ok, proposalId, verdict: needsHumanConfirm | rejected, reason, reasons[], expiresAt, speedPct }
+GET  /proposals  → { proposals: [...] }            대기 중(수명 90초 안)만
+POST /proposal/{id}/approve { who, token }         조종권 + ARMED + 수명 안 → `moveJ` 로 번역(경로 훑기 · 속도 상한 10%) · 응답은 도착 뒤
+POST /proposal/{id}/reject  { who, token }
+```
+
+- **판정만 한다.** 제안은 `/ik` 와 같은 함수(`cmds.motion(dry_run)`)로 경로를 훑어 통과/거부만 낸다 — 팔은 안 움직인다.
+- **승인이 실행이다.** 승인은 조종권(`owner_gate`)·ARMED·수명(90초)을 보고 같은 게이트(조건 1~27)를 **처음부터 다시** 탄다. 한 제안은 한 번만 실행되고 재시작이면 전부 사라진다.
+- **`auto` 는 안 열었다.** 전부 `needsHumanConfirm` — 화면(시뮬 탭 ③)에선 고스트를 본 사람이 누르는 「실기」 버튼이 승인이다.
+- **제한 실행 S0~S3만 열었다(2026-09-10).** 사람이 마지막 단계·현장확인을 고정하고
+  `자동 작업 시작`을 누르면 S2의 관측·재중심 제안을 같은 승인 범위에서 직렬 실행하고,
+  S3 계획이 끝나는 즉시 HOLD한다. `auto` verdict나 새 엔드포인트는 없으며, S4 집기·그리퍼·
+  터틀봇 명령은 0건이어야 한다. 새 runId·상한 불변·재접속 뒤 자동 재개 금지의 정본은
+  `VISION-CONTRACT.md` §제한 실행 S0~S3과 `plan/AUTOMATIC-SEQUENCE-STAGE-GATES.md`다.
+- **왜 열었나.** WS `moveJ` 5° 상한 때문에 손목 반 바퀴가 5° 조각 38개(5분)였다(실기 2026-09-07 15:58). 경로를 훑는 창구는 정착 상한 60초(D94 · 10% 에서 172°)만 있어 189° 가 2번(약 70초)이 된다. 화면 조각은 `motion-chunks.BIG_CHUNK_DEG=120`.
+- `jointsDeg` 를 받는 이유 — 화면이 `/ik` 에 **직전 칸의 해**를 참조로 넘겨 푼 해를 그대로 보내야 가지가 안 갈린다(§/ik 2026-09-06). `targetPose` 는 기록용이다.
 
 08-27 에 에이전트가 조그를 18번 쪼갠 것이 그 구멍의 증거다. 목표는 계산으로 나왔는데
 **보낼 창구가 없어서** 사람이 가르친 자리로만 갈 수 있었다.
@@ -689,6 +758,10 @@ POST /owner/release { "who": "kim", "token": … }  → 반납
   `hello` · `/arm` · `/disarm` · `/owner/release` · `/disconnect`(주인이 있을 때)
 - **`stop` 은 그대로 신원 없이 통과한다** (제3원칙). 정지를 막는 조건은 만들지 않는다
 - 토큰은 반납·자동 해제 때 폐기된다. 다시 잡으면 새 토큰이다
+- 클라이언트가 조종권 거부(`조종권이 없다`·`owner 불일치`)를 받으면 저장한 토큰을
+  즉시 폐기하고 **다시 잡기**를 열어야 한다. 만료된 토큰을 "내 것"으로 표시해 복구 버튼을
+  숨기면 안 된다. 보유 중에도 사람이 누르는 **다시 잡기** 경로는 남긴다. 자동 claim 하거나
+  토큰 검사를 생략하지 않는다
 - **로그인이 아니다** (D41 유지) — 사람을 인증하는 게 아니라 **세션을 묶는** 것이다.
   누구나 조종권을 잡을 수 있고, 잡은 뒤에는 그 세션만 명령할 수 있다
 - 이름(`who`)은 **화면 표시용**으로 계속 쓴다 — 누가 잡고 있는지 팀이 봐야 한다
@@ -781,10 +854,21 @@ POST /scan  { "target": "carrier" | "basketFloor" | "carrierInBasket" }
   →
   { "ok": true|false,
     "view": { "target", "rzDeg", "tcpMmDeg": [...], "camMm": [...], "user1Mm": [x,y,z], "yawDeg": θ|null,
+              "bulletsUser1Mm": [[x,y], ...], "bulletSource": "rgb-aligned"|"depth"|null, "bulletWhy": string|null,
+              "targetPx": [u,v]|null, "bulletsPx": [[u,v], ...],
+              "frame": { "url": "/scan/frame/<id>", "widthPx", "heightPx", "capturedAt" }|null,
               "blob": { "kind": "raised"|"sunken", "areaPx", "sizeMm": [a,b], "heightMm", "longAxisDeg" },
               "source": "depth" | "mock", "t": … } | null,
     "reasons": [ … ] }
+
+GET /scan/frame/<id>  →  image/jpeg | 404
 ```
+
+- `frame`은 **검출에 실제로 쓴 9장 중앙값 컬러 정지화면**이다. `targetPx`·`bulletsPx`는 그 화면의 화소계와 같다.
+  손목 카메라 HUD는 이 세 값을 같이 쓰고, 계속 바뀌는 `/api/camera/preview` 위에 예전 화소 좌표를 얹지 않는다.
+  브리지는 메모리에 최근 4장만 두며 밀려난 id는 404다. 목업·컬러를 안 쓰는 표적은 `frame:null`이다.
+- 프레임은 JSON에 base64로 싣지 않는다. `/scan` 응답이 단계 장부(`/runs` 한 줄 64KB)에 그대로 들어가므로,
+  이미지를 문자열로 넣으면 장부 상한을 쉽게 넘는다.
 
 | 표적 | 무엇을 찾나 | 어떻게 |
 |---|---|---|
@@ -799,7 +883,11 @@ POST /scan  { "target": "carrier" | "basketFloor" | "carrierInBasket" }
   `DEPTH_MOCK_BIAS_MM`(기본 `[12, −8, 0]`)을 지금 rz 로 돌려 더한다. 그래서 거울 쌍(rz±90)의 평균이 진값으로 돌아오는 것을 **집에서 게이트가 확인**한다.
   `truth` 가 없으면 `ok:false` — 지어내지 않는다. 목업은 `atTcpMmDeg`(6) 를 주면 **그 자세에서 본 것처럼** 답한다(목업 팔을 실제로 안 돌리고 거울 쌍을
   집에서 돌리려는 것) — **실기는 무시한다**: 실기는 언제나 지금 손끝 자세다
-- 조종권·ARMED 불필요(관측). 뎁스 호스트는 `FR5_DEPTH_HOST`(기본 `127.0.0.1:5058` · `/api/camera/depth/frame` · `/api/camera/info`)
+- `carrier`의 총알 xy는 `/api/camera/rgbd/frame`의 **동기화된 컬러와 컬러 화소계로 정렬된 깊이**에서
+  분홍 거치대 내부 황동 연결 성분을 찾고, 묶음 manifest의 컬러 내부 파라미터로 역투영한 뒤
+  `colorToDepth` 외부 파라미터로 기존 hand-eye가 기대하는 깊이 렌즈 좌표로 바꾼다. 정렬 묶음·분홍 ROI·후보가
+  없으면 `bulletsUser1Mm:[]`와 사유를 내며, 빈 배열은 총알 부재 증거가 아니다(D206)
+- 조종권·ARMED 불필요(관측). 뎁스 호스트는 `FR5_DEPTH_HOST`(기본 `127.0.0.1:5058` · `/api/camera/rgbd/frame` · `/api/camera/depth/frame` · `/api/camera/info`)
 
 ### 단계 기록 (`/runs` · 2026-09-07 · D191)
 

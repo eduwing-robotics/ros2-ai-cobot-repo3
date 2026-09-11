@@ -8,6 +8,7 @@
 ```
 scripts/
 ├── README.md
+├── AGENTS.md                   이 폴더의 진입 포인터
 ├── check/                      검증 게이트 — 실패하면 exit 1
 │   ├── all.sh                    아래 전부를 순서대로 실행 (진입점)
 │   ├── harness.sh                커맨드 0 · 스킬 21 · 훅 2 · settings 연결
@@ -90,6 +91,7 @@ scripts/
 │   ├── tool-hull.mjs             그리퍼 STL + gripper-mount.json → tool-hull.json (TCP 기준 충돌체)
 │   ├── arm-hull.mjs              URDF → arm-hull.json (관절 체인 + 링크별 충돌상자)
 │   ├── album.mjs                 evidence 사진 전부 → docs/evidence/ALBUM.md
+│   ├── evidence-selector.mjs     발표 후보 사진·영상 → 선택 HTML + JSON (연속 렌더 프레임 제외)
 │   ├── sim-replay.mjs            시뮬 배치 한 인스턴스 → Shared/assets/sim/replay.json (폰 XR 재생 표본 · phase 4)
 │   ├── deck.py                   발표 md → 편집 가능한 .pptx (pandoc + 우리 디자인 토큰)
 │   ├── arch-svg.py               하드웨어·소프트웨어·DB 아키텍처 SVG — 라벨을 계약·스키마에서 읽는다
@@ -175,7 +177,7 @@ scripts/
 │   └── handeye-probe.py          hand-eye 킬실험 — 회전을 이미 아니까(틸트0·롤0) 식이 선형이다. **정식 AX=XB 를 돌릴지부터 가른다**
 ├── deploy/                     맥에서 빌드 → 호스트로 밀어넣기. **호스트가 둘이라 대상도 둘이다**
 │   ├── fr5-ubuntu.sh             FR5 브리지. 지점·궤적은 `~/fr5-data` — **배포 트리 밖**이다 (D45)
-│   ├── fr5-windows.sh            윈도우 호스트. 기본은 **화면만**(재시작 0 = ARMED 안 떨어뜨림) · `--bridge` 면 브리지까지(재시작 1). **호스트에서 임포트 검사까지 하고 실패하면 죽는다**
+│   ├── fr5-windows.sh            윈도우 호스트. 기본은 **화면+접촉 장면**(재시작 0 = ARMED 안 떨어뜨림) · `--bridge` 면 브리지까지(재시작 1). 장면은 현재 config·URDF로 다시 굽고, **호스트에서 임포트 검사까지 하고 실패하면 죽는다**
 │   ├── fr5-bridge.win.cmd        **윈도우 상주 실행기 정본.** 호스트의 `%USERPROFILE%\fr5-bridge.cmd` 가 사본이다
 │   ├── fr5-drift.win.cmd         같음 — 글로벌캠 정합 감시(`fr5-drift`). 폰 주소는 `FR5_CAM_HOST` 하나가 정본
 │   ├── tb-pi.sh                  터틀봇 브리지+웹 → **로봇 파이**(`kim@192.168.30.15`). 옛 tb-ubuntu.sh 대체(2026-08-19)
@@ -188,6 +190,7 @@ scripts/
     ├── aim.py                    카메라 위치 잡기 — 실시간 px/칸 판정 (찍기 전에 쓴다)
     ├── capture.py                웹캠 촬영 (오토포커스·해상도 잠금)
     ├── intrinsics.py             ChArUco 사진 → 카메라 화각·왜곡
+    ├── phone_intrinsics.py       폰 브라우저가 모은 기존 태그 4장×12시점 모서리 → `phone-cam.json` (글로벌캠과 분리)
     ├── extrinsics.py             태그 사진 + 실측 좌표 → labToCam (**원점은 상판 태그 id0**)
     ├── watch-calib.py            겹침 감시 (상주 · 1Hz) — 재는 쪽. `--auto` 면 **스스로 다시 푼다**
     ├── edge-fit.py               **모서리로 다듬기** — 상판 모서리를 영상에서 찾아 `robot-base-in-tag.json`
@@ -228,7 +231,7 @@ scripts/
 | `build/` | 설정·산출물 생성. **입력이 틀리면 쓰지 않고 멈춘다** | 산출물 이름 | 사용 중 |
 | `robot/` | 장치 관문 설치·기동·서비스 등록 **+ 실기에 붙어 재는 계기** | `<장치>-<동사>` | 사용 중 — `tb-{setup,run,service}.sh` · `cam-{setup,run,service}.sh` (표가 "아직 없음" 인 채로 낡아 있었다 · 2026-08-07 정정) · **계기 둘은 관문 호스트가 아니라 사람 기계에서 돌며 HTTP 로 붙는다** — `depth-probe.py`(깊이 한 장 → 솟은 것) · `table-probe.py`(상판 짚기 → 평면 → `topZMm`·기울기) |
 | `map/` | 실제 맵·글로벌 카메라 캘리브레이션 | 파이프라인 단계 이름 | 사용 중 |
-| `deploy/` | 배포·터널 | `<대상>-<호스트>` | 사용 중 — `fr5-ubuntu.sh` (맥 빌드 → rsync → 서비스 재시작 → 로봇 재연결) · **`fr5-windows.sh`** (화면만 = 재시작 없음 · `--bridge` = 브리지+`Shared/data/config` + 백업 + **호스트 임포트 검사**) · `tb-pi.sh`(대상이 PC 가 아니라 **로봇 파이**다) · `cam-ubuntu.sh` · **`*.win.cmd`**(호스트 상주 실행기 — 스크립트가 아니라 **저장소가 든 정본 사본**이다. 호스트에만 두면 PC 를 갈아엎을 때 사라진다 · 2026-08-19). ⚠ 이름의 `<호스트>` 가 규약인 이유가 여기서 드러났다 — 2026-08-11 에 로봇 랜선이 윈도우로 옮겨가 **같은 대상에 호스트가 둘**이 됐다 |
+| `deploy/` | 배포·터널 | `<대상>-<호스트>` | 사용 중 — `fr5-ubuntu.sh` (맥 빌드 → rsync → 서비스 재시작 → 로봇 재연결) · **`fr5-windows.sh`** (화면+현재 설정으로 다시 구운 `Sim/out/scene/fr5-lab-a.xml` = 재시작 없음 · `--bridge` = 브리지+`Shared/data/config` + 백업 + **호스트 임포트 검사**) · `tb-pi.sh`(대상이 PC 가 아니라 **로봇 파이**다) · `cam-ubuntu.sh` · **`*.win.cmd`**(호스트 상주 실행기 — 스크립트가 아니라 **저장소가 든 정본 사본**이다. 호스트에만 두면 PC 를 갈아엎을 때 사라진다 · 2026-08-19). ⚠ 이름의 `<호스트>` 가 규약인 이유가 여기서 드러났다 — 2026-08-11 에 로봇 랜선이 윈도우로 옮겨가 **같은 대상에 호스트가 둘**이 됐다 |
 
 ## 글로벌 카메라 캘리브레이션 — 세 스크립트가 한 줄로 이어진다
 
@@ -237,6 +240,7 @@ map/make-tags.py                                 →  인쇄물 (1회)
 map/cam-lock.sh                                  →  해상도·초점·줌 잠금 (찍기 전 매번)
 map/aim.py                                       →  카메라 자리 (찍기 전 · 화면 보고)
 map/capture.py charuco  →  map/intrinsics.py     →  렌즈  (카메라당 1회)
+AR/test/tag-cv-track.html?calibrate=1 → map/phone_intrinsics.py → 폰 렌즈 (`phone-cam.json` · 기존 태그 4장)
 map/capture.py tags     →  map/extrinsics.py     →  위치  (카메라를 건드릴 때마다)
                            map/check-calib.sh    →  게이트
                            map/watch-calib.py    →  겹침 감시 (상주 · 1Hz)
@@ -273,6 +277,7 @@ map/capture.py tags     →  map/extrinsics.py     →  위치  (카메라를 �
 ```
 dev/shot.sh <슬러그> "<캡션>"   →  docs/evidence/<오늘>/ 에 파일 + 같은 폴더 SHOTS.md 에 캡션
 build/album.mjs                 →  docs/evidence/ALBUM.md (전 날짜 · 캡션 · 크기 한 장에)
+build/evidence-selector.mjs     →  scratchpad/evidence-selector.html + evidence-catalog.json
 build/sim-replay.mjs            →  Shared/assets/sim/replay.json (시뮬 배치 한 인스턴스 · 폰 XR 재생 표본 · phase 4)
 ```
 
