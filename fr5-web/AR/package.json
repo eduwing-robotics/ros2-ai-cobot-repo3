@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@fr5/shared": "*",
+    "js-aruco2": "^2.0.0",
     "three": "^0.185.0",
     "urdf-loader": "^0.13.1"
   },

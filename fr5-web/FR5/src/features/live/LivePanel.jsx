@@ -146,9 +146,15 @@ export function LivePanel({ state, who }) {
               </p>
             )}
             {mine
-              ? <button type="button" onClick={() => run(() => datasource.releaseOwner(who))} disabled={busy}>
-                  조종권 반납
-                </button>
+              ? <>
+                  <button type="button" onClick={() => run(() => datasource.releaseOwner(who))} disabled={busy}>
+                    조종권 반납
+                  </button>
+                  <button type="button" data-t="reclaim"
+                    onClick={() => run(() => datasource.claimOwner(who))} disabled={busy}>
+                    조종권 다시 잡기
+                  </button>
+                </>
               : <button type="button" className="primary" disabled={busy || !who.trim()}
                   data-t="claim"
                   onClick={() => run(() => datasource.claimOwner(who))}>

@@ -25,9 +25,17 @@ out2="$(python3 -m unittest scripts.map.test_watch_calib 2>&1)" || {
 }
 echo "  자동 재캘리브 가드 — $(echo "$out2" | grep -E '^Ran ')"
 
+# 기존 AprilTag 4장으로 푸는 폰 내부 파라미터 — 합성 12시점으로 복원값과 입력 가드를 본다(D224).
+out_phone="$(python3 scripts/map/phone_intrinsics.py --self-test 2>&1)" || {
+  echo "$out_phone"
+  echo "폰 태그 내부 파라미터 자체 검사 실패"
+  exit 1
+}
+echo "  $out_phone"
+
 # 세운 총알 판정 — **파지 좌표를 내는 자**라 규칙이 조용히 바뀌면 안 된다 (2026-08-31 · D159).
 # 카메라도 로봇도 안 쓴다: 아는 크기의 막대를 그려 되찾고, 총알이 아닌 것은 여전히 거부하는지 본다.
-out3="$(python3 -m unittest scripts.robot.test_depth_probe 2>&1)" || {
+out3="$(python3 -m unittest scripts.robot.test_depth_probe scripts.robot.test_carrier_find 2>&1)" || {
   echo "$out3"
   echo "세운 총알 판정 실패"
   exit 1

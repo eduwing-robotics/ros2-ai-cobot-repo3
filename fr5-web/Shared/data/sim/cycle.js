@@ -1,6 +1,6 @@
 // 컨베이어 한 사이클 — **터틀봇이 컨베이어다** (2026-09-06 · `docs/archive/GRILL-conveyor-twin-progresslog-2026-09-06.md` #1·#4·#6·#7·#13).
 //
-//   홈 → 정차 자리로 온다 · 팔이 거치대를 싣는다(9칸) · 실은 채 앞으로 갔다 되돌아온다 ·
+//   팔이 거치대를 집어 안전 높이까지 든다 · 홈 → 정차 자리로 온다 · 바구니를 보고 싣는다(9자세+사전성형) · 실은 채 앞으로 갔다 되돌아온다 ·
 //   팔이 거치대를 내린다(8칸 · 싣기의 역순) · 홈으로 돌아간다
 //
 // **시연이다 — 실기 근거가 아니다.** 좌표는 전부 실측 SSOT(`workcell.js`·`props.js`)와 시뮬 탭이 컨트롤러
@@ -24,14 +24,14 @@ const lerp = (a, b, t) => a.map((v, i) => v + (b[i] - v) * t);
 const xyz = (p) => [p[0], p[1], p[2]];
 
 /**
- * 싣기 9칸(`SimPanel.makeSteps`)을 뒤집어 **내리기 8칸**을 만든다. 자세는 id 로 되쓴다 — 새 좌표 0.
+ * 싣기 9자세+사전성형(`SimPanel.makeSteps`)을 뒤집어 **내리기 8칸**을 만든다. 자세는 id 로 되쓴다 — 새 좌표 0.
  * 순서: 바구니 위 → 문 자리 → 문다 → 곧게 위로 → 판 위 → 판에 내려놓기 → 놓는다 → 위로.
  * @returns {Array|null} 싣기에 필요한 칸(approach·grasp·lift·over·insert·close)이 없으면 null
  */
 /**
  * ⑩ 관측이 보고할 터틀봇 자리 — 되돌아온 뒤 **실제로 선 자리**. 유령(#12)과 **같은 모델**이다: 도착은 주행 방향으로 `arriveErrMm` 짧고,
  * 제자리 회전이 있었으면 `turnDeficitDeg` 만큼 덜 돌아 있다(실측 08-20 `tb-drift-turn.md`). 집에선 이 값이 「카메라가 본 것」의 자리를 맡고,
- * 랩에선 손목 뎁스 검출값이 이 모양 그대로 들어온다 (2026-09-06 · 실기 담당자 「비전의 역할이 거의 없는 건가」).
+ * 랩에선 손목 뎁스 검출값이 이 모양 그대로 들어온다 (2026-09-06 · 주인님 「비전의 역할이 거의 없는 건가」).
  * @returns {{xMm:number,yMm:number,yawDeg:number,dxMm:number,dyMm:number,yawErrDeg:number,missMm:number}}
  */
 export function observedStop(stop, home = AMR_HOME, { leg = 'back', arriveErrMm = AMR_ARRIVE_ERR_MM, turnDeficitDeg = AMR_TURN_DEFICIT_DEG } = {}) {
@@ -90,15 +90,16 @@ export function stepSeconds(fromJ, toJ, fromGrip, toGrip, speedPct = DEMO_SPEED_
 }
 
 /**
- * 사이클을 만든다. `load` 는 시뮬 탭의 9칸, `solved[i].jointsDeg` 는 그 칸의 관절각(컨트롤러 IK · 전부 있어야 한다).
+ * 사이클을 만든다. `load` 는 시뮬 탭의 10칸(9자세+사전성형), `solved[i].jointsDeg` 는 그 칸의 관절각(컨트롤러 IK · 전부 있어야 한다).
  * @returns {{acts, totalMs, sample, why}|{why:string}}  sample(tMs) → 트윈에 넘길 replay 조각
  */
-export function buildCycle({ load, solved, stop, userDef, home = AMR_HOME,
+export function buildCycle({ load, solved, stop, userDef, home = AMR_HOME, carrierKnown = false, heldScan = null,
   speedPct = DEMO_SPEED_PCT, driveMmS = AMR_DRIVE_MM_S, shuttleMm = AMR_SHUTTLE_MM, arriveErrMm = AMR_ARRIVE_ERR_MM,
-  turnDeficitDeg = AMR_TURN_DEFICIT_DEG, observe = null, loadAmr = null, observed = null, unloadSolved = null }) {
-  if (!Array.isArray(load) || load.length < 9) return { why: '싣기 9칸이 없어요' };
+  turnDeficitDeg = AMR_TURN_DEFICIT_DEG, observe = null, loadAmr = null, observed = null, unloadSolved = null,
+  startAtStop = false, initialArm = null }) {
+  if (!Array.isArray(load) || load.length < 10) return { why: '싣기 10칸이 없어요' };
   if (!Array.isArray(solved) || solved.length !== load.length || solved.some((o) => !o?.jointsDeg)) {
-    return { why: '9칸이 전부 풀려야 사이클을 만들 수 있어요 — 「시뮬 풀기」 먼저' };
+    return { why: '10칸이 전부 풀려야 사이클을 만들 수 있어요 — 「시뮬 풀기」 먼저' };
   }
   if (!stop || !Number.isFinite(stop.xMm) || !Number.isFinite(stop.yMm)) return { why: '정차 자리가 없어요' };
   // ⑩ 관측 반영 — `observed` 가 있으면 바구니 쪽 내리기 자리가 실제로 선 터틀봇으로 옮겨지고, 그 자세의 해는 부르는 쪽이 IK 로 채운다(`unloadSolved`).
@@ -134,49 +135,66 @@ export function buildCycle({ load, solved, stop, userDef, home = AMR_HOME,
     kind: 'drive', id, label, from, to, arm, grip, tcp, carrier, turnDeg: turn,
     durS: dist(from, to) > 0 ? driveS(from, to) : SETTLE_S,
   });
-  const armAct = (s, prevJ, nextJ, prevGrip, prevPose, carrier) => push({
+  const armAct = (s, prevJ, nextJ, prevGrip, prevPose, carrier, amr) => push({
     kind: 'arm', id: s.id, label: s.label, why: s.why, prevJ, nextJ, prevGrip, nextGrip: s.grip,
-    prevPose, pose: s.pose, carrier,
+    prevPose, pose: s.pose, carrier, amr,
     // 첫 칸(① 접근)은 이미 그 자세라 이동이 0 — 0 초면 `sample()` 이 그 칸을 영영 건너뛴다(감사 ②-3). 정착 시간만큼 보여 준다
     durS: Math.max(stepSeconds(prevJ, nextJ, prevGrip, s.grip, speedPct), SETTLE_S),
   });
 
   // ⓪ 관측 — **거치대를 본다** (phase 3 · 손목 뎁스로 자리를 찾는 칸). 팔은 이 자세로 서서 터틀봇이 오길 기다린다.
   //    관측 자세는 `view-pose.js`(시선각 20 · 방위 135 · 거리 300) 이고 관절해는 부르는 쪽이 IK 로 채운다 — 없으면 칸을 안 만든다(결측=차단)
-  const obsC = observe?.carrier?.jointsDeg ? observe.carrier : null;
-  const obsA = observe?.amr?.jointsDeg ? observe.amr : null;
-  // 팔은 터틀봇이 오는 동안 **터틀봇 관측 자세**로 기다린다(있으면) — 도착 자리를 봐야 싣기 자리를 그 자리로 풀 수 있다 (⓪ 관측 · 2026-09-06)
-  const waitJ = obsA ? obsA.jointsDeg : (obsC ? obsC.jointsDeg : loadJ[0]);
-  const waitPose = obsA ? obsA.pose : (obsC ? obsC.pose : load[0].pose);
-  const startJ = obsC ? obsC.jointsDeg : waitJ;
-  const startPose = obsC ? obsC.pose : waitPose;
-  // ① 홈 → 정차 — 거치대는 판 위. 요각이 다르면 여기서 돈다
-  drive('d-in', '터틀봇 홈 → 정차 자리', HOME, STOP, waitJ, 100, waitPose, { at: 'plate' }, turnDeg);
-  if (obsA) {
-    push({ kind: 'arm', id: 'o-amr-in', label: '⓪ 터틀봇을 본다 — 도착 자리', why: `손목 뎁스 · 라이다 윗면 — 실제로 선 자리(도착 오차 ${arriveErrMm}mm 실측)를 재 싣기 자리를 그 자리로 푼다`,
-      prevJ: obsA.jointsDeg, nextJ: obsA.jointsDeg, prevGrip: 100, nextGrip: 100, prevPose: obsA.pose, pose: obsA.pose, carrier: { at: 'plate' },
-      durS: observe.lookS ?? SETTLE_S });
-    if (obsC) {
-      push({ kind: 'arm', id: 'o-carrier-move', label: '⓪ 거치대 관측 자세로', why: '터틀봇 관측 자세에서 거치대를 볼 자리로',
-        prevJ: obsA.jointsDeg, nextJ: obsC.jointsDeg, prevGrip: 100, nextGrip: 100, prevPose: obsA.pose, pose: obsC.pose, carrier: { at: 'plate' },
-        durS: Math.max(stepSeconds(obsA.jointsDeg, obsC.jointsDeg, 100, 100, speedPct), SETTLE_S) });
-    }
-  }
+  // ⭐ `carrierKnown`(2026-09-07 · 주인님 「⓪ 거치대 관측 두 칸은 필요 없다」) — 마법사 ①(2단 조준)이 거치대 자리를 이미 냈으면 ⓪ 「거치대 관측 자세로」·「거치대를 본다」를
+  //    만들지 않는다. 바구니 쪽 ⓪(터틀봇을 본다)은 남는다 — 거치대를 든 뒤 터틀봇이 도착하면 그 자리에서 본다
+  const obsC = (observe?.carrier?.jointsDeg && !carrierKnown) ? observe.carrier : null;
+  // ⭐ `heldScan`(2026-09-07 20:35 · 주인님 「든 채로 바구니를 보면 왕복이 준다」) — {pose, jointsDeg}: ④ 들기 뒤 **거치대를 든 채** 바구니 위 관측 자세로 가서 바구니 바닥을 찍는 칸을
+  //    넣고, 일반 ⓪(o-amr-in) 대신 같은 목적을 든 채 수행한다. 팔이 터틀봇 쪽으로 가는 건 한 번. 실기 프레임(depth-basket2)에서 든 채로도 바닥 110×114 가 잡혔다
+  const obsA = (observe?.amr?.jointsDeg && !heldScan && !startAtStop) ? observe.amr : null;
+  // 현장 중간 재개는 현재 readback에서 시작한다. 정차 중인 팔을 계획 자세에 이미 있다고 그리면
+  // 첫 접근 시간과 경로가 사라진다 (`PROGRAM-CONTRACT` §실기 마법사의 정차 뒤 이어하기).
+  const startJ = startAtStop && Array.isArray(initialArm?.jointsDeg) ? initialArm.jointsDeg : (obsC ? obsC.jointsDeg : loadJ[0]);
+  const startPose = startAtStop && Array.isArray(initialArm?.tcpMmDeg) ? initialArm.tcpMmDeg : (obsC ? obsC.pose : load[0].pose);
+  const pickAmr = startAtStop ? STOP : HOME;
   if (obsC) {
     push({ kind: 'arm', id: 'o-carrier', label: '⓪ 거치대를 본다', why: `손목 뎁스 · 시선각 ${observe.tiltDeg ?? 20}° · 거리 ${observe.distMm ?? 300}mm — 자리를 찾는다`,
       prevJ: obsC.jointsDeg, nextJ: obsC.jointsDeg, prevGrip: 100, nextGrip: 100, prevPose: obsC.pose, pose: obsC.pose, carrier: { at: 'plate' },
-      durS: observe.lookS ?? SETTLE_S });
+      amr: pickAmr, durS: observe.lookS ?? SETTLE_S });
   }
-  // ② 싣기 9칸 — 문 뒤(③)부터 놓기(⑧)까지 손을 따라간다. ⑨는 바구니 안
+  // ①~④ 집기·들기 뒤에만 터틀봇을 부른다(D205). 주행 동안 팔·그리퍼는 lift 완료값으로 고정한다.
+  // 완전 정차 뒤 든 채 바구니를 관측하고 ⑤~⑨ 놓기를 이어간다.
   const closeK = loadIdx.close;
+  const liftK = loadIdx.lift;
   for (let k = 0; k < load.length; k++) {
-    const prevJ = k === 0 ? startJ : loadJ[k - 1];
+    const viewAfterLift = k === liftK + 1 ? (heldScan ?? obsA) : null;
+    const prevJ = k === 0 ? startJ : (viewAfterLift ? viewAfterLift.jointsDeg : loadJ[k - 1]);
     const prevGrip = k === 0 ? 100 : load[k - 1].grip;
-    const prevPose = k === 0 ? startPose : load[k - 1].pose;
+    const prevPose = k === 0 ? startPose : (viewAfterLift ? viewAfterLift.pose : load[k - 1].pose);
     const held = k >= closeK && load[k].id !== 'retreat';
     const carrier = held ? { at: 'hand', from: xyz(prevPose), to: xyz(load[k].pose) }
       : (k < closeK ? { at: 'plate' } : { at: 'basket' });
-    armAct(load[k], prevJ, loadJ[k], prevGrip, prevPose, carrier);
+    armAct(load[k], prevJ, loadJ[k], prevGrip, prevPose, carrier, k <= liftK ? pickAmr : STOP);
+    if (load[k].id === 'lift') {
+      if (!startAtStop) {
+        drive('d-in', '터틀봇 홈 → 정차 자리', HOME, STOP, loadJ[k], load[k].grip, load[k].pose,
+          { at: 'hand', from: xyz(load[k].pose), to: xyz(load[k].pose) }, turnDeg);
+      }
+      if (obsA) {
+        push({ kind: 'arm', id: 'o-amr-in-move', label: '⑤a 터틀봇 관측 자세로 — 든 채', why: '터틀봇이 완전히 정차한 뒤 거치대를 든 채 도착 자리를 볼 자세로 간다',
+          prevJ: loadJ[k], nextJ: obsA.jointsDeg, prevGrip: load[k].grip, nextGrip: load[k].grip, prevPose: load[k].pose, pose: obsA.pose,
+          carrier: { at: 'hand', from: xyz(load[k].pose), to: xyz(obsA.pose) }, amr: STOP,
+          durS: Math.max(stepSeconds(loadJ[k], obsA.jointsDeg, load[k].grip, load[k].grip, speedPct), SETTLE_S) });
+        push({ kind: 'arm', id: 'o-amr-in', label: '⑤a 터틀봇을 본다 — 도착 자리', why: `손목 뎁스 · 라이다 윗면 — 실제로 선 자리(도착 오차 ${arriveErrMm}mm 실측)를 투입 자리에 반영한다`,
+          prevJ: obsA.jointsDeg, nextJ: obsA.jointsDeg, prevGrip: load[k].grip, nextGrip: load[k].grip, prevPose: obsA.pose, pose: obsA.pose,
+          carrier: { at: 'hand', from: xyz(obsA.pose), to: xyz(obsA.pose) }, amr: STOP, durS: observe.lookS ?? SETTLE_S });
+      }
+      if (heldScan) {
+      push({ kind: 'arm', id: 'o-basket-held', label: '⑤a 바구니를 본다 — 든 채', scanTarget: 'basketFloor',
+        why: '손목 뎁스로 바구니 바닥(상판 위 115 판)을 찍어 ⑤~⑨ 자리를 그 값으로 다시 푼다 — 정차 오차·정본 130mm 어긋남을 여기서 지운다',
+        prevJ: loadJ[k], nextJ: heldScan.jointsDeg, prevGrip: load[k].grip, nextGrip: load[k].grip, prevPose: load[k].pose, pose: heldScan.pose,
+        carrier: { at: 'hand', from: xyz(load[k].pose), to: xyz(heldScan.pose) }, amr: STOP,
+        durS: Math.max(stepSeconds(loadJ[k], heldScan.jointsDeg, load[k].grip, load[k].grip, speedPct), SETTLE_S) + (observe?.lookS ?? SETTLE_S) });
+      }
+    }
   }
   const afterLoadJ = loadJ[load.length - 1];
   const afterLoadGrip = load[load.length - 1].grip;
@@ -189,10 +207,10 @@ export function buildCycle({ load, solved, stop, userDef, home = AMR_HOME,
   if (obsA) {
     push({ kind: 'arm', id: 'o-amr-move', label: '⑩ 관측 자세로', why: '바구니 위에서 물러나 터틀봇을 볼 자리로',
       prevJ: afterLoadJ, nextJ: obsA.jointsDeg, prevGrip: afterLoadGrip, nextGrip: 100, prevPose: afterLoadPose, pose: obsA.pose, carrier: { at: 'basket' },
-      durS: stepSeconds(afterLoadJ, obsA.jointsDeg, afterLoadGrip, 100, speedPct) });
+      amr: STOP, durS: stepSeconds(afterLoadJ, obsA.jointsDeg, afterLoadGrip, 100, speedPct) });
     push({ kind: 'arm', id: 'o-amr', label: '⑩ 터틀봇을 본다', why: `손목 뎁스 · 라이다 윗면 · 시선각 ${observe.tiltDeg ?? 20}° — 되돌아온 자리를 확인한다`,
       prevJ: obsA.jointsDeg, nextJ: obsA.jointsDeg, prevGrip: 100, nextGrip: 100, prevPose: obsA.pose, pose: obsA.pose, carrier: { at: 'basket' },
-      durS: observe.lookS ?? SETTLE_S });
+      amr: STOP, durS: observe.lookS ?? SETTLE_S });
     beforeUnloadJ = obsA.jointsDeg; beforeUnloadPose = obsA.pose;
   }
   // ④ 내리기 8칸 — 문 뒤(⑫)부터 내려놓기(⑮)까지 손을 따라간다
@@ -205,7 +223,7 @@ export function buildCycle({ load, solved, stop, userDef, home = AMR_HOME,
     const held = k >= uCloseK && k < uReleaseK;
     const carrier = held ? { at: 'hand', from: xyz(prevPose), to: xyz(unload[k].pose) }
       : (k < uCloseK ? { at: 'basket' } : { at: 'plate' });
-    armAct(unload[k], prevJ, unloadJ[k], prevGrip, prevPose, carrier);
+    armAct(unload[k], prevJ, unloadJ[k], prevGrip, prevPose, carrier, STOP);
   }
   const endJ = unloadJ[unload.length - 1];
   const endPose = unload[unload.length - 1].pose;
@@ -239,7 +257,7 @@ export function buildCycle({ load, solved, stop, userDef, home = AMR_HOME,
   const live = { user1: userDef };
   const odom = (p) => (userDef ? toFrame({ xMm: p[0], yMm: p[1], zMm: 0 }, 'user1', 'odom', live) : null);
   const thetaDeg = stop.yawDeg - home.yawDeg;   // `SimPanel` 이 쓰던 규약 그대로 — 회전 합성은 안 만든다
-  const trailPts = [odom(HOME), odom(FAR)];
+  const trailPts = [odom(startAtStop ? STOP : HOME), odom(FAR)];
   const trail = trailPts.every(Boolean) ? trailPts.map((p) => ({ xMm: p.xMm, yMm: p.yMm, thetaDeg })) : null;
 
   const sample = (tMs) => {
@@ -259,7 +277,7 @@ export function buildCycle({ load, solved, stop, userDef, home = AMR_HOME,
       gripperPct = a.grip;
       tcpMmDeg = a.tcp;
     } else {
-      amr = STOP;
+      amr = a.amr ?? STOP;
       armJoints = lerp(a.prevJ, a.nextJ, u);
       gripperPct = a.prevGrip + (a.nextGrip - a.prevGrip) * u;
       tcpMmDeg = lerp(a.prevPose, a.pose, u);
@@ -287,7 +305,7 @@ export function buildCycle({ load, solved, stop, userDef, home = AMR_HOME,
       // ⛔ 2026-09-06 뒤집음: `pose` = **실제로 선 자리**(실물 메시·바구니가 여기 선다 — 거치대가 그 바구니 안에 있어야 하므로),
       //    `driftPose` = **명령한 자리**(회색 상자). 둘 사이가 driftMm. 전엔 반대였고 그러면 거치대가 상자(바구니 없음) 쪽에 서서 「빠져나온」 것처럼 보였다
       // 손에 들려 있나 — 그림 쪽은 이때 숫자 대신 **고스트의 손끝 노드**에 거치대를 건다. 팔은 관절 보간, 이 숫자는 직선 보간이라
-      // 칸 중간에서 둘이 갈린다 (2026-09-06 실기 담당자 「물고 있는 상태로 이동하지 않는다」)
+      // 칸 중간에서 둘이 갈린다 (2026-09-06 주인님 「물고 있는 상태로 이동하지 않는다」)
       carrierInHand: a.carrier.at === 'hand',
       ...(odr ? { pose: { xMm: odr.xMm, yMm: odr.yMm, thetaDeg: thetaDeg + yawErr } } : {}),
       ...(od ? { driftPose: { xMm: od.xMm, yMm: od.yMm, thetaDeg } } : {}),

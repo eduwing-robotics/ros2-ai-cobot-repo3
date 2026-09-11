@@ -28,7 +28,7 @@ import { resolveTheme } from '@fr5/shared/view3d/zone-theme.js';
 import { createZoneOverlay, calibTrust, zoneLegend } from '@fr5/shared/view3d/zone-overlay.js';
 import { cameraState, shouldAdoptCalib } from '@fr5/shared/data/camera/state.js';
 import { watchFrames } from '@fr5/shared/data/camera/watch.js';
-import { usePipSize } from './usePipSize.js';
+import { CAMERA_PIP_DEFAULT, usePipSize } from './usePipSize.js';
 
 // 캘리브레이션은 **번들에 넣지 않고 런타임에 받는다** (2026-08-08 · 계약 §정적 서빙).
 // `import.meta.glob({eager:true})` 로 읽던 동안 이 값은 **빌드한 순간에 굳었고**, 카메라를
@@ -60,13 +60,12 @@ const RETRY_MS = [3000, 6000, 12000, 20000, 30000];
 // 가로 16:9 — 높이는 영상(width×9/16)에 머리띠 26px 을 더한 값이다.
 // **기본값은 게이트 상한(3D 의 10%)에 걸린다** — 360x229 는 12.4% 로 떨어졌다 (2026-08-07).
 // 300x195 는 8.8% 다. 더 크게 보고 싶으면 사람이 끌어서 키운다 (그 크기는 기억된다).
-// **이 크기가 두 PiP 의 기준이다** — 뎁스도 같은 값을 쓴다 (`DepthView.jsx`).
-// 300x195 는 3D 의 8.8% 다 (게이트 상한 10% · 2026-08-07 실측 twin 1060x628).
-export const PIP_DEFAULT = { width: 300, height: 195 };
+// 공통 시작 크기는 `usePipSize.js` 가 소유한다. 300x195 는 3D 의 8.8% 다
+// (게이트 상한 10% · 2026-08-07 실측 twin 1060x628).
 const readOpen = () => { try { return localStorage.getItem(OPEN_KEY) !== '0'; } catch { return true; } };
 const writeOpen = (v) => { try { localStorage.setItem(OPEN_KEY, v ? '1' : '0'); } catch { /* 프라이빗 모드 */ } };
 
-function CamViewInner({ workspace = null, coordDefs = null, ghost = null }) {
+function GlobalCameraPipInner({ workspace = null, coordDefs = null, ghost = null }) {
   const [open, setOpen] = useState(readOpen);
   const [live, setLive] = useState(null);   // null=첫 프레임 대기 · true=옴 · false=못 옴
   const [tries, setTries] = useState(0);    // 이 값이 바뀌면 `<img>` 가 갈려 끼워진다
@@ -87,7 +86,7 @@ function CamViewInner({ workspace = null, coordDefs = null, ghost = null }) {
   // (D64 가 실제로 겪었다) 겹침이 조용히 깨진다. 캘리브가 아직 없으면 CSS 기본값(16:9)이다.
   const camAspect = calib?.intrinsics?.widthPx && calib?.intrinsics?.heightPx
     ? calib.intrinsics.widthPx / calib.intrinsics.heightPx : null;
-  const pip = usePipSize({ key: SIZE_KEY, defaultSize: PIP_DEFAULT, aspect: camAspect });
+  const pip = usePipSize({ key: SIZE_KEY, defaultSize: CAMERA_PIP_DEFAULT, aspect: camAspect });
   // 주소는 **나중에 정해질 수 있다** — 아무도 `?cam=` 을 안 줬으면 브리지에게 물어보고
   // 그 답이 늦게 온다 (`datasource` §글로벌 카메라 주소). 첫 렌더의 `null` 에 갇히면
   // 카메라 칸이 영영 안 뜬다 — 그게 2026-08-10 에 화면이 카메라를 통째로 놓친 자리다
@@ -180,7 +179,7 @@ function CamViewInner({ workspace = null, coordDefs = null, ghost = null }) {
     st.renderer.setAnimationLoop(null);
     stageRef.current = st;
     overlayRef.current = createZoneOverlay(st.scene);
-    anchorsRef.current = createAnchorOverlay(st.scene);
+    anchorsRef.current = createAnchorOverlay(st.scene, { materialStyle: 'defense-reference-v1' });
     // ⚠ **끈 루프의 대가** — PiP 는 사람이 끌어서 크기를 바꾼다. `stage` 의 ResizeObserver 가
     // 캔버스 크기는 고치지만 **다시 그려 줄 사람이 없어** 낡은 그림이 늘어난 채 남는다.
     // 그래서 크기가 바뀌면 한 장 그린다 (2026-08-13)
@@ -306,7 +305,7 @@ function CamViewInner({ workspace = null, coordDefs = null, ghost = null }) {
       //
       // 이 화면은 캘리브를 **열 때 한 번만** 읽었다. 그런데 호스트 감시기가 `--auto` 로
       // 카메라 이동을 스스로 다시 푼다 — 08-27 에 89mm 를 잡아 고쳤는데 **파일만 새것이고
-      // 이 화면은 6시간 전 자세로** 그렸다. 실기 담당자가 「맥에서는 맞는데 윈도우에서는 안 맞는다」
+      // 이 화면은 6시간 전 자세로** 그렸다. 주인님이 「맥에서는 맞는데 윈도우에서는 안 맞는다」
       // 로 잡으셨고, 차이는 **탭을 언제 열었나** 하나였다.
       //
       // **새 배관 0개** — 이미 3초마다 읽던 drift 파일의 `basis` 를 한 번 더 볼 뿐이다.
@@ -370,13 +369,14 @@ function CamViewInner({ workspace = null, coordDefs = null, ghost = null }) {
   const warn = rows.some((r) => r.tone === 'warn');
 
   return (
-    <div className="camview" data-t="camview" data-open={String(open)} data-live={String(live)}
+    <div className="camview global-camera-pip" data-t="camview" data-camera="global"
+      data-open={String(open)} data-live={String(live)}
       data-stale={String(stale)} data-warn={String(warn)}
       style={pip.style(open)}>
       <div className="camhead">
         {/* 실물과 3D 를 헷갈리는 것이 이 프로젝트에서 가장 비싼 오해다 (SR_24) —
             라벨을 옵션으로 두지 않는다 */}
-        <b>실영상</b>
+        <b>글로벌 카메라</b>
         {/* **멈춘 것을 "정상"으로 보이게 두지 않는다** — 옛 프레임이 그대로 걸려 있는 게
             안전 표시에서 제일 나쁜 모양이다 (SAFETY-RULES 제1원칙) */}
         {/* **실패할 때도 주소를 보여준다.** "영상 없음" 만 띄우면 사람이 고칠 수가 없다 —
@@ -458,7 +458,7 @@ function CamViewInner({ workspace = null, coordDefs = null, ghost = null }) {
 // CamView 는 SafetyBar·STOP 과 같은 뿌리의 형제라 여기서 터지면 화면 전체가 언마운트돼
 // STOP 버튼까지 사라졌다. 경계가 크래시를 이 위젯 안에 가둬 STOP 은 남는다.
 // 조용히 비우지 않고 자리를 남겨 말한다 (제1원칙) — 무슨 일인지 사람이 알아야 고친다.
-class CamErrorBoundary extends Component {
+class GlobalCameraPipErrorBoundary extends Component {
   constructor(props) {
     super(props);
     this.state = { failed: false };
@@ -475,10 +475,11 @@ class CamErrorBoundary extends Component {
   render() {
     if (this.state.failed) {
       return (
-        <div className="camview" data-t="camview" data-open="false" data-warn="true">
+        <div className="camview global-camera-pip" data-t="camview" data-camera="global"
+          data-open="false" data-warn="true">
           <div className="camhead">
-            <b>실영상</b>
-            <span className="camstat" data-t="cam-stat">카메라 화면 오류 — 새로고침</span>
+            <b>글로벌 카메라</b>
+            <span className="camstat" data-t="cam-stat">글로벌 카메라 화면 오류 — 새로고침</span>
           </div>
         </div>
       );
@@ -487,10 +488,10 @@ class CamErrorBoundary extends Component {
   }
 }
 
-export function CamView(props) {
+export function GlobalCameraPip(props) {
   return (
-    <CamErrorBoundary>
-      <CamViewInner {...props} />
-    </CamErrorBoundary>
+    <GlobalCameraPipErrorBoundary>
+      <GlobalCameraPipInner {...props} />
+    </GlobalCameraPipErrorBoundary>
   );
 }

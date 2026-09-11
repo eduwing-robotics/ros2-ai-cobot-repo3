@@ -1,7 +1,7 @@
 // 실험실 내부 부품 카탈로그 — **실물색 화이트 모형.**
 //
 // 출발은 `pascalorg/editor` 의 컷어웨이 백색 모형이었다 — 텍스처 없이 디테일이 **형태**에서
-// 오는 건 그대로다. 2026-09-01 에 규약을 한 번 바꿨다(실기 담당자 판정 · 전면 교체): **실물이
+// 오는 건 그대로다. 2026-09-01 에 규약을 한 번 바꿨다(주인님 판정 · 전면 교체): **실물이
 // 있는 부품은 실물 색을 입는다.** 실험실 환경(테이블·스탠드·카트)은 실물도 백색이라
 // 화이트 모형과 겹치고, 갈라지는 건 소품 셋 — 거치대(유광 검정 3D프린트)·바구니(진초록
 // 펠트)·총알(황동)이다. 색값은 실사진에서 화이트밸런스 보정 후 실측했다
@@ -46,6 +46,68 @@ export const M = {
   estopBody: new THREE.MeshStandardMaterial({ color: 0xe8c11a, roughness: 0.45, metalness: 0.0 }),
   estopBtn: new THREE.MeshStandardMaterial({ color: 0xc0271d, roughness: 0.40, metalness: 0.0 }),
 };
+
+// 레퍼런스의 사진 분위기를 `factory-walk` 안에만 닫아 두는 공유 재질이다 (D229).
+// ponytail: 24px 반복 무늬는 근접 실사 복제가 아니라 원경에서 재질을 구분하는 최소 질감이다.
+// 실제 긁힘/오염까지 필요해지면 촬영한 PBR 맵으로 이 공유본만 교체한다.
+function toneTexture(hex, variation = 4, brushed = false) {
+  const size = 24;
+  const data = new Uint8Array(size * size * 4);
+  const rgb = [(hex >> 16) & 255, (hex >> 8) & 255, hex & 255];
+  for (let y = 0; y < size; y += 1) for (let x = 0; x < size; x += 1) {
+    const noise = ((x * 17 + y * 31 + x * y * 7) % 19) - 9;
+    const grain = brushed ? (((y * 5) % 9) - 4 + noise * 0.18) : noise;
+    const i = (y * size + x) * 4;
+    for (let c = 0; c < 3; c += 1) data[i + c] = Math.max(0, Math.min(255, rgb[c] + grain * variation));
+    data[i + 3] = 255;
+  }
+  const t = new THREE.DataTexture(data, size, size, THREE.RGBAFormat);
+  t.colorSpace = THREE.SRGBColorSpace;
+  t.wrapS = THREE.RepeatWrapping;
+  t.wrapT = THREE.RepeatWrapping;
+  t.repeat.set(8, 8);
+  t.needsUpdate = true;
+  return t;
+}
+
+const factoryTex = {
+  epoxy: toneTexture(0x4b4e50, 0.35),
+  wall: toneTexture(0x5e6062, 0.22),
+  coat: toneTexture(0x737678, 0.28),
+  body: toneTexture(0x54575a, 0.28),
+  steel: toneTexture(0xb0b3b5, 0.4, true),
+  dark: toneTexture(0x282a2c, 0.25),
+};
+
+/** `defense-reference-v1` 전용. 기존 M을 바꾸지 않아 realmap과 현장 AR 기본층은 그대로다. */
+export const DEFENSE_M = {
+  floor: new THREE.MeshStandardMaterial({ map: factoryTex.epoxy, roughness: 0.88, metalness: 0.05 }),
+  wall: new THREE.MeshStandardMaterial({ map: factoryTex.wall, roughness: 0.78, metalness: 0.08 }),
+  frame: new THREE.MeshStandardMaterial({ map: factoryTex.dark, roughness: 0.48, metalness: 0.32 }),
+  shell: new THREE.MeshStandardMaterial({ map: factoryTex.coat, roughness: 0.68, metalness: 0.16 }),
+  body: new THREE.MeshStandardMaterial({ map: factoryTex.body, roughness: 0.72, metalness: 0.12 }),
+  steel: new THREE.MeshStandardMaterial({ map: factoryTex.steel, roughness: 0.32, metalness: 0.68 }),
+  dark: new THREE.MeshStandardMaterial({ map: factoryTex.dark, roughness: 0.44, metalness: 0.24 }),
+  glass: new THREE.MeshStandardMaterial({
+    color: 0x8ba0aa, roughness: 0.1, metalness: 0,
+    transparent: true, opacity: 0.24, side: THREE.DoubleSide, depthWrite: false,
+  }),
+  printBlack: new THREE.MeshStandardMaterial({ color: 0x111315, roughness: 0.46, metalness: 0.02 }),
+  felt: M.felt,
+  brass: M.brass,
+  screen: new THREE.MeshStandardMaterial({ color: 0x17252c, roughness: 0.25, metalness: 0.14 }),
+  estopBody: M.estopBody,
+  estopBtn: M.estopBtn,
+};
+
+const defenseSwap = new Map(Object.keys(M).map((key) => [M[key], DEFENSE_M[key] ?? M[key]]));
+function applyDefenseMaterials(root) {
+  const swap = (material) => defenseSwap.get(material) ?? material;
+  root.traverse((o) => {
+    if (!o.isMesh) return;
+    o.material = Array.isArray(o.material) ? o.material.map(swap) : swap(o.material);
+  });
+}
 
 // ── 스캔에서 뽑은 표면 무늬 (2026-09-05 · phase 1). **텍스처 규약의 첫 예외다.**
 // RealityScan 방 스캔을 카트 덱 고정 태그 넷으로 lab 좌표계에 정합(RMS 1.5mm)하고, 덱 윗면을
@@ -187,13 +249,17 @@ export function sizeMmOf(type, opts = {}) {
  * 배치안이 **이름과 좌표만** 들고 있고 형태는 여기 있다 —
  * 그래야 부품을 고쳐도 배치안이 안 바뀐다.
  */
-export function assembleProps(props = []) {
+export function assembleProps(props = [], { materialStyle = null, materialFilter = null } = {}) {
   const g = new THREE.Group();
   g.name = 'props';
+  const conveyors = new Map();
   for (const p of props) {
     const make = PROPS[p.type];
     if (!make) { console.warn(`모르는 부품: ${p.type}`); continue; }
     const node = make(p.opts ?? {});
+    if (materialStyle === 'defense-reference-v1' && (!materialFilter || materialFilter(p))) {
+      applyDefenseMaterials(node);
+    }
     // 배치안은 Z-up(x,y 바닥) · three 는 Y-up → y 와 z 를 바꾸고 **평면도 Y 는 부호를 뒤집는다**.
     // 그냥 맞바꾸면 거울 사상이 된다 (D43 · `layout-view.js` 의 Z 와 같은 규약).
     node.position.set(mm(p.posMm[0]), mm(p.posMm[2] ?? 0), -mm(p.posMm[1]));
@@ -202,7 +268,30 @@ export function assembleProps(props = []) {
     // **편집 단위 표식.** 인터랙션이 맞은 메시에서 위로 올라가며 이걸 찾는다.
     node.userData.item = { kind: 'prop', id: p.id ?? p.type, type: p.type };
     g.add(node);
+    if (node.userData.belt?.setTravelMm) {
+      conveyors.set(node.name, { belt: node.userData.belt, yaw: node.rotation.y, previous: null });
+    }
   }
+  // 절대 거리는 되감기용, pose는 순서대로 온 실주행용. 활성 구간은 호출자가 고른다.
+  g.userData.setConveyorTravel = (id, signedMm) => {
+    const c = conveyors.get(id);
+    if (!c || !Number.isFinite(signedMm)) return false;
+    c.previous = null;
+    return c.belt.setTravelMm(signedMm);
+  };
+  g.userData.setConveyorPose = (id, pose) => {
+    const c = conveyors.get(id);
+    if (!c) return false;
+    if (pose === null) { c.previous = null; return false; }
+    if (!Number.isFinite(pose?.xMm) || !Number.isFinite(pose?.yMm)) return false;
+    const previous = c.previous;
+    c.previous = { xMm: pose.xMm, yMm: pose.yMm };
+    if (!previous) return false;
+    const delta = (pose.xMm - previous.xMm) * Math.cos(c.yaw)
+      + (pose.yMm - previous.yMm) * Math.sin(c.yaw);
+    if (Math.abs(delta) < 1e-9) return false;
+    return c.belt.setTravelMm(c.belt.travelMm + delta);
+  };
   return g;
 }
 
@@ -340,17 +429,66 @@ export function conveyor({
 
   // ── 이송면 — 롤러 또는 평벨트.
   const span = lengthMm - 2 * railT;
+  let setTravelMm = null;
+  let travelMm = 0;
   if (belt) {
-    // **평벨트** (실기 담당자 2026-08-19) — 77mm 더미탄 같은 작은 작업물은 롤러 틈(피치 100)에
+    // **평벨트** (주인님 2026-08-19) — 77mm 더미탄 같은 작은 작업물은 롤러 틈(피치 100)에
     // 빠진다. 벨트는 고무라 어둡게 — 흰색이면 판때기로 읽힌다 (롤러의 그 교훈 그대로).
     const beltT = Math.min(12, hMm * 0.15);
     const bw = wMm - 2 * railT;
-    add(g, box(flat - 2 * railT, beltT, bw, M.dark), x0 + ramp + flat / 2, hMm - beltT / 2, 0);
+    add(g, box(flat - 2 * railT, beltT, bw, M.printBlack), x0 + ramp + flat / 2, hMm - beltT / 2, 0);
     if (ramp > 0) {
-      const m = box(hyp, beltT, bw, M.dark);
+      const m = box(hyp, beltT, bw, M.printBlack);
       m.rotation.z = slope;
       add(g, m, x0 + ramp / 2, hMm - drop / 2 - beltT / 2, 0);
     }
+    // 단부 드럼·반환 벨트. 설치 치수 안에 넣어 실맵/앵커의 점유 면적을 늘리지 않는다.
+    const drumD = Math.min(railH * 0.8, wMm * 0.25);
+    for (const s of [-1, 1]) {
+      const x = s * (lengthMm - drumD) / 2;
+      const drum = cyl(drumD, bw, M.printBlack, 24);
+      drum.rotation.x = Math.PI / 2;
+      add(g, drum, x, topAt(x) - drumD / 2, 0);
+      for (const side of [-1, 1]) {
+        const bearing = cyl(drumD * 0.46, railT * 0.6, M.dark, 12);
+        bearing.rotation.x = Math.PI / 2;
+        add(g, bearing, x, topAt(x) - drumD / 2, side * (wMm / 2 - railT * 0.4));
+      }
+    }
+    add(g, box(flat - 2 * railT, beltT * 0.5, bw, M.printBlack),
+      x0 + ramp + flat / 2, hMm - drumD + beltT * 0.25, 0);
+
+    // ponytail: 표면 이음만 인스턴스 한 벌로 움직인다. 고무 변형/드럼 회전은 이 축척에서 생략.
+    const count = Math.max(2, Math.min(96, Math.ceil(span / 45)));
+    const step = span / count;
+    const seamWidth = Math.min(1.5, step * 0.06);
+    const seams = new THREE.InstancedMesh(
+      new THREE.BoxGeometry(1, mm(0.6), mm(bw * 0.96)), M.screen, count,
+    );
+    seams.name = 'belt-surface';
+    // 기존 모든 소비자는 geometry를 정리한다. 그때 인스턴스 GPU 행렬도 같이 놓는다.
+    seams.geometry.addEventListener('dispose', () => seams.dispose());
+    seams.frustumCulled = false;  // 이동 행렬만 갱신; 작은 부품의 bounds 재계산을 매 pose마다 안 한다
+    seams.receiveShadow = true;
+    g.add(seams);
+    const seam = new THREE.Object3D();
+    setTravelMm = (value) => {
+      if (!Number.isFinite(value) || value === travelMm) return false;
+      travelMm = value;
+      const phase = ((value % span) + span) % span;
+      for (let i = 0; i < count; i += 1) {
+        const x = -span / 2 + ((step * (i + 0.5) + phase) % span);
+        seam.position.set(mm(x), mm(topAt(x) - 0.3), 0);
+        seam.rotation.z = ramp > 0 && x < x0 + ramp ? slope : 0;
+        seam.scale.set(mm(Math.min(seamWidth, 2 * (span / 2 - Math.abs(x)))), 1, 1);
+        seam.updateMatrix();
+        seams.setMatrixAt(i, seam.matrix);
+      }
+      seams.instanceMatrix.needsUpdate = true;
+      return true;
+    };
+    travelMm = NaN; // 첫 0mm도 행렬을 채운다
+    setTravelMm(0);
   } else {
     // ── 롤러. 축이 Z 이므로 X 로 90° 눕힌다.
     // ponytail: 롤러 축 볼트(레일 바깥면의 작은 머리)는 안 그린다 — 배치 축척에서 1px 미만이고
@@ -392,6 +530,8 @@ export function conveyor({
   // 계산을 여기 한 곳에 두고 밖에서는 부르기만 한다 (하드 룰 5).
   g.userData.belt = {
     lengthMm, wMm,
+    ...(setTravelMm ? { setTravelMm } : {}),
+    get travelMm() { return travelMm; },
     /** 길이축 로컬 x(mm) 에서의 이송면 높이(mm). 벨트 밖이면 `null`. */
     topAtMm(localXMm, localZMm) {
       if (Math.abs(localXMm) > lengthMm / 2 || Math.abs(localZMm) > wMm / 2) return null;
@@ -401,11 +541,12 @@ export function conveyor({
 
   // ── 하부 브레이스. 길이 방향 2줄 + 다리쌍마다 가로 1줄 — 이게 있어야 "구조물" 로 읽힌다.
   const braceY = legH * 0.22;
+  const braceH = Math.min(50, legH * 0.35);
   for (const sz of [-1, 1]) {
-    add(g, box(lengthMm - 2 * legInset, 50, 30, M.dark), 0, braceY, sz * legZ);
+    add(g, box(lengthMm - 2 * legInset, braceH, Math.min(30, railT), M.dark), 0, braceY, sz * legZ);
   }
   for (const sx of [-1, 1]) {
-    add(g, box(30, 50, wMm - railT, M.dark), sx * (lengthMm / 2 - legInset), braceY, 0);
+    add(g, box(30, braceH, wMm - railT, M.dark), sx * (lengthMm / 2 - legInset), braceY, 0);
   }
   return g;
 }
@@ -505,6 +646,52 @@ export function round({ gapMm = 0, seg = 24 } = {}) {
 }
 
 /**
+ * 작업대2에 고정된 **하얀 거치대2** — 3×3 구멍과 현재 꽂힌 총알 둘까지 그린다.
+ *
+ * 입력 크기는 안전 게이트 상자에서 온다. 구멍·클램프의 아직 안 잰 치수는
+ * `workcell.js FIXTURE2_VISUAL`이 명시적으로 `approx`라 적은 그림 전용 값이다.
+ * 원점은 다른 팩토리와 같이 몸통 바닥 중앙(Y-up)이다.
+ */
+export function fixture2({ wMm, dMm, hMm, holes, roundSlots, clamps } = {}) {
+  const w = wMm; const d = dMm; const h = hMm;
+  const g = new THREE.Group();
+  g.name = 'fixture2-model';
+  if (![w, d, h].every((v) => Number.isFinite(v) && v > 0)) return g;
+
+  add(g, box(w, h, d, M.shell), 0, h / 2, 0);
+
+  const rows = holes?.rows ?? 0; const cols = holes?.cols ?? 0;
+  const pitch = Math.min(w, d) * (holes?.pitchRatio ?? 0);
+  const holeDia = holes?.diaMm ?? 0;
+  for (let row = 0; row < rows; row += 1) for (let col = 0; col < cols; col += 1) {
+    // ponytail: 실제 보어를 boolean으로 뚫지 않고 1.2mm 검은 원판으로 읽히게 한다.
+    // 근접 계측 뷰가 필요해지면 실측 지름을 받은 뒤 CSG/실메시로 교체한다.
+    const recess = add(g, cyl(holeDia, 1.2, M.printBlack, 20),
+      (col - (cols - 1) / 2) * pitch, h + 0.4, (row - (rows - 1) / 2) * pitch);
+    recess.name = `fixture2-hole-${row}-${col}`;
+  }
+
+  for (const [col, row] of (roundSlots ?? [])) {
+    const cartridge = add(g, round(), col * pitch, h - 2, row * pitch);
+    cartridge.name = `fixture2-round-${col}-${row}`;
+  }
+
+  // 실영상의 좌·우·앞 클램프 세 개. 길이는 아직 실측 전이라 점유·충돌 판정에 넣지 않는다.
+  const railL = clamps?.railMm ?? 0; const railW = clamps?.railWMm ?? 0; const railH = clamps?.railHMm ?? 0;
+  if (railL > 0 && railW > 0 && railH > 0) {
+    for (const sx of [-1, 1]) {
+      const rail = add(g, box(railL, railH, railW, M.steel), sx * (w / 2 + railL / 2 - 6), railH / 2, 0);
+      rail.name = `fixture2-rail-${sx < 0 ? 'left' : 'right'}`;
+      add(g, box(14, 12, 18, M.dark), sx * (w / 2 - 3), 6, 0);
+    }
+    const frontRail = add(g, box(railW, railH, railL, M.steel), 0, railH / 2, d / 2 + railL / 2 - 6);
+    frontRail.name = 'fixture2-rail-front';
+    add(g, box(18, 12, 14, M.dark), 0, 6, d / 2 - 3);
+  }
+  return g;
+}
+
+/**
  * **옮기는 거치대** — 팔이 통째로 집어 터틀봇 바구니에 넣는 구멍 판 (2026-08-31 · D160).
  *
  * 치수는 `props.js` 의 `CARRIER` 가 정본이다 — **여기에 숫자를 적지 않는다**(그 파일 머리말
@@ -529,14 +716,14 @@ export function carrier({ wMm, dMm, hMm, holes, rounds } = {}) {
   const box = (bw, bh, bd, mat, x, y, z) =>
     add(g, new THREE.Mesh(new THREE.BoxGeometry(mm(bw), mm(bh), mm(bd)), mat), x, y, z);
 
-  // ── 벽 넷 — **속은 비었다** (실기 담당자 2026-08-31 「격자형태로 비어있게」).
+  // ── 벽 넷 — **속은 비었다** (주인님 2026-08-31 「격자형태로 비어있게」).
   // 처음엔 꽉 찬 상자로 그려 총알이 들어갈 자리가 없었다.
   // 실물은 통째로 유광 검정 3D프린트다 (`real-carrier13-black-crate.png`).
   for (const sz of [-1, 1]) box(w, h, t, M.printBlack, 0, h / 2, sz * (d / 2 - t / 2));
   for (const sx of [-1, 1]) box(t, h, d - 2 * t, M.printBlack, sx * (w / 2 - t / 2), h / 2, 0);
 
-  // ── 바닥 격자 — 총알은 **이 위에** 선다 (실기 담당자 「거치대 두께만큼의 높이 위에 담겨있음」).
-  // ⚠ **칸 간격은 아직 확정이 아니다** (`CARRIER.holes.pitchMm` · 실기 담당자 「1.5」를 cm 로
+  // ── 바닥 격자 — 총알은 **이 위에** 선다 (주인님 「거치대 두께만큼의 높이 위에 담겨있음」).
+  // ⚠ **칸 간격은 아직 확정이 아니다** (`CARRIER.holes.pitchMm` · 주인님 「1.5」를 cm 로
   //    읽었는데 사진에서 세면 더 촘촘하다). 간격이 바뀌면 살 개수만 달라지고
   //    **총알 높이는 안 바뀐다** — 그래서 판정에 쓰는 값은 이 그림에 안 걸린다.
   const pitch = H?.pitchMm ?? 15;
@@ -923,10 +1110,10 @@ Object.assign(PROPS, { conveyor, warhead, round, chuck, partTray, blastWall, lif
 /**
  * 로봇이 올라앉은 이동식 카트 — **알루미늄 프레임 + 백색 외판 + T슬롯 상판.**
  *
- * 출처: 실기 담당자 줄자 실측 `810 × 597 × 1000mm` (2026-08-07) + 가우시안 스플랫
+ * 출처: 주인님 줄자 실측 `810 × 597 × 1000mm` (2026-08-07) + 가우시안 스플랫
  * 4시점 렌더 관찰 (`docs/evidence/2026-08-07/splat-pipeline-dryrun.md`).
  *
- * **완벽 일치가 목적이 아니다 — 교체가 쉬운 게 목적이다** (실기 담당자 판정 2026-08-07).
+ * **완벽 일치가 목적이 아니다 — 교체가 쉬운 게 목적이다** (주인님 판정 2026-08-07).
  * 맵 세팅이 끝나면 실측값으로 갈아끼운다. 그래서 **모든 치수가 인자로 나와 있고**
  * 기본값이 곧 지금 실측값이다. 바꿀 때 이 함수 안을 읽을 필요가 없다.
  *
@@ -938,7 +1125,7 @@ Object.assign(PROPS, { conveyor, warhead, round, chuck, partTray, blastWall, lif
 export function robotCart({
   wMm = 810, dMm = 597, hMm = 1000,      // 겉치수 — 줄자 실측
   frameMm = 40,                           // 압출재 한 변
-  // ⚠ **T슬롯 데크가 상판 전체다. 흰 천판은 없다** (2026-08-08 실기 담당자 정정 · 영상 원본 확인).
+  // ⚠ **T슬롯 데크가 상판 전체다. 흰 천판은 없다** (2026-08-08 주인님 정정 · 영상 원본 확인).
   // 예전 기본값 `500×440` + 흰 천판은 **오독이었다** — 스플랫 렌더에서 흰 A4 태그 4장이
   // 얹힌 걸 보고 "가운데 작은 데크 + 넓은 흰 상판" 으로 읽었다. 실물은 **홈 파인 알루미늄
   // 판이 끝까지 덮고**, 흰 것은 그 위에 놓인 **태그 종이**다 (`scratchpad` 영상 t=2s 원본).
@@ -966,7 +1153,7 @@ export function robotCart({
   const deckBot = hMm - deckT;            // 데크 윗면이 곧 `hMm` 이다 (§workcell.js 바닥→데크 1000)
   // ⚠ **상단 레일은 데크 속으로 들어간다.** 예전엔 `hMm − f/2` 라 레일 윗면이 상판 윗면과
   // **둘 다 1000.0** 이었다 — 둘레 띠에서 두 면이 정확히 겹쳐, 화면을 돌릴 때마다
-  // 가장자리가 줄무늬로 깨지고 **상판이 두 장으로 보였다** (2026-08-08 실기 담당자 사진).
+  // 가장자리가 줄무늬로 깨지고 **상판이 두 장으로 보였다** (2026-08-08 주인님 사진).
   // 6mm 파묻어 겹침을 없앤다 — 이 하나로 레일↔상판 · 레일 밑면↔외판 윗면 · 기둥 윗면이
   // 같이 풀린다. 데크가 프레임보다 4mm 나와서 앞쪽 **알루미늄 립**으로 보이는 것도 실물과 같다.
   const topY = deckBot + 6 - f / 2;
@@ -997,7 +1184,7 @@ export function robotCart({
     }
   }
 
-  // ── 외판. 겉면을 **데크와 정확히 맞춘다 — 립이 없다** (2026-08-08 실기 담당자).
+  // ── 외판. 겉면을 **데크와 정확히 맞춘다 — 립이 없다** (2026-08-08 주인님).
   //
   // 34mm 안쪽 → 4mm 립 → **0**. 여기서 "겉면 정렬 금지" 규약과 부딪히는 것 같지만 아니다:
   // z-fighting 은 두 면이 **같은 평면 + 같은 자리**에서 겹칠 때 난다. 데크는 y 970~1000,
@@ -1033,7 +1220,7 @@ export function robotCart({
   const pitch = deckW / (grooves + 1);
   for (let i = 1; i <= grooves; i += 1) {
     // ⚠ **0.6mm 내밀어 얹는다.** 예전엔 골 윗면이 데크 윗면과 **정확히 같아서**
-    // 카메라가 움직일 때마다 데크 상판 전체가 반짝였다 (2026-08-08 실기 담당자 지적).
+    // 카메라가 움직일 때마다 데크 상판 전체가 반짝였다 (2026-08-08 주인님 지적).
     // 이 파일 머리말이 경고한 바로 그것인데 정작 여기서 밟고 있었다 — 골은 어차피
     // 어두운 색이라 조금 얹혀도 홈으로 읽힌다. 파묻으면 데크 안에 갇혀 안 보인다.
     add(g, box(pitch * 0.34, 6, deckD * 0.96, M.dark), -deckW / 2 + i * pitch, hMm + 0.6 - 3, 0);

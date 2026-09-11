@@ -45,12 +45,22 @@ export function relevantHits(pairs) {
  * 팔 구간 — `fromJ` 에서 `toJ` 로 가는 길. 터틀봇은 서 있다.
  * @returns {{hits:string[], samples:number, worstAt:number|null}} hits 는 중복 제거한 쌍 이름들 · worstAt 은 처음 닿은 표본 진행률(0~1)
  */
-export function checkArmPath(sim, fromJ, toJ, { stepDeg = 5 } = {}) {
-  const samples = pathSamples(fromJ, toJ, stepDeg);
+export function checkArmPath(sim, fromJ, toJ, {
+  stepDeg = 5, fromGripPct = null, toGripPct = null, gripStepPct = 10,
+} = {}) {
+  const jointN = pathSamples(fromJ, toJ, stepDeg).length;
+  const hasGrip = Number.isFinite(fromGripPct) && Number.isFinite(toGripPct);
+  const gripN = hasGrip ? Math.max(1, Math.ceil(Math.abs(toGripPct - fromGripPct) / gripStepPct)) : 1;
+  const n = Math.max(jointN, gripN);
+  const samples = Array.from({ length: n }, (_, k) => {
+    const t = (k + 1) / n;
+    return { q: fromJ.map((v, i) => v + (toJ[i] - v) * t),
+      gripPct: hasGrip ? fromGripPct + (toGripPct - fromGripPct) * t : null };
+  });
   const hits = new Map();          // 쌍 이름 → 최대 파고듦
   let worstAt = null;
-  samples.forEach((q, k) => {
-    const r = (sim.contactsAt ?? sim.at).call(sim, q);      // 접촉만 — 그리는 비용을 안 낸다
+  samples.forEach(({ q, gripPct }, k) => {
+    const r = (sim.contactsAt ?? sim.at).call(sim, q, gripPct);      // 접촉만 — 그리는 비용을 안 낸다
     const h = relevantHits(r.pairs ?? []);
     if (h.length && worstAt === null) worstAt = (k + 1) / samples.length;
     h.forEach((x) => { const [name, d] = x.split(' −'); const v = parseFloat(d); if (!(hits.get(name) >= v)) hits.set(name, v); });

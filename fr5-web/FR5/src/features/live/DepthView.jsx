@@ -19,8 +19,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { datasource } from '../../data/datasource/index.js';
 import { depthState } from '@fr5/shared/data/camera/depth-state.js';
-import { usePipSize } from './usePipSize.js';
-import { PIP_DEFAULT } from './CamView.jsx';
+import { CAMERA_PIP_DEFAULT, usePipSize } from './usePipSize.js';
+import { DepthScanHudOverlay } from './DepthScanHudOverlay.jsx';
 
 // 상태 폴링 — 깊이 유효는 팔이 움직이면 바뀐다. 폰 설정(15초)보다 자주 본다
 const STATE_MS = 2000;
@@ -35,18 +35,21 @@ const SIZE_KEY = 'fr5.depthSize';
 const readOpen = () => { try { return localStorage.getItem(OPEN_KEY) === '1'; } catch { return false; } };
 const writeOpen = (v) => { try { localStorage.setItem(OPEN_KEY, v ? '1' : '0'); } catch { /* 프라이빗 모드 */ } };
 
-export function DepthView({ handEye = undefined }) {
+export function WristDepthCameraPip({ handEye = undefined }) {
   const [open, setOpen] = useState(readOpen);
   // `undefined`=안 물어봄 · `null`=물어봤는데 못 읽음(경고) · 객체=읽음. 셋을 가른다
   const [state, setState] = useState(undefined);
   const [shot, setShot] = useState(null);   // 다 받아 놓은 미리보기 URL. null=아직
+  const [scanEvent, setScanEvent] = useState(null); // 정지 프레임·화소 좌표를 한 묶음으로 든다
   // 기본 크기를 글로벌과 **같은 값**으로 둔다 — 둘이 나란히 서므로 폭이 다르면 어긋나 보인다
   // 비율은 **관문이 내는 해상도**가 정한다 (D148) — 여기는 겹치기가 아니지만 같은 규칙을
   // 쓴다: 칸이 납작해지면 `contain` 이 영상을 줄여 사람이 「카메라가 이상하다」로 읽는다.
   // 근접에서 424×240 으로 갈아타도(계약 §근접 해상도) 그 비율이 그대로 온다
   const dres = String(state?.depth?.resolution ?? '').match(/^(\d+)x(\d+)$/);
-  const pip = usePipSize({ key: SIZE_KEY, defaultSize: PIP_DEFAULT,
-    aspect: dres ? Number(dres[1]) / Number(dres[2]) : null });
+  const scanFrame = scanEvent?.result?.view?.frame;
+  const pip = usePipSize({ key: SIZE_KEY, defaultSize: CAMERA_PIP_DEFAULT,
+    aspect: scanFrame ? Number(scanFrame.widthPx) / Number(scanFrame.heightPx)
+      : (dres ? Number(dres[1]) / Number(dres[2]) : null) });
   const seenAt = useRef(null);          // 마지막으로 **새 프레임 시각을 본** 때 (성능시계)
   const lastFrame = useRef(null);       // 그때의 `lastFrameAt`
 
@@ -80,6 +83,18 @@ export function DepthView({ handEye = undefined }) {
     return () => { dead = true; clearInterval(id); };
   }, [url]);
 
+  // `/scan`이 실제로 쓴 정지화면과 검출 좌표만 받는다. 다른 화면의 오래된 좌표를
+  // 계속 바뀌는 미리보기 위에 얹지 않는다 — 영상·좌표는 한 판이어야 한다.
+  useEffect(() => {
+    const onScan = (e) => {
+      setScanEvent(e.detail ?? null);
+      setOpen(true);
+      writeOpen(true);
+    };
+    window.addEventListener(datasource.depthScanEvent, onScan);
+    return () => window.removeEventListener(datasource.depthScanEvent, onScan);
+  }, []);
+
   // 그림은 **펼쳤을 때만** 받는다 — 접힌 창 때문에 대역을 쓰지 않는다.
   // 상태 폴링과 달리 이건 안 봐도 잃는 정보가 없다.
   //
@@ -92,7 +107,7 @@ export function DepthView({ handEye = undefined }) {
   // 요청이 쌓인다. 못 받으면 간격을 벌린다 (죽은 주소에 매달리지 않는다).
   const previewUrl = datasource.depthPreviewUrl();
   useEffect(() => {
-    if (!open || !previewUrl) return undefined;
+    if (!open || !previewUrl || scanFrame) return undefined;
     let dead = false;
     let timer = null;
     const tick = () => {
@@ -105,7 +120,7 @@ export function DepthView({ handEye = undefined }) {
     };
     tick();
     return () => { dead = true; clearTimeout(timer); };
-  }, [open, previewUrl]);
+  }, [open, previewUrl, scanFrame]);
 
   if (!url) return null;   // 주소가 없으면 기능을 안 켠 것이다 — 빈 상자를 띄우지 않는다
 
@@ -118,12 +133,13 @@ export function DepthView({ handEye = undefined }) {
   const warn = rows.some((r) => r.tone === 'warn');
 
   return (
-    <div className="camview depthview" data-t="depthview"
+    <div className="camview depthview wrist-depth-camera-pip" data-t="depthview"
+      data-camera="wrist-depth"
       data-open={String(open)} data-warn={String(warn)} style={pip.style(open)}>
       <div className="camhead">
         {/* 실물·3D·글로벌캠을 헷갈리는 것이 이 프로젝트에서 가장 비싼 오해다 (SR_24).
             손목 것임을 라벨이 말한다 — "카메라" 만 쓰면 폰과 구분이 안 된다 */}
-        <b>손목 깊이</b>
+        <b>손목 뎁스카메라</b>
         {/* 주소를 같이 찍는다 — CamView 가 이미 「영상 없음만 띄우면 못 고친다」로 처방한 것(UX 감사 2026-09-05) */}
         <span className="camstat" data-t="depth-stat" data-tone={link.tone}>
           {link.label}{datasource.depthHost?.() ? ` · ${datasource.depthHost()}` : ''}</span>
@@ -144,6 +160,9 @@ export function DepthView({ handEye = undefined }) {
               `src` 는 **이미 다 받아 놓은 것**이라 바뀌어도 칸이 안 비워진다 (위 §이중 버퍼) */}
           {shot && <img data-t="depth-img" alt="손목 뎁스카메라"
             crossOrigin="anonymous" src={shot} />}
+          {scanFrame?.url && <img data-t="depth-scan-img" alt="손목 뎁스카메라 검출 정지화면"
+            src={scanFrame.url} onError={() => setScanEvent(null)} />}
+          {scanEvent && <DepthScanHudOverlay event={scanEvent} onLive={() => setScanEvent(null)} />}
           {!shot && <p className="camwait" data-t="depth-wait">첫 장 기다리는 중…</p>}
         </div>
       )}

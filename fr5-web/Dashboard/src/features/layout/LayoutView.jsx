@@ -283,7 +283,7 @@ export function LayoutView({
   // **시나리오가 부르는 이름이 배치안에 다 있어야 한다.**
   //
   // 전에는 "하나라도 있으면 재생 가능" 이었다. 그러면 절반만 있는 배치안에서 **재생은 되는데
-  // 아무것도 안 움직이고 화면이 이유를 안 말한다** — 실기 담당자 맵에서 실제로 그랬다
+  // 아무것도 안 움직이고 화면이 이유를 안 말한다** — 주인님 맵에서 실제로 그랬다
   // (`pile`·`fuze`·`ship`·`exit` 가 없어 AMR·작업물·팔이 전부 가만히 있었다 · 2026-08-04).
   const stationIds = new Set((layout.stations ?? []).map((s) => s.id));
   const wanted = new Set();
@@ -590,7 +590,7 @@ export function LayoutView({
         // **j1 은 튀지 않는다** — 겨눔각을 그대로 얹으면 목표가 바뀌는 순간 순간이동한다
         e.j1 = easeAngle(e.j1 ?? 0, aim[id]?.relDeg ?? 0, dt);
         setJointsDeg(e.robot, { ...pose, j1: e.j1 });
-        // **「닿는 척」** — 키프레임을 얹은 **뒤에** 손끝만 목표로 당긴다 (실기 담당자 2026-08-20).
+        // **「닿는 척」** — 키프레임을 얹은 **뒤에** 손끝만 목표로 당긴다 (주인님 2026-08-20).
         // 씨앗이 교시 자세라 모양이 안 망가지고, 매 프레임 다시 얹으므로 이력에 안 묶인다.
         // ⛔ 여기서 나온 관절값은 **실기가 갈 값이 아니다** — `reach.js` 머리말 참조.
         //    그래서 잔차를 들고 나와 화면이 글자로 말하게 한다.
@@ -707,7 +707,7 @@ export function LayoutView({
     setTipMm([Math.round(w.x * 1000), Math.round(-w.z * 1000), Math.round(w.y * 1000)]);
   }, [jointDeg, posing, picked?.id, picked?.kind]);
 
-  // 경로 편집 — **고른 AMR 의 점만 그린다.** 평소엔 선을 안 그린다(실기 담당자 결정 · 2026-08-04).
+  // 경로 편집 — **고른 AMR 의 점만 그린다.** 평소엔 선을 안 그린다(주인님 결정 · 2026-08-04).
   const amrPicked = pathing && picked?.kind === 'amr'
     ? (layout.amrs ?? []).find((a) => a.id === picked.id) : null;
 
@@ -724,6 +724,8 @@ export function LayoutView({
   useEffect(() => {
     const stage = stageRef.current;
     if (!stage) return;
+    // 연출 프리셋의 배경색만 바꾼다. 공용 stage 기본값과 투명 AR 배경 계약은 그대로 둔다 (D229).
+    stage.scene.background?.set(layout.appearance === 'defense-reference-v1' ? 0x3b3e40 : 0xd7dade);
     // 새로 만들기 **전에** 무엇이 골라져 있었는지 적어 둔다 — 아래에서 id 로 다시 잡는다
     const keepIds = editRef.current?.selectedIds?.() ?? [];
     const keepPrimary = pickedRef.current?.id ?? null;
@@ -742,7 +744,7 @@ export function LayoutView({
     // 그림자를 드리우는 것도 받는 것도 그것들이다. 방 치수가 바뀌면 다시 맞춘다.
     stage.fitShadow(view.root);
     editRef.current?.reselect?.(keepIds, keepPrimary);
-    // 팔은 `armSlot` 에 붙는다 — 베이스 좌표·요각이 이미 걸려 있다 (D56 이후 실기 담당자 요청).
+    // 팔은 `armSlot` 에 붙는다 — 베이스 좌표·요각이 이미 걸려 있다 (D56 이후 주인님 요청).
     // **팔마다 하나씩 로드한다.** 한 개를 두 부모에 붙일 수 없다 — three 는 부모가 하나다.
     // URDF·STL 은 브라우저가 캐시하므로 두 번째는 네트워크가 아니라 파싱만 든다.
     for (const slot of view.armSlots ?? []) {
@@ -867,7 +869,7 @@ export function LayoutView({
         const ids = Object.keys(robots);
         for (const a of amrs) {
           // 짝짓기 — 배치안이 `robotId` 를 주면 그것으로. **로봇도 AMR 도 하나뿐이면
-          // 짝은 자명하다**(2026-08-28 실기 담당자 — 실기는 한 대만 쓴다). 둘 이상이면
+          // 짝은 자명하다**(2026-08-28 주인님 — 실기는 한 대만 쓴다). 둘 이상이면
           // 지어내지 않고 건너뛴다 — 엉뚱한 로봇을 엉뚱한 자리에 세우는 것이 최악이다.
           const robotId = a.robotId ?? (amrs.length === 1 && ids.length === 1 ? ids[0] : null);
           if (!robotId) continue;
@@ -1071,7 +1073,7 @@ export function LayoutView({
           </div>
 
           {/* ── AMR 띠. **언제 어디로 가는지 한눈에** — 전에는 마커를 하나씩 우클릭해야
-              알 수 있었다 (실기 담당자 지적 · 2026-08-04).
+              알 수 있었다 (주인님 지적 · 2026-08-04).
 
               구간은 `timeline.js` §amrAt 규약을 그대로 읽는다: **사건 시각이 도착 시각**이라
               앞 사건(없으면 0초)부터 그 사건까지가 이동 구간이다. 사건이 없는 AMR 은

@@ -13,6 +13,9 @@
 //    XML 과 STL 을 먼저 `FS.writeFile` 로 넣는다 (러너와 같은 함정 · `batch.mjs` 주석).
 // ⚠ **Embind 핸들은 GC 되지 않는다** — `dispose()` 로 손수 지운다.
 
+import gripperConfig from '../data/config/gripper-mount.json';
+import { gripperFingerShiftMm } from '../data/sim/gripper-geometry.js';
+
 const MESH_BASE = '/FAIRINO_FR5/';
 // mjtCatBit — 1 정적 · 2 동적 · 4 장식 · 7 전부
 const CAT_DYNAMIC = 2;
@@ -71,6 +74,15 @@ async function build(xml) {
     if (a >= 0) { let e = a; while (model.names[e]) e += 1; s = dec.decode(model.names.slice(a, e)); }
     names.push(s);
   }
+  const fingers = names.flatMap((name, geomId) => name.includes('finger')
+    ? [{ geomId, name, restXM: model.geom_pos[geomId * 3] }]
+    : []);
+  const setGrip = (openPct = 100) => {
+    for (const finger of fingers) {
+      model.geom_pos[finger.geomId * 3] = finger.restXM
+        + gripperFingerShiftMm(finger.name, openPct, gripperConfig.fingerHalfStrokeMm) / 1000;
+    }
+  };
   // mocap 바디(터틀봇+바구니 · `scene-compose.js`) — 있으면 자리만 옮겨 주행 구간도 잰다
   const amrMocap = (() => {
     for (let b = 0; b < model.nbody; b += 1) if (model.body_mocapid[b] >= 0) return model.body_mocapid[b];
@@ -93,7 +105,8 @@ async function build(xml) {
      * 메인 스레드를 잡아 재생 시계가 멈췄다 · 2026-09-06). `contact-check.js` 가 이걸 먼저 찾는다
      * @returns {{ncon:number, pairs:Array}}
      */
-    contactsAt(jointsDeg) {
+    contactsAt(jointsDeg, gripperPct = 100) {
+      setGrip(gripperPct);
       for (let j = 0; j < nq; j += 1) { data.qpos[j] = (Number(jointsDeg[j]) || 0) * DEG; data.ctrl[j] = data.qpos[j]; }
       mj.mj_forward(model, data);
       const pairs = [];
@@ -108,7 +121,8 @@ async function build(xml) {
      * 화면이 좌표를 다시 만들지 않는다.
      * @returns {{geoms: Array, ncon: number}}
      */
-    at(jointsDeg) {
+    at(jointsDeg, gripperPct = 100) {
+      setGrip(gripperPct);
       for (let j = 0; j < nq; j += 1) {
         data.qpos[j] = (Number(jointsDeg[j]) || 0) * DEG;
         data.ctrl[j] = data.qpos[j];

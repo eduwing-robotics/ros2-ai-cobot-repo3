@@ -8,15 +8,15 @@
 // 단위 변환은 `Shared/data/units` 한 곳만 쓴다 (하드 룰 5).
 import * as THREE from 'three';
 import { mm } from '../data/units/units.js';
-import { CART, MOUNT_PLATE, SIDE_STAND, floorZMm } from '../data/workcell.js';
-import { robotCart, sideStand, scanTexture } from './parts.js';
+import { CART, FIXTURE2_VISUAL, MOUNT_PLATE, SIDE_STAND, floorZMm } from '../data/workcell.js';
+import { fixture2, robotCart, sideStand, scanTexture } from './parts.js';
 // 판정면은 파랑, 여유는 주황(여기부터 거부), 소품은 회색. 색이 곧 "근거인가"다.
 // **값은 여기 없다** — 배경이 정반대인 두 화면(어두운 트윈 / 밝은 실영상)이 같은 함수를
 // 쓰므로 팔레트를 밖으로 뺐다. 색을 고칠 자리는 `zone-theme.js` 하나다 (2026-08-13)
 import { resolveTheme } from './zone-theme.js';
 
 /**
- * 판정면·테두리를 실물보다 이만큼 **위로 띄운다**(mm). 2026-08-08 실기 담당자:
+ * 판정면·테두리를 실물보다 이만큼 **위로 띄운다**(mm). 2026-08-08 주인님:
  * *"상판이 화면 이동에 따라 번쩍번쩍 빛난다."*
  *
  * 판정면 z 가 잰 값 그대로라 **소품 상판 윗면과 정확히 같은 평면**이었다 —
@@ -90,8 +90,9 @@ export function toBase(ws, userDef) {
 // 같은 일을 하는 길이 둘이면 한쪽만 고쳐지고, 그 갈래가 이 저장소를 네 번 다치게 했다.
 // 이 파일은 **상자·벽 뭉치**를 옮기는 `toBase()` 만 든다 (게이트 값 전용).
 
-/** 그림용 바닥 기준 — 첫 상판(카트)이 기준이다. 없으면 0 */
-const topZOf = (ws) => ws?.boxes?.[0]?.topZMm ?? 0;
+/** 그림용 바닥 기준 — 배열 순서가 아니라 **카트 상판 이름**으로 찾는다. */
+const topZOf = (ws) => ws?.boxes?.find((b) => b.name === '카트 상판')?.topZMm
+  ?? ws?.boxes?.[0]?.topZMm ?? 0;
 
 
 /**
@@ -146,18 +147,30 @@ export function makeWorkspace(ws, { showProps = true, theme } = {}) {
     const provisional = Boolean(b.staleReason);
     const [x0, x1] = b.xMm;
     const [y0, y1] = b.yMm;
+    const isCart = b.name === '카트 상판';
+    const isFixture2 = b.name === '거치대2';
+    const BENCH_MAPS = { 작업대1: 'bench1-top', 작업대2: 'bench2-top', 작업대3: 'bench3-top' };
 
-    // ── 거치대 — **판정면 밑에 실물을 세운다.** `i === 0` 은 카트 상판이라 건너뛴다
-    // (`topZOf` 가 이미 그 규약을 쓴다); 그 뒤로 오는 줄은 전부 **따로 선 거치대**다.
-    // 이름이 아니라 자리로 가르는 이유 — 프로필마다 이름이 다르고(`상판`/`작업대`),
-    // 앞으로 거치대가 더 는다(실기 담당자 2026-08-08). 이름을 박으면 그때마다 여기를 고친다.
+    // ── 소품 — 배열 순서가 아니라 역할 이름으로 가른다. 2026-09-09 프로필에 거치대2가
+    // 카트보다 먼저 들어오면서 `i===0` 규약은 거치대2를 숨기고 카트를 작업대로 한 번 더 그렸다.
     //
     // **크기도 자리도 상자에서 온다. 상수로 안 베낀다** — `config.yaml` 이
     // *"이 작업대는 바뀔 예정이다 — 바뀌면 이 세 줄만 다시 잰다"* 라고 적어 뒀다.
     // 베끼면 다시 재는 날 그림만 옛 자리에 남는다. 그래서 **게이트가 모르면 안 그린다.**
     // 상자는 이미 베이스 기준(`toBase`)이라 카트 홀더 밖에 세운다 — 홀더에 넣으면
     // `facingRad` 로 한 번 더 돌아 실측 자리를 벗어난다.
-    if (showProps && i > 0 && !provisional) {
+    if (showProps && isFixture2 && !provisional) {
+      const holder = new THREE.Group();
+      holder.rotation.x = Math.PI / 2;                     // parts Y-up → 작업셀 Z-up
+      holder.position.set(mm((x0 + x1) / 2), mm((y0 + y1) / 2), mm(b.topZMm - FIXTURE2_VISUAL.bodyHMm));
+      holder.name = 'fixture2';
+      holder.add(fixture2({
+        wMm: x1 - x0, dMm: y1 - y0, hMm: FIXTURE2_VISUAL.bodyHMm,
+        holes: FIXTURE2_VISUAL.holes, roundSlots: FIXTURE2_VISUAL.roundSlots,
+        clamps: FIXTURE2_VISUAL.clamps,
+      }));
+      g.add(holder);
+    } else if (showProps && !isCart && !provisional) {
       // ⚠ **상자를 보정하지 않고 그대로 세운다.** 그래서 상자가 틀리면 그림이 카트를 뚫는다 —
       // 그게 버그가 아니라 **검출기**다. 2026-08-08 에 `작업대` 가 196mm 어긋난 것을 잡은 게
       // 정확히 이 방식이었다 (`docs/evidence/2026-08-08/stand-vs-cart-overlap.md`).
@@ -167,9 +180,7 @@ export function makeWorkspace(ws, { showProps = true, theme } = {}) {
       sh.rotation.x = Math.PI / 2;                     // Y-up → Z-up (카트 홀더와 같은 다리)
       sh.position.set(mm((x0 + x1) / 2), mm((y0 + y1) / 2), mm(cellFloorZ));
       sh.name = `stand:${b.name ?? i}`;
-      // 작업대 상판 무늬 — 스캔 정사영(2026-09-05 · 작업대 올리기 전 스캔이지만 **무늬는 판의 것**이라 유효).
-      // 이름으로 고른다 — 상자가 늘면 여기에 한 줄 (`Shared/assets/scan/<name>-top.jpg` · 없으면 흰 판)
-      const BENCH_MAPS = { 작업대1: 'bench1-top', 작업대2: 'bench2-top', 작업대3: 'bench3-top' };
+      // 작업대 상판 무늬 — 스캔 정사영(2026-09-05). 검은 매트 위치까지 들어 있으므로 새 판을 덧그리지 않는다.
       sh.add(sideStand({
         topMap: BENCH_MAPS[b.name] ? scanTexture(BENCH_MAPS[b.name]) : null,
         wMm: x1 - x0, dMm: y1 - y0,
@@ -181,7 +192,7 @@ export function makeWorkspace(ws, { showProps = true, theme } = {}) {
       g.add(sh);
     }
 
-    // ── 무엇을 그릴지 (2026-08-08 실기 담당자 판정 · 두 번에 걸쳐 좁혀졌다)
+    // ── 무엇을 그릴지 (2026-08-08 주인님 판정 · 두 번에 걸쳐 좁혀졌다)
     //
     // **소품이 그 면을 실물로 보여주면 판정면·테두리는 안 그린다.** 중복이라 "상판이 두 개" 로
     // 읽힌다. 카트에서 판만 걷고 테두리를 남겼더니 **그 선이 또 두 번째 상판이 됐다** —
@@ -196,7 +207,7 @@ export function makeWorkspace(ws, { showProps = true, theme } = {}) {
     //
     // 소품을 끄면(`showProps: false`) 판정면이 유일한 근거이므로 그때는 전부 그린다.
     const drawFace = !showProps;                  // 소품이 있으면 판정면은 소품이 대신한다
-    const drawMargin = !showProps || i > 0;       // 카트(i=0)는 여유가 10mm 라 뺀다
+    const drawMargin = !showProps || !isCart;     // 카트는 여유가 10mm 라 뺀다
     const cx = mm((x0 + x1) / 2);
     const cy = mm((y0 + y1) / 2);
     const pw = mm(x1 - x0);

@@ -1,7 +1,7 @@
 // 정차 자리 선택 — **후보를 평가한 결과에서 하나를 고른다** (2026-09-06 · `SIM-TAB-CONVERGE-LOOP` phase 2).
 //
-// 후보는 `workcell.AMR_DROP`(채택) + `AMR_DROP_CANDIDATES` 6 — 08-31·09-04 무조코 스윕이 낸 「가능한 자리」 격자다. 거치대를
-// 옮기면 각 후보의 「닿나·부딪히나·얼마나 걸리나」가 달라지므로 매번 다시 평가한다(스윕을 다시 돌리지 않는다 — 입력마다 2~3분).
+// 후보는 `workcell.AMR_DROP`(채택) + `AMR_DROP_CANDIDATES` — 옛 스윕값은 근거로 보존하되, 09-09 현장 대조에서 정한
+// 최소 전진거리보다 가까운 자리는 실행 후보에서 뺀다. 거치대를 옮기면 「닿나·부딪히나·얼마나 걸리나」를 매번 다시 평가한다.
 // 고르는 규칙은 코드가 적어 둔 맞바꿈 그대로다 — 270° 는 팔이 덜 뻗고 180° 는 빨리 끝난다 (`workcell.js` §AMR_DROP_CANDIDATES).
 // 이 파일은 순수 산술이다 — IK·접촉은 부르는 쪽이 채워 넣는다.
 import { AMR_DROP, AMR_DROP_CANDIDATES } from '../workcell.js';
@@ -12,8 +12,9 @@ export const PRIORITIES = {
   short: { label: '덜 뻗게', hint: '팔이 제일 덜 뻗는 자리 (여유가 커진다)' },
 };
 
-/** 평가할 후보 전부 — 채택값이 0번이다 */
-export const stopCandidates = () => [AMR_DROP, ...AMR_DROP_CANDIDATES];
+/** 평가할 후보 전부 — 채택값이 0번이며 현장 최소거리보다 가까운 옛 후보는 제외한다 */
+export const stopCandidates = () => [AMR_DROP, ...AMR_DROP_CANDIDATES]
+  .filter((s) => s.fromHomeMm >= AMR_DROP.fromHomeMm);
 
 /** 9칸 관절해에서 팔이 서 있는 시간(초) — 실기 상한 10% 기준 하한 (`cycle.stepSeconds`) */
 export function dwellSeconds(steps, joints, speedPct) {

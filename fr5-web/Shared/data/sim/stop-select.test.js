@@ -6,10 +6,10 @@ import { AMR_DROP, AMR_DROP_CANDIDATES } from '../workcell.js';
 
 const ev = (o) => ({ stop: AMR_DROP, reachable: true, contactLegs: 0, dwellSec: 30, reachMm: 1300, why: null, ...o });
 
-test('후보 = 채택 1 + 후보 6 · 라벨 문법 하나', () => {
+test('실행 후보는 현장 최소거리 이상만 · 라벨 문법 하나', () => {
   const c = stopCandidates();
-  assert.equal(c.length, 1 + AMR_DROP_CANDIDATES.length);
-  assert.equal(stopLabel(AMR_DROP), '180° · 앞 200mm');
+  assert.ok(c.length >= 1 && c.every((s) => s.fromHomeMm >= 400));
+  assert.equal(stopLabel(AMR_DROP), '180° · 앞 430mm');
   assert.match(stopLabel(AMR_DROP_CANDIDATES[3]), /^270° · 뒤 50mm$/);
 });
 

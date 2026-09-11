@@ -26,6 +26,9 @@ import { createStage } from '@fr5/shared/view3d/lab/stage.js';
 import { applyCalibToCamera } from '@fr5/shared/view3d/global-cam.js';
 import { createLayoutView } from '@fr5/shared/view3d/lab/layout-view.js';
 import { createAnchorOverlay } from '@fr5/shared/view3d/anchor-overlay.js';
+import { subscribeRobotState } from '@fr5/shared/data/datasource/state-stream.js';
+import { selectVisualGhost } from '@fr5/shared/data/visualization/ghost.js';
+import { loadConfig, loadRobot, mountRobotYUp, paintGhost, setGripperOpenPct, setJointsDeg } from '@fr5/shared/view3d/robot.js';
 import { migrateLayout, validateLayout } from '@fr5/shared/data/layout/schema.js';
 import { planToScene } from '@fr5/shared/data/units/units.js';
 import { labToPixel } from '@fr5/shared/view3d/global-cam.js';
@@ -34,6 +37,7 @@ import { labToPixel } from '@fr5/shared/view3d/global-cam.js';
 // 판정면 겹치기는 **FR5 조작대와 같은 구현**을 쓴다 — 화면마다 짜면 두 화면이 서로 다른
 // 경계를 그리기 시작한다 (하드 룰 5 · `zone-overlay.js` 머리말)
 import { createZoneOverlay, calibTrust, zoneLegend } from '@fr5/shared/view3d/zone-overlay.js';
+import { resolveTheme } from '@fr5/shared/view3d/zone-theme.js';
 // **판정을 여기서 짜지 않는다** (2026-08-07). 무엇이 경고인지는 FR5 PiP 와 **같은 함수**가
 // 정한다 — 화면마다 따로 짜면 두 화면의 "괜찮다"가 갈라지고, 안전 표시에서 그게 제일 나쁘다
 import { cameraState, shouldAdoptCalib } from '@fr5/shared/data/camera/state.js';
@@ -113,7 +117,7 @@ const DRIFT_MS = 3000;
 // 감시기에 `--auto` 가 켜지면서 **호스트가 카메라 이동을 스스로 다시 푼다** — 그날 두 번
 // 실제로 걸렸다(16:33 · 16:48). 그런데 이 화면은 `global-cam.json` 을 **열 때 한 번만**
 // 읽어서, 파일은 고쳐졌는데 **화면만 옛 자세로** 남았다. 파일 기준으로는 「자동이 됐다」인데
-// 보는 사람 자리에서는 「자동이 안 된다」다 — 실기 담당자가 그렇게 잡으셨고, 그 말이 맞았다.
+// 보는 사람 자리에서는 「자동이 안 된다」다 — 주인님이 그렇게 잡으셨고, 그 말이 맞았다.
 //
 // drift 파일이 `basis`(어느 기준샷으로 잰 값인가)를 이미 실어 준다. 내가 쓰는 것과 다르면
 // 다시 읽어 카메라에 얹는다. **새 배관 0개** — 이미 3초마다 읽던 파일 하나를 더 볼 뿐이다.
@@ -212,11 +216,52 @@ const FIT = pairMm('fit');
 const ANCHOR = pairMm('anchor') ?? [0, 0];
 const ROT_DEG = Number(Q.get('rot') ?? 0) || 0;
 const ALT_MM = Number(Q.get('alt') ?? 0) || 0;
-const ONLY = Q.get('only')?.split(',').map((s) => s.trim()).filter(Boolean) ?? null;
+const onlyRaw = Q.get('only');
+// 실영상의 기본은 계획 컨베이어뿐이다. 고정물 검증은 예전처럼 전체 배치안을 보여 준다.
+const ONLY = onlyRaw !== null
+  ? onlyRaw.split(',').map((s) => s.trim()).filter(Boolean)
+  : Q.has('feed') ? ['conveyor'] : null;
 const ANCHORS_ON = Q.get('anchors') === '1';
 
 let stage = null;
 let view = null;
+let latestRobotState = null;
+let robotStateStale = true;
+let ghostModel = null;
+let ghostLastKey = '';
+
+const ghostName = (kind) => ({ target: '이동 목표', preview: '미리보기', replay: '되감기',
+  simulation: '시뮬레이션' })[kind] ?? kind;
+
+function applyRobotGhost() {
+  const chosen = robotStateStale ? null : selectVisualGhost(latestRobotState);
+  const trust = calibTrust(cam.drift, cam.calib, cam.driftRow);
+  const visible = Boolean(ghostModel && chosen && trust.key !== 'invalid');
+  const key = visible ? `${chosen.source}|${chosen.seq}|${chosen.jointsDeg.join(',')}|${trust.key}` : 'off';
+  if (ghostModel && key !== ghostLastKey) {
+    ghostLastKey = key;
+    if (visible) {
+      const j = chosen.jointsDeg;
+      setJointsDeg(ghostModel.robot, { j1: j[0], j2: j[1], j3: j[2], j4: j[3], j5: j[4], j6: j[5] });
+      if (Number.isFinite(chosen.gripperPct)) {
+        setGripperOpenPct(ghostModel.gripperGroup, chosen.gripperPct, ghostModel.fingerHalfStrokeMm);
+      }
+      const opacity = trust.key === 'ok' || trust.key === 'none' ? 0.5 : 0.5 * resolveTheme('video').dimA;
+      ghostModel.robot.traverse((o) => {
+        if (!o.isMesh || !o.userData.__ghosted) return;
+        for (const m of (Array.isArray(o.material) ? o.material : [o.material])) m.opacity = opacity;
+      });
+    }
+    ghostModel.robot.visible = visible;
+  }
+  const text = robotStateStale ? '브리지 상태 끊김 — 고스트 숨김'
+    : trust.key === 'invalid' ? `${trust.label} — 고스트 숨김`
+      : chosen ? `파란 고스트 = ${ghostName(chosen.kind)}${chosen.seq == null ? '' : ` · #${chosen.seq}`}`
+        : '공동 고스트 없음';
+  $('ghost').textContent = text;
+  $('ghost').classList.toggle('warn', robotStateStale || trust.key === 'invalid');
+  if (globalThis.__cam) globalThis.__cam.ghost = { visible, state: chosen, stale: robotStateStale };
+}
 
 // ══ 판정면 겹치기 (2026-08-13 · `docs/goals/GOAL-cam-zone-overlay.md`) ═════════════
 //
@@ -356,7 +401,7 @@ try {
   // 갱신하므로, 종이를 밀면 화면이 따라온다. 값이 그대로면 다시 안 그린다.
   // 나이도 같이 보여준다 — 감시가 죽으면 파일이 얼어붙고, 그때 "N분 전" 이 그 사실을 말한다.
   if (ANCHORS_ON) {
-    const anchorOv = createAnchorOverlay(stage.scene);
+    const anchorOv = createAnchorOverlay(stage.scene, { materialStyle: 'defense-reference-v1' });
     const read = async () => {
       const adoc = await loadJson('/config/scene-anchors.json');
       const r = anchorOv.update(adoc);
@@ -422,8 +467,43 @@ try {
     calib,
   };
   const paintZones = () => drawZones({ ...zoneArgs, trust: calibTrust(cam.drift, calib, cam.driftRow) });
-  afterDrift = paintZones;
+  afterDrift = () => { paintZones(); applyRobotGhost(); };
   paintZones();
+
+  // ── 공동 FR5 고스트. `/ws/state`만 **받고**, hello·claim·명령은 보내지 않는다.
+  // 베이스와 보정이 모두 있어야 같은 lab 자리에 설 수 있다. 없으면 추측하지 않고 숨긴다.
+  if (robotBase) {
+    const { gripper } = loadConfig();
+    loadRobot({ urdfUrl: '/FAIRINO_FR5/fairino5_v6.urdf', gripperCfg: gripper,
+      gripperDir: '/PGEA_100_40/' }).then(({ robot, gripperGroup }) => {
+      robot.visible = false;
+      paintGhost(robot);
+      setTimeout(() => paintGhost(robot), 400);
+      setTimeout(() => paintGhost(robot), 1600);
+      const holder = mountRobotYUp(null);
+      holder.name = 'sharedCameraGhost';
+      holder.position.set(...planToScene([robotBase.xMm, robotBase.yMm, robotBase.zMm]));
+      const yaw = new THREE.Group();
+      yaw.rotation.z = (robotBase.yawDeg * Math.PI) / 180;
+      yaw.add(robot); holder.add(yaw); stage.scene.add(holder);
+      ghostModel = { robot, gripperGroup, holder, fingerHalfStrokeMm: gripper.fingerHalfStrokeMm };
+      ghostLastKey = '';
+      applyRobotGhost();
+    }).catch((e) => {
+      $('ghost').textContent = `고스트 모델을 못 읽었습니다: ${e?.message ?? e}`;
+      $('ghost').classList.add('warn');
+    });
+  } else {
+    $('ghost').textContent = '로봇 베이스 미등재 — 고스트 숨김';
+    $('ghost').classList.add('warn');
+  }
+  latestRobotState = st;
+  robotStateStale = false;
+  subscribeRobotState({
+    onSnapshot: (snap) => { latestRobotState = snap; robotStateStale = false; applyRobotGhost(); },
+    onStale: () => { robotStateStale = true; applyRobotGhost(); },
+  });
+  applyRobotGhost();
 
   // 거치 높이는 **판정이 아니라 사실**이라 `cameraState` 에 없다 — 여기서 적는다.
   // 해상도·합성 고정물 경고는 위 상태 띠가 맡는다. 같은 말을 두 곳에서 하지 않는다
@@ -453,6 +533,7 @@ try {
   // 다시 검출해 이 값과 대조하면 "겹쳐 보인다" 가 픽셀 숫자가 된다
   // (`scripts/check/cam-web-verify.mjs`).
   globalThis.__cam = { stage, calib, fit: FIT, anchor: ANCHOR, draw,
+    ghost: { visible: false, state: null, stale: robotStateStale },
     get view() { return view; },
     // 판정면이 **정말 그 자리에 섰는지**는 밖에서 숫자로 봐야 판정이 된다.
     // `zones` 가 `null` 이면 안 그린 것이고, 사유는 `#zones` 문구가 들고 있다

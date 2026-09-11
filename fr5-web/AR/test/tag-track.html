@@ -8,9 +8,7 @@
   킬-실험 (2026-09-07 · rnd/PIP-GHOST-CONVERGE-LOOP 다음 수 · 「폰이 실물 자리를 아는 법」).
 
   묻는 것 하나 — **폰(WebXR 이미지 추적)이 카트 상판의 AprilTag 36h11(145mm)을 잡고, 그 자리에서 로봇 베이스 원이
-  실물 베이스 위에 앉나.** 흑백 격자는 이미지 추적 품질이 낮을 수 있어(ARCore 는 무늬가 많은 그림을 좋아한다)
-  잡히는지 자체가 실험이다. 기하는 전부 기존 실측이다 — `Shared/assets/tag/track/geometry.json`
-  (= `calib-shots/tag-layout.json` + `robot-base-in-tag.json` 사본 · 새 실측 0).
+  실물 베이스 위에 앉나.** 새 측정값은 없다. `tag-layout.json` + `robot-base-in-tag.json` 정본을 빌드 자산으로 복사한 것만 읽는다.
 
   판정선 — 1.5m 에서 태그가 잡히고(`tracked`) 베이스 떨림(30프레임 표준편차) ≤ 10mm · 다른 태그 예측 사각형이 실물 태그 위에
   앉으면 **태그 정합 채택**. 안 잡히면 무늬 포스터 → 그것도 안 되면 두 점 탭.
@@ -40,8 +38,8 @@
 <body>
 <div id="app">
   <h1>태그 정합 킬-실험</h1>
-  <p>카트 상판의 AprilTag(145mm)을 폰이 잡으면 그 자리에 <b>로봇 베이스 원(주황)·Z축(파랑)</b>과 <b>다른 태그의 예측 사각형(초록)</b>을 그린다.
-     실물 베이스·실물 태그 위에 앉으면 정합 OK. 로봇을 비추기만 하면 된다 — 명령은 보내지 않는다.</p>
+  <p>카트 상판의 AprilTag(145mm)을 폰이 잡으면 로봇 베이스 원과 다른 태그 예측 사각형을 겹친다.
+     이 판은 정합 가능성만 결정하며 로봇 명령은 보내지 않는다.</p>
   <p id="sup">확인 중…</p>
   <button id="go" type="button" disabled>AR 시작</button>
   <button id="copy" type="button">기록 복사</button>
@@ -79,13 +77,14 @@ else {
   $('sup').textContent = ok ? 'immersive-ar 지원 · 플래그 webxr-incubations 가 켜져 있어야 이미지 추적이 열린다' : 'immersive-ar 미지원';
 }
 $('go').disabled = !ok;
-window.__tagTrack = { ok, ids, geo };   // 헤드리스 확인용 — 폰 없이 볼 수 있는 것은 여기까지다
 
-// 태그 비트맵 → ImageBitmap (검은 사각형 8칸 = 145mm 그대로. 여백을 넣으면 widthInMeters 도 그만큼 커져야 한다)
-const bitmaps = await Promise.all(ids.map(async (i) => {
-  const blob = await fetch(`/tag/track/id${i}.png`).then((r) => r.blob());
-  return createImageBitmap(blob);
-}));
+const bitmap = async (path) => createImageBitmap(await fetch(path).then((r) => r.blob()));
+const bitmaps = await Promise.all(ids.map((i) => bitmap(`/tag/track/id${i}.png`)));
+const SHEET_M = 0.210 * (geo.tagSizeMm / 160);
+const sheets = await Promise.all(ids.map((i) => bitmap(`/tag/track/apriltag36h11-160mm-id${i}-A4.png`)));
+const probe = await bitmap('/tag/track/probe.jpg');
+const names = [...ids.map((i) => `tag${i}`), ...ids.map((i) => `sheet${i}`), 'probe'];
+window.__tagTrack = { ok, ids, geo };
 
 let flipY = false;
 $('flip').onclick = () => { flipY = !flipY; $('flip').setAttribute('aria-pressed', String(flipY)); say(`Y 뒤집기 ${flipY ? '켬' : '끔'}`); };
@@ -97,7 +96,11 @@ $('go').onclick = async () => {
       requiredFeatures: ['local', 'image-tracking'],
       optionalFeatures: ['dom-overlay'],
       domOverlay: { root: $('ov') },
-      trackedImages: bitmaps.map((image) => ({ image, widthInMeters: TAG_M })),
+      trackedImages: [
+        ...bitmaps.map((image) => ({ image, widthInMeters: TAG_M })),
+        ...sheets.map((image) => ({ image, widthInMeters: SHEET_M })),
+        { image: probe, widthInMeters: 0.30 },
+      ],
     });
   } catch (e) {
     // 원인을 가른다 — 이미지 추적 없이도 안 열리면 AR 자체(ARCore·권한) 문제, 열리면 `image-tracking` 만 막힌 것(= 플래그)
@@ -172,7 +175,6 @@ $('go').onclick = async () => {
     yaw.add(lab); inner.add(yaw); pose.add(inner); scene.add(pose);
     return { id: i, pose, inner, lab };
   });
-
   // 떨림 — 베이스 원점의 세계 좌표를 30프레임 모아 표준편차(mm)
   const baseWorld = new THREE.Vector3();
   const hist = [];
@@ -192,15 +194,17 @@ $('go').onclick = async () => {
   const loop = (t, frame) => {
     frames += 1; if (t - fpsAt > 1000) { fps = frames; frames = 0; fpsAt = t; }
     dbg.n += 1; dbg.lastType = frame?.constructor?.name ?? null; dbg.vis = session.visibilityState; dbg.presenting = renderer.xr.isPresenting;
-    if (!frame) dbg.noFrame += 1; else if (typeof frame.getImageTrackingResults !== 'function') dbg.noMethod += 1; else dbg.xr += 1;
+    if (!frame) { dbg.noFrame += 1; return; }   // 창 rAF 가 섞여 온다 — XR 프레임만 그린다 (실측: setSession 뒤 setAnimationLoop 이 창 루프를 다시 켠다)
+    if (typeof frame.getImageTrackingResults !== 'function') dbg.noMethod += 1; else dbg.xr += 1;
     let results = null;
     try { results = frame && typeof frame.getImageTrackingResults === 'function' ? frame.getImageTrackingResults() : null; } catch (e) { dbg.err = `${e?.name}: ${e?.message}`; }
     dbg.results = results ? results.length : null;
+    dbg.states = results ? [...results].map((r) => `${names[r.index]}:${r.trackingState}:${r.measuredWidthInMeters ? Math.round(r.measuredWidthInMeters * 1000) : '?'}mm`) : null;   // 'emulated' 도 「한 번은 봤다」는 뜻이다
     if (!results) { $('hud').textContent = `XR 프레임 없음 (frame=${dbg.lastType} · 메서드 ${frame ? typeof frame.getImageTrackingResults : '-'} · presenting=${dbg.presenting} · vis=${dbg.vis}${dbg.err ? ' · ' + dbg.err : ''})`; renderer.render(scene, camera); return; }
     const seen = [];
     let best = null;
     for (const r of results) {
-      const rig = rigs[r.index]; if (!rig) continue;
+      const rig = rigs[r.index];
       const p = frame.getPose(r.imageSpace, ref);
       const tracked = r.trackingState === 'tracked';
       rig.pose.visible = Boolean(p) && tracked;
@@ -223,7 +227,7 @@ $('go').onclick = async () => {
     } else hist.length = 0;
     $('hud').textContent = [
       `${fps}fps · 보임 ${results.length ? seen.join(' · ') : '없음 — 태그를 비추세요'}`,
-      best ? `기준 id${best.rig.id} · 거리 ${best.d.toFixed(2)}m · 잰 폭 ${best.wm ? (best.wm * 1000).toFixed(0) + 'mm' : '—'} (선언 ${geo.tagSizeMm})`
+      best ? `기준 id${best.rig.id} · 거리 ${best.d.toFixed(2)}m · 잰 폭 ${best.wm ? (best.wm * 1000).toFixed(0) + 'mm' : '—'}`
            + ` · 베이스 떨림 ${jitter == null ? '…' : jitter.toFixed(1) + 'mm'} ${jitter != null && jitter <= 10 ? '✓' : ''}` : '',
       '주황 원 = 로봇 베이스 · 파랑 = Z축 · 초록 = 다른 태그 예측 · 어긋나면 「Y 뒤집기」',
     ].filter(Boolean).join('\n');

@@ -554,6 +554,85 @@ try {
   check('조작바가 `hidden` 을 지킨다 (#bar display 우선순위 회귀 방지)',
     out.barHidden && out.barDisplay === 'none', `hidden=${out.barHidden} display=${out.barDisplay}`);
 
+  // ── D222 — 실카메라 전에 같은 36h11 검출기가 기존 네 이미지를 읽는지 고정한다.
+  await p.navigate(`http://localhost:${PORT}/test/tag-cv-track.html?fixture=1`);
+  const tagCv = await p.waitFor('globalThis.__tagCv?.fixture?.done && JSON.stringify(globalThis.__tagCv)');
+  const tagCvState = tagCv ? JSON.parse(tagCv) : null;
+  check('AprilTag 전용 검출기는 기존 ID 0·1·2·4를 4/4 읽는다',
+    JSON.stringify(tagCvState?.fixture?.found) === '[0,1,2,4]',
+    JSON.stringify(tagCvState?.fixture));
+  check('검출 실험은 APRILTAG_36h11과 보수적 해밍 5를 고정한다',
+    tagCvState?.family === 'APRILTAG_36h11' && tagCvState?.maxHammingDistance === 5);
+  check('태그 모서리는 4점씩 보정 입력에 남는다',
+    tagCvState?.fixture?.details?.every((detail) => detail.corners?.length === 4),
+    JSON.stringify(tagCvState?.fixture?.details));
+
+  // ── D224 — 카메라 없이도 12시점 문서 계약과 3태그 가드를 고정한다.
+  await p.navigate(`http://localhost:${PORT}/test/tag-cv-track.html?fixture=1&calibrate=1`);
+  const phoneCalibration = await p.waitFor(`
+    globalThis.__tagCv?.fixture?.done && globalThis.__tagCv?.calibration?.layoutReady && (() => {
+      const cv = globalThis.__tagCv;
+      const markers = cv.fixture.details.slice(0, 3).map((detail) => ({
+        id: detail.expected, corners: detail.corners, hammingDistance: 0,
+      }));
+      for (let i = 0; i < 12; i += 1) cv.addCalibrationShot(markers, '2026-09-11T04:00:00.000Z');
+      try { cv.addCalibrationShot(markers.slice(0, 2)); }
+      catch (error) { cv.calibration.guard = error.message; }
+      cv.calibration.doc = cv.calibrationDocument();
+      return JSON.stringify(cv.calibration);
+    })()`);
+  const phoneCalibrationState = phoneCalibration ? JSON.parse(phoneCalibration) : null;
+  check('폰 보정 캡처는 기존 태그 배치를 읽고 12시점을 만든다',
+    phoneCalibrationState?.layoutReady && phoneCalibrationState?.doc?.shots?.length === 12,
+    JSON.stringify(phoneCalibrationState));
+  check('폰 보정 분포 문턱은 실폰 최소 모델의 가로 50%·세로 40%다',
+    phoneCalibrationState?.requiredCoverage?.x === 0.5 &&
+      phoneCalibrationState?.requiredCoverage?.y === 0.4,
+    JSON.stringify(phoneCalibrationState?.requiredCoverage));
+  check('폰 보정 JSON은 실제 검사 크기와 태그 0·1·2·4 계약을 보존한다',
+    phoneCalibrationState?.doc?.image?.widthPx === 720 &&
+      phoneCalibrationState?.doc?.image?.heightPx === 720 &&
+      JSON.stringify(phoneCalibrationState?.doc?.tagIds) === '[0,1,2,4]' &&
+      phoneCalibrationState?.doc?.tagSizeMm === 145);
+  check('폰 보정 모서리는 OpenCV의 좌상·우상·우하·좌하 순서로 저장한다',
+    JSON.stringify(phoneCalibrationState?.doc?.shots?.[0]?.markers?.[0]?.corners) ===
+      '[[90,90],[629,90],[629,629],[90,629]]',
+    JSON.stringify(phoneCalibrationState?.doc?.shots?.[0]?.markers?.[0]?.corners));
+  check('폰 보정 캡처는 태그 2장뿐인 샷을 거부한다',
+    phoneCalibrationState?.guard?.includes('최소 3장'), phoneCalibrationState?.guard);
+  const phoneSaveFeedback = await p.eval(`(() => {
+    const button = document.getElementById('download');
+    button.click();
+    return { disabled: button.disabled, text: button.textContent,
+      guide: document.getElementById('cal-guide').textContent };
+  })()`);
+  check('폰 보정 저장은 버튼과 안내문에 완료를 바로 표시한다',
+    !phoneSaveFeedback.disabled && phoneSaveFeedback.text.includes('저장 완료') &&
+      phoneSaveFeedback.guide.includes('다운로드 폴더'), JSON.stringify(phoneSaveFeedback));
+
+  // ── D226 — 실제 카메라 없이도 알려진 6DoF를 투영했다가 같은 위치로 복원한다.
+  await p.navigate(`http://localhost:${PORT}/test/tag-cv-track.html?fixture=1&pose=1`);
+  const phonePose = await p.waitFor('globalThis.__tagCv?.fixture?.done && JSON.stringify(globalThis.__tagCv)');
+  const phonePoseState = phonePose ? JSON.parse(phonePose) : null;
+  check('다중 태그 평면 자세는 기존 ID 0·1·2·4 네 장을 함께 쓴다',
+    phonePoseState?.fixture?.pose?.tags === 4, JSON.stringify(phonePoseState?.fixture?.pose));
+  check('알려진 1m 폰 위치를 호모그래피 왕복으로 0.1mm 안에 복원한다',
+    phonePoseState?.fixture?.pose?.errorMm < 0.1,
+    `${phonePoseState?.fixture?.pose?.errorMm?.toFixed?.(6)}mm`);
+  check('합성 자세 재투영 RMS는 0.01px보다 작다',
+    phonePoseState?.fixture?.pose?.rmsPx < 0.01,
+    `${phonePoseState?.fixture?.pose?.rmsPx?.toFixed?.(6)}px`);
+  check('1px대 모서리 잡음에서도 폰 위치가 5mm 안에 남는다',
+    phonePoseState?.fixture?.pose?.noisyRmsPx < 2 && phonePoseState?.fixture?.pose?.noisyErrorMm < 5,
+    `RMS ${phonePoseState?.fixture?.pose?.noisyRmsPx?.toFixed?.(3)}px · 위치 ${phonePoseState?.fixture?.pose?.noisyErrorMm?.toFixed?.(3)}mm`);
+  check('태그 2장만 보이면 자세를 지어내지 않는다',
+    phonePoseState?.fixture?.pose?.twoTagGuard?.includes('3장 이상'),
+    phonePoseState?.fixture?.pose?.twoTagGuard);
+  check('폰 자세 모드는 RMS 3px·3태그·40mm 경로 간격을 고정한다',
+    phonePoseState?.pose?.maxRmsPx === 3 && phonePoseState?.pose?.minTags === 3 &&
+      phonePoseState?.pose?.pathStepMm === 40, JSON.stringify(phonePoseState?.pose));
+  if (process.env.TAG_CV_SHOT) await p.screenshot(process.env.TAG_CV_SHOT);
+
   check('콘솔 에러 0', p.consoleErrors.length === 0, p.consoleErrors.slice(0, 2).join(' | '));
 } catch (e) {
   check('실행', false, e.message);

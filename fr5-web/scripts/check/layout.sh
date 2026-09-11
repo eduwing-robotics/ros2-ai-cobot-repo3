@@ -14,7 +14,9 @@ echo "== 배치안 =="
 node --input-type=module -e "
 import { PRESETS, buildPreset } from './Shared/data/layout/presets.js';
 import { validateLayout, reachCheck, crossings } from './Shared/data/layout/schema.js';
-import { PROPS, assembleProps } from './Shared/view3d/parts.js';
+import { DEFENSE_M, M, PROPS, assembleProps } from './Shared/view3d/parts.js';
+import { createAnchorOverlay, ANCHOR_PROPS } from './Shared/view3d/anchor-overlay.js';
+import assert from 'node:assert/strict';
 import { CATALOG, CATEGORIES, PROP_CARDS, cardKey, SIZE_MM, SIZE_LABEL, SIZE_RANGE_MM } from './Shared/data/layout/catalog.js';
 import * as THREE from 'three';
 
@@ -24,6 +26,134 @@ const bad  = (s) => { console.log('  FAIL  ' + s); fail = 1; };
 
 // 겹침 판정은 **맞닿는 것을 허용한다** — 컨베이어를 작업대 끝에 붙이는 건 정상이다.
 const TOUCH_M = 0.003;   // 3mm
+
+// 공장 연출/경로 평벨트 회귀 — 실측 core 보존, 고정 프레임, 되감기, 실주행 방향/연결 초기화.
+{
+  let passed = 0;
+  const check = (name, fn) => {
+    try { fn(); passed += 1; } catch (e) { bad('공장 벨트 ' + name + ': ' + e.message); }
+  };
+  const real = buildPreset('realmap');
+  const stage = buildPreset('factory-walk');
+  check('실측 core 보존', () => {
+    for (const key of ['stations', 'arms', 'amrs', 'frame']) assert.deepEqual(stage[key], real[key]);
+    for (const prop of real.props) assert.deepEqual(stage.props.find((p) => p.id === prop.id), prop);
+    assert.match(PRESETS.find((p) => p.id === 'factory-walk').label, /연출/);
+  });
+  check('레퍼런스 외관 계약', () => {
+    assert.equal(stage.appearance, 'defense-reference-v1');
+    assert.equal(real.appearance, undefined);
+    assert.ok(validateLayout({ ...real, appearance: 'unknown-look' }).some((e) => e.includes('appearance')));
+  });
+  check('재질 적용 범위', () => {
+    const styled = assembleProps(stage.props, {
+      materialStyle: stage.appearance,
+      materialFilter: (p) => p.id === 'convIn' || p.id === 'convOut' || p.id?.startsWith('factory-'),
+    });
+    const materials = (id) => {
+      const found = new Set();
+      styled.getObjectByName(id).traverse((o) => {
+        if (!o.isMesh) return;
+        for (const material of Array.isArray(o.material) ? o.material : [o.material]) found.add(material);
+      });
+      return found;
+    };
+    const originals = new Set(Object.values(M));
+    const defense = new Set(Object.values(DEFENSE_M));
+    assert.ok([...materials('table1')].some((m) => originals.has(m)));
+    assert.ok(![...materials('table1')].some((m) => defense.has(m) && !originals.has(m)));
+    assert.ok([...materials('factory-inspection')].some((m) => defense.has(m)));
+    assert.ok([...materials('convIn')].some((m) => defense.has(m)));
+    assert.equal(DEFENSE_M.floor.map?.isDataTexture, true);
+  });
+  const group = assembleProps(real.props);
+  const input = group.getObjectByName('convIn');
+  const output = group.getObjectByName('convOut');
+  const api = group.userData;
+  const belt = input.userData.belt;
+  const seam = input.getObjectByName('belt-surface');
+  input.updateMatrixWorld(true);
+  const installedAt = input.position.toArray();
+  const initial = Array.from(seam.instanceMatrix.array);
+  const fixed = input.children.filter((o) => o !== seam).map((o) => o.matrix.toArray());
+  check('치수와 태그 일치', () => {
+    for (const [id, tag] of [['convIn', 33], ['convOut', 32]]) {
+      const prop = real.props.find((p) => p.id === id);
+      assert.deepEqual(prop.opts, ANCHOR_PROPS[tag].opts);
+      const size = new THREE.Box3().setFromObject(PROPS.conveyor(prop.opts));
+      const dimensions = size.getSize(new THREE.Vector3()).multiplyScalar(1000);
+      assert.ok(Math.abs(size.min.y) < 1e-7);
+      assert.ok(Math.abs(dimensions.x - prop.opts.lengthMm) < 0.01);
+      assert.ok(Math.abs(dimensions.z - prop.opts.wMm) < 0.01);
+      assert.ok(Math.abs(dimensions.y - prop.opts.hMm) < 0.01);
+    }
+  });
+  check('표면만 전진', () => {
+    assert.equal(api.setConveyorTravel('convIn', 17), true);
+    assert.equal(belt.travelMm, 17);
+    assert.notDeepEqual(Array.from(seam.instanceMatrix.array), initial);
+    assert.deepEqual(input.children.filter((o) => o !== seam).map((o) => o.matrix.toArray()), fixed);
+    assert.deepEqual(input.position.toArray(), installedAt);
+  });
+  check('정지와 절대 되감기', () => {
+    assert.equal(api.setConveyorTravel('convIn', 17), false);
+    api.setConveyorTravel('convIn', -17);
+    assert.notDeepEqual(Array.from(seam.instanceMatrix.array), initial);
+    api.setConveyorTravel('convIn', 0);
+    assert.deepEqual(Array.from(seam.instanceMatrix.array), initial);
+  });
+  check('잘못된 입력 보존', () => {
+    for (const value of [NaN, Infinity, '15', null]) assert.equal(api.setConveyorTravel('convIn', value), false);
+    assert.equal(api.setConveyorTravel('missing', 10), false);
+    assert.equal(api.setConveyorPose('convIn', { xMm: NaN, yMm: 0 }), false);
+    assert.equal(belt.travelMm, 0);
+  });
+  check('pose 정지와 순방향', () => {
+    assert.equal(api.setConveyorPose('convIn', { xMm: 10, yMm: 20 }), false);
+    assert.equal(api.setConveyorPose('convIn', { xMm: 10, yMm: 20, thetaDeg: 90 }), false);
+    assert.equal(api.setConveyorPose('convIn', { xMm: 30, yMm: 20 }), true);
+    assert.equal(belt.travelMm, 20);
+  });
+  check('90도 구간과 역방향', () => {
+    api.setConveyorPose('convOut', { xMm: 0, yMm: 0 });
+    api.setConveyorPose('convOut', { xMm: 0, yMm: 25 });
+    assert.equal(output.userData.belt.travelMm, 25);
+    api.setConveyorPose('convOut', { xMm: 0, yMm: -10 });
+    assert.equal(output.userData.belt.travelMm, -10);
+    assert.equal(belt.travelMm, 20);
+  });
+  check('연결 해제/절대 주입 후 첫 pose는 기준만', () => {
+    api.setConveyorPose('convIn', null);
+    api.setConveyorPose('convIn', { xMm: 1000, yMm: 1000 });
+    assert.equal(belt.travelMm, 20);
+    api.setConveyorTravel('convIn', 100);
+    api.setConveyorPose('convIn', { xMm: 2000, yMm: 2000 });
+    assert.equal(belt.travelMm, 100);
+  });
+  check('앵커 공용 API와 재정합', () => {
+    const scene = new THREE.Scene();
+    const overlay = createAnchorOverlay(scene);
+    assert.equal(overlay.setConveyorTravel(33, 10), false);
+    const doc = { anchors: { 33: { labMm: [100, 200, 965], yawDeg: 0 } } };
+    overlay.update(doc);
+    assert.equal(overlay.setConveyorTravel(33, 10), true);
+    let disposed = false;
+    scene.getObjectByName('belt-surface').addEventListener('dispose', () => { disposed = true; });
+    assert.equal(overlay.update(doc).changed, false);
+    assert.equal(scene.getObjectByName('anchor-33').userData.belt.travelMm, 10);
+    doc.anchors[33].labMm[0] = 120;
+    overlay.update(doc);
+    assert.equal(disposed, true);
+    assert.equal(scene.getObjectByName('anchor-33').userData.belt.travelMm, 0);
+    overlay.setConveyorPose(33, { xMm: 0, yMm: 0 });
+    overlay.setConveyorPose(33, { xMm: -5, yMm: 0 });
+    assert.equal(scene.getObjectByName('anchor-33').userData.belt.travelMm, -5);
+    overlay.dispose();
+    assert.equal(scene.children.length, 0);
+    assert.equal(overlay.setConveyorPose(33, null), false);
+  });
+  note('공장 연출/벨트 회귀 ' + passed + '/11 통과');
+}
 
 for (const preset of PRESETS) {
   const k = preset.id;
@@ -138,7 +268,7 @@ for (const [name, make] of Object.entries(PROPS)) {
   const bb = new THREE.Box3().setFromObject(g);
   const c = bb.getCenter(new THREE.Vector3());
   const sz = bb.getSize(new THREE.Vector3());
-  // `clutter` 만 뺀다 — **흩뿌린 잔물건이라 무게중심이 씨앗마다 다르다.** 규약 위반이 아니다.
+  // clutter 만 뺀다 — **흩뿌린 잔물건이라 무게중심이 씨앗마다 다르다.** 규약 위반이 아니다.
   for (const ax of name === 'clutter' ? [] : ['x', 'z']) {
     if (sz[ax] > 1e-6 && Math.abs(c[ax]) / sz[ax] > 0.15) {
       bad('부품 ' + name + ': 원점이 ' + ax + ' 로 치우쳤다 ('

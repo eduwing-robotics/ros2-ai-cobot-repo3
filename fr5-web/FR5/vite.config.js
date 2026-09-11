@@ -21,7 +21,7 @@ const BRIDGE = `http://${process.env.FR5_BRIDGE || `localhost:${process.env.FR5_
 // (`AR/vite.config.js` §configFiles), FR5 화면은 어차피 브리지가 있어야 뜬다.
 const API_PATHS = ['/robots', '/connect', '/version', '/disconnect', '/state', '/owner',
   '/arm', '/disarm', '/points', '/trajectories', '/slots', '/preview', '/config', '/ik', '/follow', '/stop',
-  '/sim', '/scan', '/runs'];   // `/sim/scene/<id>.xml` 정적 마운트(계약 §정적 서빙 · 09-06) · 2단 조준 스캔·단계 기록(§손목 스캔 · §단계 기록 · 09-07)
+  '/sim', '/scan', '/runs', '/proposal', '/proposals'];   // `/sim/scene/<id>.xml` 정적 마운트(계약 §정적 서빙 · 09-06) · 2단 조준 스캔·단계 기록(§손목 스캔 · §단계 기록 · 09-07) · 제안(§제안 · 09-07 저녁)
 // ⚠ 주석은 `]` 뒤에만 — consts.sh 가 `[ … ]` 안을 정규식으로 읽어 프록시 목록을 대조한다(09-07 에 주석이 `]` 앞에 끼어 `/scan` 을 못 읽었다)
 
 export default defineConfig({

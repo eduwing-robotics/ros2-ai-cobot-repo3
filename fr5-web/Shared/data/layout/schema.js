@@ -69,6 +69,9 @@ export function validateLayout(L) {
   const bad = [];
   if (!L || typeof L !== 'object') return ['배치안이 객체가 아니다'];
   if (L.unit !== 'mm-deg') bad.push(`unit 이 'mm-deg' 가 아니다: ${L.unit}`);
+  if (L.appearance != null && L.appearance !== 'defense-reference-v1') {
+    bad.push(`appearance 를 모른다: ${L.appearance}`);
+  }
   if (!L.floor?.widthMm || !L.floor?.depthMm) bad.push('floor 치수가 없다');
   // **가리키는 것만 본다** — 그 시나리오가 실재하는지는 datasource 몫이다.
   // 여기서 존재까지 보면 배치안 검사가 저장소를 알게 되고 경계가 무너진다.

@@ -22,6 +22,7 @@ html, body { margin: 0; height: 100%; background: var(--c-bg); color: var(--c-fg
 #hud { display: flex; gap: var(--s-3); align-items: center; padding: 10px 14px; flex-wrap: wrap; }
 #status, #scale { font-variant-numeric: tabular-nums; opacity: .85; }
 #status.warn, #scale.warn { color: var(--c-warn); opacity: 1; }   /* 축소 배율을 눈에 띄게 */
+#ghost.warn { color: var(--c-warn); opacity: 1; }
 /* 카메라 상태 띠 — 문장과 색은 `Shared/data/camera/state.js` 가 정한다 (FR5 PiP 와 같은 함수).
  * 여기 CSS 는 그 `tone` 을 이 화면의 어두운 바탕에 맞게 칠할 뿐이다 */
 #camhud { display: flex; gap: 10px; flex-wrap: wrap; font-variant-numeric: tabular-nums; }

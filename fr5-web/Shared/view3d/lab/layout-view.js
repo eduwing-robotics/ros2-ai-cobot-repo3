@@ -11,7 +11,7 @@ import { mm } from '../../data/units/units.js';
 import { reachCheck, crossings, pointAlong, nearestU } from '../../data/layout/schema.js';
 import { createPathGizmo } from './path-gizmo.js';
 import { makeReachZone } from '../reach-zone.js';
-import { assembleProps, PROPS } from '../parts.js';
+import { assembleProps, DEFENSE_M, PROPS } from '../parts.js';
 import { AMR_MM } from '../../data/layout/catalog.js';
 
 /**
@@ -109,6 +109,8 @@ export function createLayoutView(layout, { mountArm } = {}) {
   root.add(contents);
   const disposables = [];
   const track = (g) => { disposables.push(g); return g; };
+  const defenseLook = layout.appearance === 'defense-reference-v1';
+  const roomMat = defenseLook ? DEFENSE_M : { floor: mat.floor, wall: mat.wall, frame: mat.frame, glass: matGlassDoor };
 
   const W = mm(layout.floor.widthMm);
   const D = mm(layout.floor.depthMm);
@@ -123,7 +125,7 @@ export function createLayoutView(layout, { mountArm } = {}) {
   // 저절로 안 보인다** (아래 `side: BackSide` 가 아니라 벽마다 바깥을 향하게 두면 된다).
   const T = 0.12;                       // 벽 두께 120mm
   const SLAB = 0.16;                    // 바닥 슬래브 160mm
-  const slab = new THREE.Mesh(track(new THREE.BoxGeometry(W + T * 2, SLAB, D + T * 2)), mat.floor);
+  const slab = new THREE.Mesh(track(new THREE.BoxGeometry(W + T * 2, SLAB, D + T * 2)), roomMat.floor);
   slab.position.set(W / 2, -SLAB / 2, Z(D / 2));
   slab.name = 'slab';        // AR 오버레이는 바닥을 숨긴다 — 실제 바닥이 뒤에 있다
   slab.receiveShadow = true;
@@ -177,7 +179,7 @@ export function createLayoutView(layout, { mountArm } = {}) {
       if (span <= 0.001 || pc.h <= 0.001) continue;
       const mid = pc.from + span / 2;
       const dims = side.axis === 'x' ? [span, pc.h, T] : [T, pc.h, span];
-      const m = new THREE.Mesh(track(new THREE.BoxGeometry(...dims)), mat.wall);
+      const m = new THREE.Mesh(track(new THREE.BoxGeometry(...dims)), roomMat.wall);
       if (side.axis === 'x') m.position.set(mid, pc.y, Z(side.fixed));
       else m.position.set(side.fixed, pc.y, Z(mid));
       m.castShadow = true; m.receiveShadow = true;
@@ -210,7 +212,7 @@ export function createLayoutView(layout, { mountArm } = {}) {
     const jamb = 0.09;
     for (const s of [-1, 1]) {
       const dims = side.axis === 'x' ? [jamb, h, T * 1.3] : [T * 1.3, h, jamb];
-      const m = new THREE.Mesh(track(new THREE.BoxGeometry(...dims)), mat.frame);
+      const m = new THREE.Mesh(track(new THREE.BoxGeometry(...dims)), roomMat.frame);
       if (side.axis === 'x') m.position.set(at + s * (w / 2), h / 2, Z(side.fixed));
       else m.position.set(side.fixed, h / 2, Z(at + s * (w / 2)));
       m.castShadow = true;
@@ -221,13 +223,13 @@ export function createLayoutView(layout, { mountArm } = {}) {
     const leafW = w / 2 - 0.02;
     for (const s2 of [-1, 1]) {
       const dims = side.axis === 'x' ? [leafW, h - 0.06, 0.05] : [0.05, h - 0.06, leafW];
-      const leaf = new THREE.Mesh(track(new THREE.BoxGeometry(...dims)), matGlassDoor);
+      const leaf = new THREE.Mesh(track(new THREE.BoxGeometry(...dims)), roomMat.glass);
       const off = s2 * (w / 4);
       if (side.axis === 'x') leaf.position.set(at + off, h / 2, Z(side.fixed));
       else leaf.position.set(side.fixed, h / 2, Z(at + off));
       root.add(leaf);
       // 손잡이 — 세로 막대 하나가 "문" 신호를 완성한다
-      const hd = new THREE.Mesh(track(new THREE.CylinderGeometry(0.016, 0.016, 0.55, 8)), mat.frame);
+      const hd = new THREE.Mesh(track(new THREE.CylinderGeometry(0.016, 0.016, 0.55, 8)), roomMat.frame);
       const hoff = s2 * (w / 4 - leafW / 2 + 0.09);
       if (side.axis === 'x') hd.position.set(at + hoff, h * 0.45, Z(side.fixed + 0.05));
       else hd.position.set(side.fixed + 0.05, h * 0.45, Z(at + hoff));
@@ -237,7 +239,7 @@ export function createLayoutView(layout, { mountArm } = {}) {
     // 바닥 문턱 — 입구 위치가 바닥에서도 읽힌다
     const sill = new THREE.Mesh(
       track(new THREE.BoxGeometry(...(side.axis === 'x' ? [w, 0.012, T * 1.6] : [T * 1.6, 0.012, w]))),
-      mat.frame,
+      roomMat.frame,
     );
     if (side.axis === 'x') sill.position.set(at, 0.006, Z(side.fixed));
     else sill.position.set(side.fixed, 0.006, Z(at));
@@ -275,7 +277,7 @@ export function createLayoutView(layout, { mountArm } = {}) {
     const w = mm(wd.widthMm); const h = mm(wd.heightMm); const at = mm(wd.atMm);
     const yc = mm(wd.sillMm ?? 900) + h / 2;
     const dims = side.axis === 'x' ? [w, h, 0.04] : [0.04, h, w];
-    const g2 = new THREE.Mesh(track(new THREE.BoxGeometry(...dims)), matGlassDoor);
+    const g2 = new THREE.Mesh(track(new THREE.BoxGeometry(...dims)), roomMat.glass);
     // **여기가 `Z()` 를 빼먹고 있었다** (2026-08-03 발견). 창 유리·창틀 9개가 방 반대편
     // 밖(z +1.6·+3.6·+1.4)에 떠 있었고, 대시보드 첫 화면에서 판때기로 보였다.
     // D43 이 잡은 거울 사상과 같은 종류다 — 평면도 Y 는 **예외 없이** 이 함수를 지난다.
@@ -285,7 +287,7 @@ export function createLayoutView(layout, { mountArm } = {}) {
     // 창틀
     const fd = side.axis === 'x' ? [w + 0.08, 0.06, T * 1.2] : [T * 1.2, 0.06, w + 0.08];
     for (const sy of [-1, 1]) {
-      const f = new THREE.Mesh(track(new THREE.BoxGeometry(...fd)), mat.frame);
+      const f = new THREE.Mesh(track(new THREE.BoxGeometry(...fd)), roomMat.frame);
       if (side.axis === 'x') f.position.set(at, yc + sy * h / 2, Z(side.fixed));
       else f.position.set(side.fixed, yc + sy * h / 2, Z(at));
       root.add(f);
@@ -294,7 +296,12 @@ export function createLayoutView(layout, { mountArm } = {}) {
 
   // ── 내부 부품. **배치안이 이름과 좌표만 들고 있고 형태는 props/ 에 있다.**
   // `img2threejs` 로 만든 부품도 같은 계약이면 그대로 조립된다.
-  contents.add(assembleProps(layout.props));
+  const propsGroup = assembleProps(layout.props, {
+    materialStyle: layout.appearance,
+    // 실측 작업대·카트는 그대로. 가상 공장 배경과 계획 컨베이어만 레퍼런스 재질을 입힌다.
+    materialFilter: (p) => p.id === 'convIn' || p.id === 'convOut' || p.id?.startsWith('factory-'),
+  });
+  contents.add(propsGroup);
 
   // ── 스테이션. **회색 박스를 걷어냈다** — 부품 형태로 그린다(`prop` 필드).
   // 판정은 바닥 링으로만 한다. 그래야 중앙이 깔끔하고 무엇이 범위 밖인지가 또렷하다.
@@ -411,7 +418,7 @@ export function createLayoutView(layout, { mountArm } = {}) {
 
   // ── AMR. 가상 팔의 도달 범위도 같이 — 이게 "이동하는 도달 범위" 다.
   //
-  // **경로 선을 안 그린다** (실기 담당자 요청 · 2026-08-04). 배치를 정하는 화면에서 선 두 줄이
+  // **경로 선을 안 그린다** (주인님 요청 · 2026-08-04). 배치를 정하는 화면에서 선 두 줄이
   // 바닥을 가로질러 가구보다 눈에 띄었다. 이동거리는 숫자줄이 계속 말한다.
   // 대신 **도킹 자리에 세우고 고를 수 있게** 한다 — 도킹존이 배치의 변수이기 때문이다.
   for (const a of layout.amrs ?? []) {
@@ -678,7 +685,7 @@ export function createLayoutView(layout, { mountArm } = {}) {
     const y = a[1] + (b[1] - a[1]) * k;
     // **높이는 벨트가 정한다.** 스테이션 z 끼리 직선 보간하면 램프 구간에서 작업물이
     // 벨트를 뚫거나 공중에 뜬다 — 사선에서 보면 컨베이어 위에 안 얹혀 보인다
-    // (실기 담당자 지적 · 2026-08-04). 벨트가 없는 구간에서만 스테이션 값을 쓴다.
+    // (주인님 지적 · 2026-08-04). 벨트가 없는 구간에서만 스테이션 값을 쓴다.
     const lerpZ = (a[2] ?? 0) + ((b[2] ?? 0) - (a[2] ?? 0)) * k;
     const belt = beltTopMm(x, y);
     // **크레인이 드는 구간에는 갈고리에 매달린다.** 안 그러면 크레인만 따라가고
@@ -735,14 +742,14 @@ export function createLayoutView(layout, { mountArm } = {}) {
       const uTo = nearestU(wp, dst);
       const uFrom = src ? nearestU(wp, src) : { u: 0, offMm: 0 };
       const lim = a2.amr?.reachMm ?? 400;
-      // ⭐ **`laneOnly` — 이 로봇은 제 경로를 절대 안 벗어난다** (2026-08-20 · 실기 담당자).
+      // ⭐ **`laneOnly` — 이 로봇은 제 경로를 절대 안 벗어난다** (2026-08-20 · 주인님).
       //
       // 시나리오는 자리를 `amrAt` 으로도 쓰는데, 무대에 따라 그 자리가 **컨베이어 위**일 수
       // 있다(`defense-line` 은 자리를 통로 줄·컨베이어 줄 둘로 갈랐다). 그대로 두면 터틀봇이
       // **컨베이어를 타고 다니는 그림**이 된다.
       //
       // 한때 그럴 때 **안 그렸는데**(같은 날 1차), 실물은 사라지지 않고 **컨베이어 옆에 선다** —
-      // 실기 담당자 지적. 그래서 지우는 대신 **경로 위 가장 가까운 점**에 세운다. 화면에서 로봇이
+      // 주인님 지적. 그래서 지우는 대신 **경로 위 가장 가까운 점**에 세운다. 화면에서 로봇이
       // 계속 보이고, 갈 수 없는 자리에 서지도 않는다.
       //
       // ⚠ **기본값이 아니다.** 경로가 목적지를 통째로 빗나간 배치안(`cell` 의 옛 경로가 1664mm
@@ -871,6 +878,9 @@ export function createLayoutView(layout, { mountArm } = {}) {
       }).map((a) => a.id);
     },
     setPlayback,
+    /** 고정된 가상 컨베이어의 표면만 이동. 절대 거리=되감기, pose=활성 구간 실주행. */
+    setConveyorTravel: propsGroup.userData.setConveyorTravel,
+    setConveyorPose: propsGroup.userData.setConveyorPose,
     /** 실기 AMR 자세 주입 — 위 `setAmrLivePose` 참고. 평면도 좌표(mm·도) */
     setAmrLivePose,
     /** 지금 실기 자세가 얹힌 AMR id 들 — 헤드리스 판정용 */

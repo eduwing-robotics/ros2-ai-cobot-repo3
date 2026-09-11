@@ -5,6 +5,9 @@
 // 새 자세를 만들지 않고, 조각마다 도착을 확인하므로 「응답을 못 보면 성공으로 가정」(09-04 ②)의 함정도 피한다.
 // 0.87°/s(10%×30%) 에서 조각 하나 5.7초 · 63° 이동 13조각 ≈ 1.5분 · 손목 반 바퀴 36조각 ≈ 4분. 더 빠른 길은 경로를 훑는 창구(/proposal · 사다리 7)다.
 export const CHUNK_DEG = 5;
+// ⭐ 경로를 훑는 창구(`/proposal` · 2026-09-07 열림)는 5° 상한이 없고 **정착 상한 60초**(D94)만 있다 — 10% 에서 172°. 여유를 두고 120°(약 42초):
+//    손목 반 바퀴 189° 가 2조각(5° 조각 38개 5분 → 약 70초). 조각은 여전히 관절 공간 직선 위의 점이고 조각마다 도착을 확인한다.
+export const BIG_CHUNK_DEG = 120;
 export const ARRIVE_DEG = 1.0;
 
 /** 관절 최대 차(°) */
@@ -22,8 +25,9 @@ export function chunkJoints(cur, target, maxDeg = CHUNK_DEG) {
   return Array.from({ length: n }, (_, k) => (k === n - 1 ? target.slice() : cur.map((v, i) => v + ((target[i] - v) * (k + 1)) / n)));
 }
 
-/** 조각 하나의 예상 시간(s) — 관절 각속도 × 명령 % × 전역 % */
-export const chunkSeconds = (deg, cmdPct = 10, globalPct = 30, degPerSecFull = 28.9) => deg / (degPerSecFull * (cmdPct / 100) * (globalPct / 100));
+/** 조각 하나의 예상 시간(s) — 관절 각속도 × 명령 %. ⚠ **전역 속도는 곱하지 않는다** — 실기 2026-09-07: 전역 30 · 명령 10 에서 63° 가 24초(2.7°/s) 로
+ *  브리지 모델 28.9×10% = 2.89°/s 와 맞았다. 전역을 곱하던 옛 추정(0.87°/s)은 3배 비관적이어서 대기 예산이 부풀었다(GAP 09-07) */
+export const chunkSeconds = (deg, cmdPct = 10, degPerSecFull = 28.9) => deg / (degPerSecFull * (cmdPct / 100));
 
 /** 도착했나 — 모든 관절이 `tol` 안 */
 export const arrived = (now, target, tol = ARRIVE_DEG) => Number.isFinite(maxJointDelta(now, target)) && maxJointDelta(now, target) <= tol;

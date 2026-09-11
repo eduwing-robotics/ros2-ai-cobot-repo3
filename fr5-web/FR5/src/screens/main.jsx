@@ -10,12 +10,15 @@ import { createRoot } from 'react-dom/client';
 import { datasource } from '../data/datasource/index.js';
 import { ControlDock } from '../features/control/ControlDock.jsx';
 import { RobotTwin } from '../features/live/RobotTwin.jsx';
-import { CamView } from '../features/live/CamView.jsx';
-import { DepthView } from '../features/live/DepthView.jsx';
+import { GlobalCameraPip } from '../features/live/CamView.jsx';
+import { WristDepthCameraPip } from '../features/live/DepthView.jsx';
 import { LivePanel } from '../features/live/LivePanel.jsx';
 import { ProgramPanel } from '../features/program/ProgramPanel.jsx';
 import { TeachPanel } from '../features/teach/TeachPanel.jsx';
 import { SimPanel } from '../features/sim/SimPanel.jsx';
+import { Guard } from '../features/sim/Guard.jsx';
+// 시뮬 탭 렌더 오류 울타리 (2026-09-07 20:58 실기 — 바구니 관측 직후 화면이 통째로 죽었다) — 오류는 절 하나의 문장으로, 나머지 탭·STOP 은 산다
+const GuardedSim = (p) => <Guard><SimPanel {...p} /></Guard>;
 import { CARRIER } from '@fr5/shared/data/props.js';
 import { AMR_HOME } from '@fr5/shared/data/workcell.js';
 import { TbPanel } from '../features/amr/TbPanel.jsx';
@@ -27,12 +30,12 @@ const PANELS = [
   ['live', 'Live', LivePanel],
   ['teach', 'Teach', TeachPanel],   // 사다리 2 — 지점(점)과 궤적(선)
   ['program', 'Program', ProgramPanel],   // 사다리 3 — 순서로 엮어 승인·한 단계씩
-  // History 탭은 **없다** (D182 · 2026-09-05 실기 담당자 「제거」) — 기록은 되감기(시뮬레이션 탭 안
+  // History 탭은 **없다** (D182 · 2026-09-05 주인님 「제거」) — 기록은 되감기(시뮬레이션 탭 안
   // 「주행 되감기」)와 DB 가 맡는다. 빈 탭을 자리표시자로 두지 않는다.
   // 「시뮬레이션」 — 거치대를 집어 터틀봇 바구니에 넣는 동작을 **화면에서만** 돌린다 (2026-08-31).
   // ⛔ 실기는 안 움직인다 — 관절각은 브리지 `/ik` 가 컨트롤러에 **묻기만** 해서 받은 값이다.
   // ⛔ **주행 되감기를 지우지 않았다** — 실측 기록을 보는 유일한 창구라 이 탭 안에 산다.
-  ['amr', '시뮬레이션', SimPanel],
+  ['amr', '시뮬레이션', GuardedSim],
   // 「터틀봇」 — 옛 터틀봇 웹앱의 주행 탭이 여기로 왔다 (D182). 맵 캔버스는 왼쪽 3D 가 대신한다.
   ['tb', '터틀봇', TbPanel],
 ];
@@ -135,6 +138,8 @@ function App() {
   // 터틀봇 자세 — 트윈이 그린다. 조작은 「터틀봇」 탭(`datasource.tb` · D182).
   // 주소를 안 줬으면(`?tb=` 없음) 구독 자체를 안 하고 `null` 이라 트윈이 홈에 세운다.
   const [amrPose, setAmrPose] = useState(null);
+  // 시뮬레이션이 고른 **다음 정차 목표**. 실기 자세를 덮지 않고 별도 초록 고스트로 그린다.
+  const [amrTargetPose, setAmrTargetPose] = useState(null);
   // 되감기 — 주행 기록을 고르면 채워진다. **채워진 동안은 실물보다 이쪽이 이긴다**
   // (`view` 와 같은 태도: 실물이 아닐 때는 화면이 그렇게 말한다).
   const [replay, setReplay] = useState(null);
@@ -145,7 +150,7 @@ function App() {
   // 거치대 입력 (phase 4) — 판 위 클릭으로 받은 user1 (x, y). **가정**이다. 실측 표적(색 검출)이 있으면 그것이 이긴다
   const [carrierInput, setCarrierInput] = useState(null);
   // 시뮬 탭이 **직접 읽은** 색 검출·융합 자리(2026-09-07) — 실기 프로필은 `follow.target` 이 odom 이라 `measuredCarrier` 가 비어 트윈에 거치대가 안 그려졌다
-  const [carrierSeen, setCarrierSeen] = useState(null);   // { user1Mm:[x,y,zTop], yawDeg|null, source }
+  const [carrierSeen, setCarrierSeen] = useState(null);   // { user1Mm:[x,y,zTop], yawDeg|null, source, bulletsUser1Mm|null }
   const [pickCarrier, setPickCarrier] = useState(false);
   const measuredCarrier = state.follow?.target?.source === 'color' ? (state.follow.target.user1Mm ?? null) : null;
   const sim = useFollowSim(state, followSim && !replay);
@@ -162,6 +167,19 @@ function App() {
   const pipGhost = ghostLiveCheck && Array.isArray(state.jointsDeg) ? { kind: 'live-check', jointsDeg: state.jointsDeg }
     : goingTarget ? { kind: 'target', jointsDeg: goingTarget }
       : pipPlan ? { kind: 'plan', jointsDeg: pipPlan } : null;
+  // 다른 화면에는 **명령 목표를 다시 게시하지 않는다** — 그것은 이미 motionTarget이 방송한다.
+  // 되감기·시뮬·미리보기 중 최종 한 벌만 현재 조종권자가 화면 전용 소켓으로 빌려 준다.
+  const sharedGhost = state.owner === who && datasource.hasOwnerToken()
+    ? replay?.armJoints ? { robotId: state.robotId ?? 'fr5-lab-a', kind: 'replay',
+      jointsDeg: replay.armJoints, gripperPct: replay.gripperPct ?? null }
+      : sim?.jointsDeg ? { robotId: state.robotId ?? 'fr5-lab-a', kind: 'simulation',
+        jointsDeg: sim.jointsDeg, gripperPct: sim.gripperPct ?? null }
+        : view?.jointsDeg ? { robotId: state.robotId ?? 'fr5-lab-a', kind: 'preview',
+          jointsDeg: view.jointsDeg, gripperPct: view.gripperPct ?? null }
+          : null
+    : null;
+  useEffect(() => { datasource.publishVisualGhost(sharedGhost); }, [sharedGhost]);
+  useEffect(() => () => { datasource.publishVisualGhost(null); }, []);
   useEffect(() => { datasource.setWho(who); }, [who]);
   // 검증용 읽기 훅 (TB 의 `window.TB_TABS` 와 같은 규약). 관절 표는 Live 패널에만 있어서
   // 다른 탭에 선 채로는 값을 볼 데가 없다 — 실렌더 검증이 여기서 읽는다. **쓰기는 없다.**
@@ -173,6 +191,7 @@ function App() {
   // 표적이 안 왔나 · IK 가 실패했나 · 되감기가 고스트를 가져갔나가 전부 같은 그림이다.
   useEffect(() => { window.FR5_SIM = { on: followSim, replay: Boolean(replay), sim }; },
     [followSim, replay, sim]);
+  useEffect(() => { window.FR5_VISUAL = datasource.visualizationState; }, []);
 
   // 가리키는 관절의 링크를 **켠 축에 얹는다** — 이미 켜져 있으면 그대로 둔다.
   // 새 상태가 아니라 파생값이라 떼면 저절로 사라진다
@@ -227,6 +246,7 @@ function App() {
             }
             carrierHeldTcp={replay?.carrierHeldTcp ?? null}
             carrierInHand={replay?.carrierInHand ?? false}
+            carrierHold={replay?.carrierHold ?? null}
             carrierAtMm={
               // 지금 본 거치대 자리 — **색 검출일 때만** 넘긴다. 태그 추종이면 그 자리는
               // 태그이지 물건이 아니라, 그걸로 물건을 그리면 화면이 거짓말을 한다.
@@ -234,11 +254,14 @@ function App() {
               carrierSeen?.user1Mm ?? measuredCarrier ?? (carrierInput ? [carrierInput[0], carrierInput[1], AMR_HOME.topZMm + CARRIER.hMm] : null)
             }
             carrierYawDeg={carrierSeen?.yawDeg ?? null}
+            carrierBulletsUser1Mm={carrierSeen?.bulletsUser1Mm ?? null}
             pickCarrier={pickCarrier}
             onPickCarrier={(xy) => { setCarrierInput(xy); setPickCarrier(false); }}
             workspace={state.workspace ?? null}
             coordDefs={state.coordDefs ?? null}
             amrPose={replay?.pose ?? amrPose}
+            // 팔 조준 고스트도 `replay`를 쓰므로, 터틀봇 위치 기록(`pose`)이 있을 때만 목표를 숨긴다.
+            amrTargetPose={replay?.pose ? null : amrTargetPose}
             amrTrail={replay?.trail ?? null}
             amrDriftPose={replay?.driftPose ?? null}
             amrIsReplay={Boolean(replay)}
@@ -312,18 +335,18 @@ function App() {
               </p>
             )}
           </div>
-          {/* 실영상도 3D 와 같이 탭 밖이다 — 패널 안이면 탭마다 스트림이 끊긴다.
+          {/* 글로벌 카메라와 손목 뎁스카메라도 3D 와 같이 탭 밖이다 — 패널 안이면 탭마다 스트림이 끊긴다.
               **무리로 묶는다** (2026-08-07) — 뎁스가 붙으면서 둘이 세로로 쌓이는데,
               각자 absolute 이면 아래 것의 top 을 위 것의 높이(사람이 끌어서 바꾼다)로
               계산해야 한다. 자리는 `.campips` 가 들고 카드는 순서대로 놓인다 */}
           <div className="campips">
             {/* 판정면 겹치기가 게이트 값을 그대로 쓴다 — 화면이 사본을 안 만든다 */}
-            <CamView workspace={state.workspace ?? null} coordDefs={state.coordDefs ?? null} ghost={pipGhost} />
+            <GlobalCameraPip workspace={state.workspace ?? null} coordDefs={state.coordDefs ?? null} ghost={pipGhost} />
             {/* 글로벌(작업대 전체)과 손목(mm 거리)은 대체재가 아니라 분업이다 —
                 탭으로 하나만 고르게 하지 않는다. 근거 브리프는 2026-08-11 에 반증돼 보관으로
                 갔다 (`docs/archive/global-camera-hud-brief-superseded-2026-08-11.md` §10.5) —
                 **이 분업 판단만 남는다** */}
-            <DepthView handEye={state.handEye} />
+            <WristDepthCameraPip handEye={state.handEye} />
           </div>
           <p className="twinnote" data-t="twin-note" data-live={String(!view)}>
             {/* 되감기(실측 기록)와 시뮬(그림)을 한 글자로 뭉개지 않는다 — 터틀봇 자리(`pose`)가 있을 때만 「되감기/시연 자리」다 (감사 2026-09-06 F2) */}
@@ -331,6 +354,7 @@ function App() {
               ? (replay.pose ? '실물 자세 · 터틀봇은 되감기/시연 자리(반투명)' : '실물 자세 · 반투명 팔은 시뮬(실기 아님)')
               : '실물 자세')}
             {view && state.connected && <span className="mm"> · 반투명은 지금 실물 자리</span>}
+            {!replay?.pose && amrTargetPose && <span className="mm" data-t="amr-target-note"> · 초록 반투명 터틀봇은 이동 목표(실기 명령 아님)</span>}
           </p>
         </section>
         <aside className="side">
@@ -347,6 +371,7 @@ function App() {
           <div className="panelbox">{(() => {
             const Panel = PANELS.find(([id]) => id === tab)?.[2] ?? LivePanel;
             return <Panel state={state} who={who} onView={setView} onReplay={setReplay}
+              onAmrTarget={setAmrTargetPose}
               followSim={followSim} onFollowSim={setFollowSim}
               carrierInput={carrierInput} measuredCarrier={measuredCarrier} onCarrierSeen={setCarrierSeen}
               pickCarrier={pickCarrier} onPickCarrier={setPickCarrier} onClearInput={() => setCarrierInput(null)} />;

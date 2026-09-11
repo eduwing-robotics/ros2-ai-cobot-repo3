@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# FR5 배포 — **윈도우 호스트**. 빌드본(`FR5/dist`)만 밀어 넣는다.
+# FR5 배포 — **윈도우 호스트**. 화면 빌드본(`FR5/dist`)과 접촉 장면을 밀어 넣는다.
 #
 # 2026-08-11 에 로봇 랜선이 윈도우 PC 로 옮겨가 호스트가 둘이 됐다 (`docs/ref/runbook/FR5-BRINGUP.md`).
 # `fr5-ubuntu.sh` 를 그대로 쓸 수 없는 이유 셋 — 전부 실측이다:
@@ -63,6 +63,14 @@ echo "== 빌드 =="
 npm run build:fr5
 [ -f FR5/dist/index.html ] || { echo "  빌드본이 없다 — FR5/dist/index.html"; exit 1; }
 
+# 시뮬 탭의 접촉 층은 `/sim/scene/<robotId>.xml` 을 브리지에서 읽는다. `FR5/dist` 만 보내면
+# 화면은 새것이어도 이 안전 입력은 404라 S3R이 시작 전에 멈춘다(2026-09-10 실기).
+# 생성기는 config·URDF·툴 hull을 다시 읽고 자체 되읽기 검사까지 하므로, 옛 산출물을 그대로
+# 복사하지 않고 배포 때마다 굽는다. 산출물은 D14대로 git에 넣지 않는다.
+echo "== 접촉 장면 =="
+node Sim/scene/build-scene.mjs
+[ -f Sim/out/scene/fr5-lab-a.xml ] || { echo "  장면이 없다 — Sim/out/scene/fr5-lab-a.xml"; exit 1; }
+
 # 배포 전 원격이 무엇을 내고 있었나 (되돌릴 때 대조할 값)
 BEFORE=$(curl -s -m 5 "http://$IP:5055/" | grep -oE '(index|main)-[A-Za-z0-9_-]+\.js' | head -1 || true)
 LOCAL=$(grep -oE '(index|main)-[A-Za-z0-9_-]+\.js' FR5/dist/index.html | head -1 || true)
@@ -70,8 +78,13 @@ echo "== 번들 =="
 echo "  지금 원격: ${BEFORE:-알 수 없음}"
 echo "  보낼 것  : ${LOCAL:-알 수 없음}"
 
-echo "== 전송 (dist 만) =="
+echo "== 전송 (화면 + 접촉 장면) =="
 scp -q -o ConnectTimeout=10 -r FR5/dist/. "$HOST:$REMOTE/"
+
+# StaticFiles는 요청마다 디스크를 읽으므로 장면도 재시작 없이 반영된다.
+ssh -o ConnectTimeout=10 "$HOST" 'New-Item -ItemType Directory -Force -Path "$env:USERPROFILE\FR5Web\Sim\out\scene" | Out-Null' >/dev/null
+scp -q -o ConnectTimeout=10 Sim/out/scene/fr5-lab-a.xml "$HOST:FR5Web/Sim/out/scene/fr5-lab-a.xml"
+echo "  보냄 Sim/out/scene/fr5-lab-a.xml"
 
 # 터틀봇 브리지 주소 — **조건 없이 보낸다** (2026-08-28).
 # ⛔ 한때 이걸 보정값 블록에 넣었는데 그 블록은 `AR=1` 일 때만 돈다 — 그래서 안 갔고,

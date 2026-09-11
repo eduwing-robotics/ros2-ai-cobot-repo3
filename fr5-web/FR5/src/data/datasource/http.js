@@ -15,6 +15,14 @@ let lastSnapshot = null;
 let reconnects = -1;               // 첫 접속은 재연결이 아니다
 let who = null;
 let sentWho = null;
+// 공동 고스트는 명령 소켓과 분리한다. 250ms 주기=4Hz라 계약의 1~10Hz 안이고,
+// 소켓을 닫는 것이 곧 서버의 2초 임대를 즉시 놓는 신호다.
+let visualWs = null;
+let visualLatest = null;
+let visualTimer = null;
+let visualRetry = null;
+let visualSeq = 0;
+let visualLastError = null;
 // claim 이 발급한다. 조종권을 증명하는 것은 이름이 아니라 이것 (D55).
 // **탭 저장소에 남긴다** — 메모리에만 두면 새로고침 한 번에 자기 조종권에서 잠긴다.
 // 화면은 owner 이름만 보고 "내 것"이라 판단하는데 토큰이 없어 반납도 안 됐다 (2026-08-04 실측).
@@ -65,6 +73,7 @@ if (!camHost) {
 // 거기를 바꾸면 여기도 바꾼다 (`?depth=host:port` 로 한 판만 덮어쓸 수 있다).
 const DEPTH_PORT = 5058;
 const DEPTH_KEY = 'fr5.depthHost';
+const DEPTH_SCAN_EVENT = 'fr5:wrist-depth-scan';
 let depthHost = (() => {
   const q = new URLSearchParams(location.search).get('depth');
   if (q !== null) {
@@ -121,6 +130,63 @@ function setToken(v) {
   ownerToken = v || null;
   if (ownerToken) store?.setItem(TOKEN_KEY, ownerToken);
   else store?.removeItem(TOKEN_KEY);
+  restartVisualSocket();
+}
+
+function stopVisualSocket() {
+  clearInterval(visualTimer); visualTimer = null;
+  clearTimeout(visualRetry); visualRetry = null;
+  const old = visualWs; visualWs = null;
+  try { old?.close(); } catch { /* 이미 닫힘 */ }
+}
+
+function sendVisual() {
+  if (!visualLatest || !who || !ownerToken || visualWs?.readyState !== WebSocket.OPEN) return;
+  visualSeq += 1;
+  visualWs.send(JSON.stringify({ type: 'ghost', ...visualLatest, seq: visualSeq, who, token: ownerToken }));
+}
+
+function ensureVisualSocket() {
+  if (!visualLatest || !who || !ownerToken || visualWs?.readyState <= WebSocket.OPEN) return;
+  const mine = new WebSocket(`${WS_BASE}/ws/visualization`);
+  visualWs = mine;
+  mine.onopen = () => {
+    visualLastError = null;
+    sendVisual();
+    if (!visualTimer) visualTimer = setInterval(sendVisual, 250);
+  };
+  mine.onmessage = (e) => {
+    let msg;
+    try { msg = JSON.parse(e.data); } catch { return; }
+    if (msg.ok !== false) return;
+    visualLastError = msg.reason ?? '공동 고스트 게시 거부';
+    dropRejectedOwnerToken(visualLastError);
+    if (!ownerToken) stopVisualSocket();
+  };
+  mine.onclose = () => {
+    if (visualWs !== mine) return;
+    visualWs = null;
+    if (visualLatest && who && ownerToken) {
+      clearTimeout(visualRetry);
+      visualRetry = setTimeout(ensureVisualSocket, 1000);
+    }
+  };
+}
+
+function restartVisualSocket() {
+  const latest = visualLatest;
+  stopVisualSocket();
+  visualLatest = latest;
+  if (latest) ensureVisualSocket();
+}
+
+function dropRejectedOwnerToken(...parts) {
+  const reason = parts.flat().filter(Boolean).join(' · ');
+  if (!ownerToken || !/(조종권|owner 불일치)/.test(reason)) return;
+  // 서버가 이미 무효라고 판정한 증표를 들고 있으면 화면은 "내 것"으로 오판해
+  // 다시 잡기까지 숨긴다. 자동으로 권한을 얻지는 않고, 복구 버튼만 다시 연다.
+  setToken(null);
+  sentWho = null;
 }
 
 function ensureWs() {
@@ -131,6 +197,7 @@ function ensureWs() {
   ws.onmessage = (e) => {
     const msg = JSON.parse(e.data);
     if (msg.ok === false) {        // 거부 응답 — 상태 스냅샷이 아니다
+      dropRejectedOwnerToken(msg.reason, msg.reasons);
       refusalSubs.forEach((cb) => cb(msg.reason ?? '거부됨'));
       return;
     }
@@ -164,8 +231,9 @@ function sendCmd(msg) {
   return { ok: true };             // 거부 사유는 WS 응답 → subscribeRefusals 로 온다
 }
 
-async function api(method, path, body) {
+async function api(method, path, body, extra = {}) {
   const res = await fetch(path, {
+    ...extra,
     method,
     headers: body ? { 'Content-Type': 'application/json' } : undefined,
     body: body ? JSON.stringify(body) : undefined,
@@ -175,6 +243,7 @@ async function api(method, path, body) {
   const j = await res.json().catch(() => null);
   if (!res.ok) {
     const reason = j?.reason ?? (typeof j?.detail === 'string' ? j.detail : `HTTP ${res.status}`);
+    dropRejectedOwnerToken(reason, j?.reasons);
     // 본문을 버리지 않는다 — `/connect` 는 `reasons:[…]` 배열로 거부하고 화면(run 헬퍼)이
     // 그 배열을 읽는다. {ok,reason} 둘로 누르면 사유가 「HTTP 400」이 된다 (게이트가 잡았다)
     return { ...(j && typeof j === 'object' ? j : {}), ok: false, reason };
@@ -183,7 +252,11 @@ async function api(method, path, body) {
 }
 
 export const datasource = {
-  setWho(name) { who = name || null; sendHello(); },
+  setWho(name) {
+    const next = name || null;
+    if (who !== next) { who = next; restartVisualSocket(); }
+    sendHello();
+  },
   subscribeState(cb) {
     ensureWs();
     stateSubs.add(cb);
@@ -393,6 +466,15 @@ export const datasource = {
   // 계약 §카메라가 "실시간 경로는 압축 컬러뿐" 이라 스트림을 안 만든 것이다.
   depthHost: () => depthHost,
   depthStateUrl: () => (depthHost ? `http://${depthHost}/api/camera/state` : null),
+  async depthState() {
+    const url = depthHost ? `http://${depthHost}/api/camera/state` : null;
+    if (!url) return { ok: false, reason: '손목 뎁스카메라 관문 주소가 없어요' };
+    try {
+      const r = await fetch(url, { cache: 'no-store', signal: AbortSignal.timeout(2000) });
+      const body = await r.json().catch(() => null);
+      return r.ok ? { ok: true, state: body } : { ok: false, reason: `손목 뎁스카메라 HTTP ${r.status}` };
+    } catch (e) { return { ok: false, reason: `손목 뎁스카메라 응답 없음 — ${e?.name ?? e}` }; }
+  },
   // ⛔ `/api/camera/info` 는 **주소를 안 만든다** (2026-08-27 · D145). 계약에는 남아 있지만
   // (`calibId` = 프레임 출처 참조) 그걸 쓸 주인은 시연 녹화이고 아직 없다. 손목 변환 판정은
   // 로봇 프로필(`/state.handEye`)이 답한다 — 부를 사람 없는 주소를 미리 만들지 않는다
@@ -405,6 +487,18 @@ export const datasource = {
 
   // 조종권은 이름이 아니라 토큰이 증명한다 (D55). 토큰은 이 모듈만 들고 화면은 모른다
   hasOwnerToken: () => ownerToken !== null,   // 이름만으로 "내 것"이라 하지 않는다
+  /** 화면에 최종 선택된 한 벌만 게시한다. null이면 연결을 닫아 모든 관전자에서 즉시 숨긴다. */
+  publishVisualGhost(ghost) {
+    visualLatest = ghost?.robotId && ghost?.kind && Array.isArray(ghost?.jointsDeg)
+      ? { robotId: ghost.robotId, kind: ghost.kind, jointsDeg: [...ghost.jointsDeg],
+        gripperPct: Number.isFinite(ghost.gripperPct) ? ghost.gripperPct : null }
+      : null;
+    if (!visualLatest) { stopVisualSocket(); return false; }
+    ensureVisualSocket();
+    return Boolean(who && ownerToken);
+  },
+  visualizationState: () => ({ active: Boolean(visualLatest), connected: visualWs?.readyState === WebSocket.OPEN,
+    seq: visualSeq, error: visualLastError }),
   claimOwner: async (w) => {
     const res = await api('POST', '/owner/claim', { who: w });
     if (res?.token) setToken(res.token);      // 같은 이름의 재claim 도 새 토큰을 준다 (owner.py)
@@ -452,19 +546,38 @@ export const datasource = {
 
   // 2단 조준 (계약 §손목 스캔 · §단계 기록 · 2026-09-07 · D191·D192). 스캔은 로봇을 안 움직인다(관측) —
   // 목업은 `truth`·`atTcpMmDeg` 를 받아 「그 자세에서 본 것처럼」 답하고, 실기는 둘을 무시한다(지금 자세·진짜 뎁스)
-  scan: (target, extra = {}) => api('POST', '/scan', { target, ...extra }),
+  depthScanEvent: DEPTH_SCAN_EVENT,
+  scan: async (target, extra = {}) => {
+    const result = await api('POST', '/scan', { target, ...extra });
+    window.dispatchEvent(new CustomEvent(DEPTH_SCAN_EVENT, { detail: { target, result } }));
+    return result;
+  },
   // 글로벌캠 색 검출 산출(브리지 상주가 쓴다 · 계약 §color) — `follow.targetSource` 와 무관하게 마법사 ① 의 대강값이 읽는다
-  carrierPose: () => api('GET', '/config/carrier-pose.json'),
+  // 상주 검출기가 계속 덮어쓰는 살아 있는 파일 — 캐시된 옛 t를 받으면 5초 신선도에서 영원히 탈락한다.
+  carrierPose: () => api('GET', '/config/carrier-pose.json', null, { cache: 'no-store', signal: AbortSignal.timeout(4000) }),
   runs: () => api('GET', '/runs'),
   run: (runId) => api('GET', `/runs/${encodeURIComponent(runId)}`),
   logRun: (runId, line) => api('POST', '/runs', { runId, line }),
   // 임의 관절 목표 — 계약 §명령의 여섯 중 하나(`moveJ`). 서버가 같은 게이트(조건 26·27 포함)를 태운다. 화면은 `speedPct` 상한 10 을 넘기지 않는다
   moveJ: (jointsDeg, speedPct = 10) => sendCmd({ cmd: 'moveJ', jointsDeg, speedPct: Math.min(10, speedPct) }),
+  // 제안 → 승인 = 한 번에 가기 (계약 VISION-CONTRACT §제안 · 2026-09-07 사다리 7). 제안은 판정만(팔 안 움직임) · 승인은 조종권+ARMED 로 `moveJ` 번역 · 응답은 도착 뒤
+  proposeMove: (jointsDeg, tcpMmDeg, label) => api('POST', '/proposal', { kind: 'align', source: 'wizard', label, jointsDeg, ...(tcpMmDeg ? { targetPose: { tcpMmDeg } } : {}), measuredAt: Date.now() / 1000 }),
+  approveProposal: (id) => api('POST', `/proposal/${encodeURIComponent(id)}/approve`, { who, token: ownerToken }),
+  rejectProposal: (id) => api('POST', `/proposal/${encodeURIComponent(id)}/reject`, { who, token: ownerToken }),
+  proposals: () => api('GET', '/proposals'),
   jog: (joint, deltaDeg) => sendCmd({ cmd: 'jog', joint, deltaDeg }),
   gripper: (pct) => sendCmd({ cmd: 'gripper', pct }),
   gripperActivate: () => sendCmd({ cmd: 'gripperActivate' }),
   setMode: (manual) => sendCmd({ cmd: 'mode', manual }),
   // 전역 속도 오버라이드 (계약 §speed · 1~30). **되읽기가 없다** — 서버가 「보낸 값」만 안다
   setSpeedOverride: (pct) => sendCmd({ cmd: 'speed', pct }),
-  stop: () => sendCmd({ cmd: 'stop' }),          // 신원·조종권 없어도 항상 통과 (계약)
+  // 같은 STOP을 두 전송로로 함께 보낸다. 재연결 창에서 WS가 막혀도 POST가 살아 있고,
+  // 둘 중 하나라도 성공하면 정지 요청은 전달됐다. 둘 다 실패한 사실은 호출처가 표시한다.
+  stop: async () => {
+    const wsResult = sendCmd({ cmd: 'stop' });
+    const postResult = await api('POST', '/stop');
+    const ok = wsResult?.ok === true || postResult?.ok === true;
+    return { ok, ws: wsResult, post: postResult,
+      ...(ok ? {} : { reason: [wsResult?.reason, postResult?.reason].filter(Boolean).join(' · ') || 'STOP을 보내지 못했어요' }) };
+  },
 };

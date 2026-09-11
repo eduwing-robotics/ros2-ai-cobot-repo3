@@ -2,7 +2,7 @@
 // 3D 쌍둥이 로딩·관절값 스트림·연결 진단·fail-closed 사유 표시를 실제 브라우저로 본다.
 // 실행: node scripts/check/fr5-web-verify.mjs
 import { spawn } from 'node:child_process';
-import { mkdirSync, mkdtempSync, rmSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
@@ -10,6 +10,8 @@ import { dirname, join } from 'node:path';
 import { openPage, pixelChanged } from './lib/cdp-harness.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '../..');
+const HUD_FRAME = `data:image/jpeg;base64,${readFileSync(join(ROOT,
+  'test/fixtures/rgbd-aligned-color.jpg')).toString('base64')}`;
 const BRIDGE_PORT = 5157;
 // `?cam=` 죽은 주소 — PiP 창만 띄운다(영상은 안 오지만 **무대는 calib 만 있으면 선다** · `CamView.jsx` §판정면 겹치기).
 // 실카메라 게이트(`fr5-cam-verify.mjs`)는 폰이 필요해 여기서 PiP 고스트를 잰다 (rnd/PIP-GHOST-CONVERGE-LOOP D7)
@@ -64,6 +66,29 @@ try {
       === 'Live,Teach,Program,시뮬레이션,터틀봇');
   check('상시 안전 바 8항목',
     (await p.eval(`document.querySelectorAll('[data-t="safeitem"]').length`)) === 8);
+  await p.waitFor(`!!document.querySelector('[data-t="depthview"]')`);
+  await p.eval(`window.dispatchEvent(new CustomEvent('fr5:wrist-depth-scan', { detail: {
+    target: 'carrier', result: { ok: true, reasons: [], view: {
+      target: 'carrier', targetPx: [479.4, 248.1], bulletsPx: [[490.5, 248.6]],
+      blob: { hullAxisDeg: 88.7 }, frame: {
+        url: ${JSON.stringify(HUD_FRAME)}, widthPx: 848, heightPx: 480, capturedAt: 1
+      }
+    } }
+  } }))`);
+  check('손목 뎁스 스캔 정지화면에 표적·총알 HUD가 화소 좌표로 그려진다',
+    !!(await p.waitFor(`document.querySelector('[data-t="depthview"]')?.dataset.open === 'true'
+      && document.querySelectorAll('[data-t="depth-scan-target"]').length === 1
+      && document.querySelectorAll('[data-t="depth-scan-bullet"]').length === 1
+      && document.querySelector('[data-t="depth-scan-note"]')?.textContent.includes('총알 1개')`, { timeoutMs: 3000 })));
+  if (process.env.FR5_HUD_SHOT) {
+    await p.screenshot(process.env.FR5_HUD_SHOT, await p.rect('[data-t="depthview"]'));
+  }
+  await p.eval(`document.querySelector('[data-t="depth-scan-live"]').click()`);
+  check('실시간 보기로 정지 HUD를 즉시 닫는다',
+    !(await p.eval(`document.querySelector('[data-t="depth-scan-overlay"]')`)));
+  check('글로벌 카메라와 손목 뎁스카메라 이름·종류가 분리돼 있다',
+    await p.eval(`document.querySelector('[data-camera="global"] .camhead b')?.textContent === '글로벌 카메라'
+      && document.querySelector('[data-camera="wrist-depth"] .camhead b')?.textContent === '손목 뎁스카메라'`));
   check('미연결 phase 표시 DISCONNECTED',
     !!(await p.eval(`document.querySelector('[data-t="safetybar"]').textContent.includes('DISCONNECTED')`)));
 
@@ -124,6 +149,10 @@ try {
     if (!await p.waitFor(`!!(${find})`, { timeoutMs: 5000 })) throw new Error(`버튼을 못 찾았다: ${text}`);
     return p.eval(`${find}.click()`);
   };
+  const rotateOwnerTokenBehindUi = () => p.eval(`fetch('/owner/claim', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ who: 'kim' })
+  }).then(r => r.json())`);
 
   check('상시 STOP 버튼 존재', !!(await p.eval(`!!document.querySelector('[data-t="safetybar"] [data-t="estop"]')`)));
   // 모드 토글도 상시다 — 잠긴 펜던트를 푸는 유일한 길이라 탭을 옮겨도 사라지면 안 된다 (D72)
@@ -135,6 +164,8 @@ try {
   await clickText('조종권 잡기');
   check('조종권 claim → 안전 바에 kim',
     !!(await p.waitFor(`document.querySelector('[data-t="safetybar"]').textContent.includes('조종권 kim')`, { timeoutMs: 4000 })));
+  check('보유 표시 중에도 수동 다시 잡기 경로가 있다',
+    !!(await p.waitFor(`!!document.querySelector('[data-t="reclaim"]')`, { timeoutMs: 4000 })));
   // 새로고침으로 토큰을 잃어도 자기 조종권에 갇히지 않는다 (2026-08-04 실기 사고)
   await p.eval(`sessionStorage.removeItem('fr5.ownerToken'); location.reload()`);
   await new Promise((r) => setTimeout(r, 2500));
@@ -143,6 +174,16 @@ try {
     !!(await p.waitFor(`document.querySelector('[data-t="claim"]')?.textContent.includes('다시 잡기')`, { timeoutMs: 5000 })));
   await clickText('조종권 다시 잡기');
   check('다시 잡기 → 새 토큰으로 조종권 복구',
+    !!(await p.waitFor(`!!document.querySelector('[data-t="control"] [data-t="confirm"]')`, { timeoutMs: 5000 })));
+
+  // 서버 재시작·같은 이름 재접속 등으로 저장 토큰만 낡은 경우. 값이 "있다"는 이유로
+  // 내 것으로 오판하면 반납도 ARM도 거부되고 다시 잡기 버튼까지 사라진다.
+  await rotateOwnerTokenBehindUi();
+  await clickText('조종권 반납');
+  check('REST가 낡은 토큰을 거부하면 즉시 다시 잡기가 열린다',
+    !!(await p.waitFor(`document.querySelector('[data-t="claim"]')?.textContent.includes('다시 잡기')`, { timeoutMs: 5000 })));
+  await clickText('조종권 다시 잡기');
+  check('REST 거부 뒤 새 토큰으로 복구',
     !!(await p.waitFor(`!!document.querySelector('[data-t="control"] [data-t="confirm"]')`, { timeoutMs: 5000 })));
 
   check('현장확인 전 ARM 비활성',
@@ -161,6 +202,14 @@ try {
   await p.eval(`document.querySelector('[data-t="mode-toggle"]').click()`);
   check('자동으로 → 다시 auto (갇히지 않는다)',
     !!(await p.waitFor(`document.querySelector('[data-t="safetybar"]').textContent.includes('auto')`, { timeoutMs: 5000 })));
+
+  await rotateOwnerTokenBehindUi();
+  await p.eval(`document.querySelector('[data-t="mode-toggle"]').click()`);
+  check('WS가 낡은 토큰을 거부해도 다시 잡기가 열린다',
+    !!(await p.waitFor(`document.querySelector('[data-t="claim"]')?.textContent.includes('다시 잡기')`, { timeoutMs: 5000 })));
+  await clickText('조종권 다시 잡기');
+  check('WS 거부 뒤 ARMED를 유지한 채 조종권 복구',
+    !!(await p.waitFor(`[...document.querySelectorAll('[data-t="control"] button')].some(b => b.textContent.includes('DISARM'))`, { timeoutMs: 5000 })));
 
   const j1Before = parseFloat(await p.eval(`document.querySelector('[data-t="joints"] td').textContent`));
   await p.eval(`[...document.querySelectorAll('[data-t="jogrow"]')][0].querySelectorAll('button')[1].click()`);

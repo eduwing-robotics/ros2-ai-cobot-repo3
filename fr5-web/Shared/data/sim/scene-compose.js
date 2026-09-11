@@ -6,7 +6,7 @@
 // ⚠ MuJoCo 는 월드에 고정된 바디끼리(mocap↔정적 상자)는 접촉을 안 센다 — 우리가 재는 건 팔(동적)↔터틀봇이라 문제없다.
 // **좌표는 실측 SSOT** — `AMR_MM`·`AMR_BASKET`·`CARRIER`·`AMR_HOME`·`coordDefs.user`. 여기서 새 숫자를 만들지 않는다.
 // 단위: MJCF 는 미터 · base 프레임. user1 → base 는 `userDef`(실기 coordDefs.user) 로 옮긴다(위치만 · 회전 0.005° 가정 · `safety.py` 와 같다).
-import { AMR_BASKET, CARRIER, CARRIER_GRASP_TRUTH, carrierBodyOffset } from '../props.js';
+import { AMR_BASKET, CARRIER, CARRIER_GRASP_TRUTH, ROUND, carrierBodyOffset } from '../props.js';
 import { AMR_MM } from '../layout/catalog.js';
 import { AMR_HOME } from '../workcell.js';
 
@@ -53,10 +53,14 @@ export function basketBackMm() {
  * @param {number[]} o.amrUser1 터틀봇 자리 `[xMm, yMm, yawDeg]` (user1)
  * @param {number[]} o.userDef 실기 `coordDefs.user`
  * @param {boolean} [o.carried] 거치대를 손에 들었나 — 들면 툴 바디 안에 상자로 붙는다
+ * @param {number[]} [o.carrierUser1] 현재 거치대 윗면 중심 `[x,y,z]` (user1 mm)
+ * @param {number[][]} [o.bulletsUser1Mm] 같은 손목 스캔이 낸 총알 중심 xy 배열 (user1 mm)
  * @param {Array} [o.zones] 추가 정적 상자 `[{xMm:[a,b], yMm:[a,b], topZMm}]` (user1) — 구운 장면에 이미 있으면 안 넣는다
  * @returns {string|null} XML. 좌표계가 없으면 null
  */
-export function composeDemoScene(robotXml, { amrUser1, userDef, carried = false, zones = [] }) {
+export function composeDemoScene(robotXml, {
+  amrUser1, userDef, carried = false, zones = [], carrierUser1 = null, bulletsUser1Mm = null,
+}) {
   if (typeof robotXml !== 'string' || !robotXml.includes('</worldbody>')) return null;
   const place = amrPlacement(amrUser1, userDef);
   if (!place) return null;
@@ -85,8 +89,28 @@ export function composeDemoScene(robotXml, { amrUser1, userDef, carried = false,
       <geom name="zone_${i}" type="box" size="${m((z.xMm[1] - z.xMm[0]) / 2)} ${m((z.yMm[1] - z.yMm[0]) / 2)} ${m(40)}" rgba="0.7 0.7 0.75 0.4"/>
     </body>`;
   }).join('');
-  // 든 거치대 — `wrist3_link` 바디 안, 손끝(`tcp` 사이트 · 플랜지 99 + 툴 135) 기준. 파지 때 손끝은 거치대 바닥 위 14.9(실측)라
-  // 바닥은 손끝에서 툴 축(+z)으로 14.9 더 나간 자리, 거치대 중심은 거기서 판 높이 절반 위다. xy 는 파지 벽 오프셋을 안 넣는다(근사 · 상자 여유 안)
+  // 현재 놓인 총알 — **S2가 본 xy 그대로** 넣는다. `roundsOnBoard`만 보고 중앙에 만들거나
+  // 구운 장면의 과거 소품 좌표를 현재 총알로 쓰지 않는다(D219). 원통은 실제 최대 지름의
+  // 보수적 외피이며 축은 MJCF 기본 z다. z는 거치대 윗면·높이·바닥살·총알 길이 정본에서 유도한다.
+  let liveRoundsXml = '';
+  if (carrierUser1 !== null || bulletsUser1Mm !== null) {
+    const validCarrier = Array.isArray(carrierUser1) && carrierUser1.length >= 3 && carrierUser1.slice(0, 3).every(Number.isFinite);
+    const validBullets = Array.isArray(bulletsUser1Mm)
+      && bulletsUser1Mm.every((p) => Array.isArray(p) && p.length >= 2 && p.slice(0, 2).every(Number.isFinite));
+    if (!validCarrier || !validBullets) return null;
+    const floorSkinMm = CARRIER.roundSeatMm != null
+      ? CARRIER.hMm - CARRIER.roundSeatMm
+      : (CARRIER.grip?.gripThicknessMm ?? 2);
+    const centerZ = carrierUser1[2] - CARRIER.hMm + floorSkinMm + ROUND.lengthMm / 2;
+    liveRoundsXml = bulletsUser1Mm.map((p, i) => {
+      const b = userToBase([p[0], p[1], centerZ], userDef);
+      return `
+    <geom name="prop:live-round-${i}" type="cylinder" size="${m(ROUND.diaMm / 2)} ${m(ROUND.lengthMm / 2)}" pos="${b.map((v) => m(v)).join(' ')}" rgba="0.66 0.53 0.31 1"/>`;
+    }).join('');
+  }
+  // 든 거치대 — `wrist3_link` 바디 안, 손끝(`tcp` 사이트 · 플랜지 99 + 툴 135) 기준. 파지 때 손끝은 거치대 바닥 위
+  // `tcpAboveTableMm`(현재 33.3)라 바닥은 손끝에서 툴 축(+z)으로 그만큼 더 나간 자리, 거치대 중심은 거기서 판 높이 절반 위다.
+  // xy 는 파지 벽 오프셋을 안 넣는다(근사 · 상자 여유 안)
   let withHeld = robotXml;
   if (carried) {
     const tcp = robotXml.match(/<site name="tcp" pos="0 0 ([\d.]+)"/);
@@ -103,7 +127,7 @@ export function composeDemoScene(robotXml, { amrUser1, userDef, carried = false,
     const close = robotXml.indexOf('</body>', w3);         // wrist3 안엔 자식 바디가 없다 — 첫 닫힘이 그 바디다
     withHeld = robotXml.slice(0, close) + held + robotXml.slice(close);
   }
-  return withHeld.replace('</worldbody>', `${amr}${zonesXml}</worldbody>`);
+  return withHeld.replace('</worldbody>', `${amr}${zonesXml}${liveRoundsXml}</worldbody>`);
 }
 
 /** 접촉 이름 규약 — 팔 링크는 이름이 없다(구운 MJCF), 든 거치대는 `carrier_`, 놓인 것은 아래 셋 */

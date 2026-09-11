@@ -7,6 +7,28 @@ import { stripNotes } from '../Shared/build/strip-notes.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const DIAG_DIR = resolve(here, '../.diag');
+const ARUCO_FILES = ['cv.js', 'aruco.js', 'dictionaries/apriltag_36h11.js'];
+
+// js-aruco2 2.0.0은 브라우저 전역을 쓰는 고전 스크립트다. Vite 8이 `this`를 undefined로
+// 바꾸지 않도록 원본 세 파일만 그대로 낸다. ponytail: 라이브러리가 ESM을 내면 이 플러그인을 지운다.
+function legacyAruco() {
+  const root = resolve(here, '../node_modules/js-aruco2/src');
+  const publicName = (file) => file.split('/').at(-1);
+  return {
+    name: 'fr5-legacy-js-aruco2',
+    configureServer(server) {
+      for (const file of ARUCO_FILES) server.middlewares.use(`/vendor/js-aruco2/${publicName(file)}`, (_req, res) => {
+        res.setHeader('content-type', 'application/javascript; charset=utf-8');
+        res.end(readFileSync(resolve(root, file)));
+      });
+    },
+    generateBundle() {
+      for (const file of ARUCO_FILES) this.emitFile({
+        type: 'asset', fileName: `vendor/js-aruco2/${publicName(file)}`, source: readFileSync(resolve(root, file)),
+      });
+    },
+  };
+}
 
 /**
  * 폰이 보내는 진단 수치를 파일로 받는다 — `.diag/<날짜>.jsonl`
@@ -91,7 +113,7 @@ export default defineConfig({
   base: './',
   // 정적 자산은 Shared/assets 하나뿐이다. 양쪽에 복사하지 않는다.
   publicDir: resolve(here, '../Shared/assets'),
-  plugins: [stripNotes(), diagSink(), configFiles()],
+  plugins: [stripNotes(), diagSink(), configFiles(), legacyAruco()],
   build: {
     rollupOptions: {
       // 화면마다 엔트리가 따로다. 랜딩(index)은 JS 가 없다.
@@ -104,6 +126,7 @@ export default defineConfig({
         cell: resolve(here, 'cell.html'),
         markertest: resolve(here, 'test/marker-detect.html'),
         tagtrack: resolve(here, 'test/tag-track.html'),   // 폰 태그 정합 킬-실험 (2026-09-07)
+        tagcv: resolve(here, 'test/tag-cv-track.html'),   // 기존 AprilTag 4장 직접 검출 킬-실험 (D222)
       },
     },
   },

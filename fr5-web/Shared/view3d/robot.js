@@ -24,6 +24,7 @@ const MM = 0.001; // 밀리미터 → 미터
 // 화면에 아무것도 안 뜨는데 콘솔 에러도 없다 (D15·D18, BUILD-VITE.md §설정).
 // 두 JSON 은 .env 에서 굽는 산출물이다 → node scripts/build/config.mjs
 import gripperConfig from '../data/config/gripper-mount.json';
+import { gripperFingerShiftMm } from '../data/sim/gripper-geometry.js';
 import markerConfig from '../data/config/marker-offset.json';
 
 /** 설정 두 개. 값을 코드에 박지 않기 위한 유일한 경로. */
@@ -48,7 +49,7 @@ export function loadConfig() {
 // 색 정보는 어디에도 없다. 그래서 실물 사진에서 보이는 것만 절차적으로 얹는다 —
 //   ① 베이스 윗면 주황 고리 (윗면 반지름 58mm · STL 실측)
 //   ② 관절 이음새의 회색 띠 — 회전 캡이 몸체와 만나는 **목(neck)** 자리. 자리·반지름은 STL 정점을 1mm 로 썰어 잰
-//      단면 프로파일이라 형상에 붙는다(LatheGeometry). 추정으로 둘렀던 두 판은 허공에 떠서 걷어냈다(실기 담당자 지적)
+//      단면 프로파일이라 형상에 붙는다(LatheGeometry). 추정으로 둘렀던 두 판은 허공에 떠서 걷어냈다(주인님 지적)
 //   ③ 손목 끝 상태 LED 고리 — 매뉴얼 §The end LED: 파랑 자동 · 초록 수동 · 백청 드래그 · 빨강 오류. 자리는 wrist3
 //      의 홈(z 0.089~0.093 · r 0.036) — `setEndLed(robot, hex|null)` 로 상태가 색을 정한다
 // 실물 고리는 베이스 윗면 가장자리에서 **어깨 목(r 55) 바깥**으로 보인다 — 안쪽은 어깨가 덮는다. 바깥 r 은 윗면(58)보다
@@ -57,9 +58,9 @@ const BASE_RING = { z: 0.0795, rIn: 0.0555, rOut: 0.0605 };
 const SEAM = {   // 자식 프레임 [z, r] — STL 단면 실측 + 0.6mm
   // j1 은 띠가 없다 — 그 자리는 베이스 주황 고리다 (사진)
   // j2·j3 는 띠가 없다 — 어깨·팔꿈치 하우징은 관절축 둘레의 회전체가 아니라(드럼 r≈90 이 목 r 58 을 덮는다)
-  // 띠가 드럼 옆으로 삐져나왔다 (실기 담당자 「여기가 어색」 2026-09-05). 손목 셋만 목이 진짜 원통(r 40 · STL 단면 일정)이다
+  // 띠가 드럼 옆으로 삐져나왔다 (주인님 「여기가 어색」 2026-09-05). 손목 셋만 목이 진짜 원통(r 40 · STL 단면 일정)이다
   // 목(r 40 · z 53.5~61) **만** 두른다. 61~65 에서 r 57 로 벌어지는 구간을 넣었더니 드럼 옆으로 접시처럼 퍼졌다
-  // (실기 담당자 「아직 펑퍼짐」 2026-09-05) — 그 구간은 회전체가 아니다
+  // (주인님 「아직 펑퍼짐」 2026-09-05) — 그 구간은 회전체가 아니다
   j4: [[0.0535, 0.040], [0.0610, 0.040]],
   j5: [[0.0535, 0.040], [0.0610, 0.040]],
   j6: [[0.0535, 0.040], [0.0585, 0.040]],
@@ -87,7 +88,7 @@ export function addJointRings(robot) {
     band.castShadow = false; band.receiveShadow = false;
     j.add(band);
   }
-  // ── 드럼 끝 주황 고리 둘 — 제품 사진(실기 담당자 2026-09-05)의 어깨·팔꿈치 큰 원판 테두리. **평면 검출로 잰 자리**:
+  // ── 드럼 끝 주황 고리 둘 — 제품 사진(주인님 2026-09-05)의 어깨·팔꿈치 큰 원판 테두리. **평면 검출로 잰 자리**:
   // upperarm STL 에서 법선 +z 의 큰 평면 두 장이 z 0.2031 에 (0,0)·(−0.425,0) 중심 r 0.0484 로 있고, 그 높이의
   // 겉 반지름이 0.058 이라 원판 가장자리~드럼 테두리(rIn 49 · rOut 58.5)에 납작한 고리를 얹는다. 나사 4개 자리가 이 띠 위다
   const ua = robot.links?.upperarm_link;
@@ -101,7 +102,7 @@ export function addJointRings(robot) {
     }
   }
   // 어깨 기둥 윗면 — 같은 평면 검출: shoulder_link 법선 +z 평면이 z 0.2131(r 58)과 0.2171(r 48.2 · 가운데가 4mm 솟음) 둘이라
-  // 그 사이 고리 모양 턱(r 48.2~58)이 곧 주황 띠 자리다 (실기 담당자 「하나 덜했어」 2026-09-05)
+  // 그 사이 고리 모양 턱(r 48.2~58)이 곧 주황 띠 자리다 (주인님 「하나 덜했어」 2026-09-05)
   const sh = robot.links?.shoulder_link;
   if (sh) {
     // 0.2131 평면 위에 두께 3.3mm 캡판(밑면 0.2138 · 윗면 0.2171 · r 48.2)이 얹혀 있어 아래 평면은 가려진다 —
@@ -382,11 +383,9 @@ export function setGripperOpenPct(mount, openPct, halfStrokeMm) {
   // **STL 은 이미 벌어진 자세로 구워져 있다** (gripper-mount.json `_손가락`).
   // 그래서 여는 게 아니라 **닫을 때만 안쪽으로 당긴다** — 100% 에서 offset 0 이다.
   // 반대로 짜면 구워진 폭에 20mm 이 더해져 비현실적으로 벌어진다 (2026-08-04 육안 확인).
-  const closing = (1 - Math.min(100, Math.max(0, openPct)) / 100) * halfStrokeMm;
   for (const m of mount.getObjectByName('gripperMeshes')?.children ?? []) {
     if (!m.name.includes('finger')) continue;
-    const sign = m.name.includes('left') ? -1 : 1;   // 닫히는 방향 = 서로 마주보게
-    m.position.x = m.userData.restX + sign * closing;
+    m.position.x = m.userData.restX + gripperFingerShiftMm(m.name, openPct, halfStrokeMm);
   }
 }
 

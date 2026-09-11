@@ -14,7 +14,7 @@ import { REACH_MM } from '@fr5/shared/data/motion/limits.js';
 import { AMR_MM } from '@fr5/shared/data/layout/catalog.js';
 import { loadBurger, mountBurgerZUpXForward, rollWheels } from '@fr5/shared/view3d/burger.js';
 // 소품 — **옮기는 거치대**와 **터틀봇 바구니.** 치수 정본은 `props.js` 고 여기는 그리기만 한다.
-import { carrier, amrBasket } from '@fr5/shared/view3d/parts.js';
+import { carrier, round, amrBasket } from '@fr5/shared/view3d/parts.js';
 import { CARRIER, CARRIER_GRASP_TRUTH, AMR_BASKET, carrierBodyOffset } from '@fr5/shared/data/props.js';
 import { mm } from '@fr5/shared/data/units/units.js';
 
@@ -74,14 +74,17 @@ export function RobotTwin({
   // ⛔ 자리 계산은 **여기서 한 번만** 한다 — 파지 자세와의 차를 아는 곳이 여기다 (하드 룰 5)
   carrierHeldTcp = null,
   carrierInHand = false,           // 참이면 거치대를 숫자가 아니라 고스트 손끝 노드에 건다 (팔 그림과 같은 FK)
+  carrierHold = null,              // S4 실기 완료의 {offsetMm,graspRzDeg,yawDeg} — 선택 벽·손목 대표를 잃지 않는다(D220)
   // **지금 거치대가 어디 있나** (user1 mm · 윗면 중심) — 글로벌캠 색 검출이 준다.
   // ⛔ 없으면 **안 그린다.** 예전에는 08-31 에 가르친 파지 자세에 세워 뒀는데, 그 값은
   // 판이 56.9mm 올라가며 **거짓이 됐다**(`props.js` §stale). 모르는 자리에 그럴듯하게
   // 그리는 것이 이 저장소가 제일 싫어하는 것이다 — 사람이 화면을 믿는 만큼 더 나쁘다.
   carrierAtMm = null,
   carrierYawDeg = null,            // 검출이 낸 거치대 요각(user1 · 가로 85 가 x 와 평행이면 0 · [−90,90)). 실측일 때만 뜻이 있다
+  carrierBulletsUser1Mm = null,     // 같은 손목 스캔의 총알 xy — 개수만으로 중앙에 만들지 않는다(D219)
   amrIsReplay = false, // 되감는 중인가 — **실물이 아니면 화면이 그렇게 말해야 한다**
   amrDriftPose = null, // 도착 오차 유령(odom) — 시연이 「실제로 선 자리」를 줄 때만. 회색 반투명 상자 (2026-09-06 · GRILL #12)
+  amrTargetPose = null, // 시뮬이 고른 다음 정차 목표(odom) — 실기와 별도인 초록 반투명 버거
   // 가상 손끝 — 주어지면 **시야 발자국·시선을 이것으로** 그린다 (「이 자세로 두면 어떻게 보이나」).
   // ⛔ 실기를 그 자세로 보내는 것이 아니다. 그리기만 한다.
   simTcpMmDeg = null,
@@ -106,10 +109,14 @@ export function RobotTwin({
   heldRef.current = carrierHeldTcp;
   const inHandRef = useRef(carrierInHand);
   inHandRef.current = carrierInHand;
+  const holdRef = useRef(carrierHold);
+  holdRef.current = carrierHold;
   const atRef = useRef(carrierAtMm);
   atRef.current = carrierAtMm;
   const yawRef = useRef(carrierYawDeg);
   yawRef.current = carrierYawDeg;
+  const bulletsRef = useRef(carrierBulletsUser1Mm);
+  bulletsRef.current = carrierBulletsUser1Mm;
   // **게이트 값은 사용자 좌표계 기준이라 그대로 그리면 600mm 어긋난다** (2026-08-07).
   // 베이스로 환산해서 들고 다닌다 — 환산이 안 되면 `null` 이고, 그러면 판정면을 안 그린다.
   const wsRef = useRef(null);
@@ -122,6 +129,8 @@ export function RobotTwin({
   // 터틀봇 — 매 프레임 최신값을 읽는다 (관절과 같은 규약: 리렌더 없이 ref)
   const amrRef = useRef(null);
   amrRef.current = amrPose;
+  const amrTargetRef = useRef(null);
+  amrTargetRef.current = amrTargetPose;
   const tcpRef = useRef(null);
   tcpRef.current = tcpMmDeg;
   const heRef = useRef(null);
@@ -207,14 +216,17 @@ export function RobotTwin({
     // ── 옮기는 거치대 — **판 위에 놓인 소품.** (2026-08-31 · D161)
     //
     // ⚠ **자리는 실측이 아니라 「마지막으로 사람이 문 자리」다.** 거치대는 태그 옆 100mm
-    // 안에서 매번 움직이므로(실기 담당자 2026-08-31) 저장된 자리가 곧 지금 자리가 아니다.
+    // 안에서 매번 움직이므로(주인님 2026-08-31) 저장된 자리가 곧 지금 자리가 아니다.
     // 그래서 **반투명**으로 그린다 — 판정면(`makeWorkspace`)과 달리 이건 「여기쯤」이다.
     // ▶ 손목 뎁스가 실제 자리를 내는 날 이 노드의 position 만 그 값으로 바꾼다.
     let carrierNode = null;
+    let carrierRoundNodes = [];
     try {
       const g = CARRIER_GRASP_TRUTH.tcpMmDeg;
       carrierNode = new THREE.Group();
-      const model = carrier();
+      // 몸통과 총알을 가른다. 예전 `carrier()`의 기본 총알은 개수 1이면 무조건 중앙이었고,
+      // 몸통을 분홍으로 칠할 때 황동까지 분홍이 됐다. 총알은 아래에서 검출 xy로만 붙인다.
+      const model = carrier({ rounds: 0 });
       // `parts` 규약 = **바닥 중앙 원점 · Y-up**. 홀더는 Z-up 이라 한 번 세운다.
       model.rotation.x = Math.PI / 2;
       carrierNode.add(model);
@@ -224,18 +236,18 @@ export function RobotTwin({
       carrierNode.rotation.z = ((CARRIER_GRASP_TRUTH.tcpMmDeg[5]
         + (CARRIER.yawFromGraspDeg ?? 0)) * Math.PI) / 180;
       carrierNode.userData.yaw0 = carrierNode.rotation.z;   // 판 위 기본 요각 — 손에 들리면 손목이 돈 만큼 더한다
-      carrierNode.traverse((o) => {
+      model.traverse((o) => {
         if (!o.material) return;
         o.material = o.material.clone();
         o.material.transparent = true;
         o.material.opacity = 0.55;       // 「가정한 자리」 — 실측이 아니다
       });
-      // 실물 거치대는 **분홍**이다(2026-09-04 · 실기 담당자가 검정→분홍으로 바꿔 색 검출이 살았다). 카메라가 본 자리(실측)면 분홍·거의 불투명,
+      // 실물 거치대는 **분홍**이다(2026-09-04 · 주인님이 검정→분홍으로 바꿔 색 검출이 살았다). 카메라가 본 자리(실측)면 분홍·거의 불투명,
       // 가정(08-31 자리·판 클릭)이면 회색 반투명 — 「불투명 = 실기 · 반투명 = 가정」 규약(D128)
       carrierNode.userData.paint = (seenNow) => {
         if (carrierNode.userData.painted === seenNow) return;
         carrierNode.userData.painted = seenNow;
-        carrierNode.traverse((o) => {
+        model.traverse((o) => {
           if (!o.material?.color) return;
           o.material.color.setHex(seenNow ? 0xe8579b : 0x9aa0a6);
           o.material.opacity = seenNow ? 0.95 : 0.55;
@@ -248,6 +260,20 @@ export function RobotTwin({
       // (2026-08-31 실렌더에서 그렇게 안 보였다). 아래 틱이 좌표계가 생기면 세운다.
       carrierNode.visible = false;
       zUpToYUp.add(carrierNode);
+      carrierNode.userData.syncRounds = (offsets) => {
+        while (carrierRoundNodes.length < offsets.length) {
+          const node = round();
+          node.name = `carrier-live-round-${carrierRoundNodes.length}`;
+          node.rotation.x = Math.PI / 2;             // parts는 Y-up, carrierNode는 Z-up
+          carrierNode.add(node);
+          carrierRoundNodes.push(node);
+        }
+        carrierRoundNodes.forEach((node, i) => {
+          const o = offsets[i];
+          node.visible = Boolean(o);
+          if (o) node.position.set(mm(o.xMm), mm(o.yMm), mm(o.zMm));
+        });
+      };
     } catch { carrierNode = null; }      // 소품이 로봇을 못 죽인다
 
     // ── 터틀봇 — **바닥이 아니라 작업대 판 위를 달린다** (D134: 상판 주행 · 낙하가 위험이다).
@@ -261,9 +287,10 @@ export function RobotTwin({
     // `toBase()` 를 거치듯 홈도 `pointToBase()` 를 거친다. 2026-08-28 에 이걸 빼먹고
     // 터틀봇이 **판 밑 342.1mm** 에 떴다 (= user1 의 z 오프셋). 자리는 아래 틱에서 정한다.
     const amrNode = new THREE.Group();
+    amrNode.name = 'amr-live';
     amrNode.visible = false;    // 옮길 수 있기 전에는 **안 그린다** (아래 틱이 켠다)
     zUpToYUp.add(amrNode);
-    // 초록 바구니 — **터틀봇 등에 달려 같이 움직인다** (실기 담당자 2026-08-31). 그래서 씬에서도
+    // 초록 바구니 — **터틀봇 등에 달려 같이 움직인다** (주인님 2026-08-31). 그래서 씬에서도
     // `amrNode` 의 **자식**이다. 형제로 두면 로봇이 갈 때 바구니만 제자리에 남는다.
     // ⚠ 로봇 기준 자리(`AMR_BASKET.offsetMm`)를 **아직 안 쟀다** — 그동안은 「등 뒤 절반」이라는
     //   말만 알고 있으므로 그 뜻대로 뒤쪽에 세우고, 잰 값이 오면 이 분기가 사라진다.
@@ -271,7 +298,7 @@ export function RobotTwin({
       const b = amrBasket();
       b.rotation.x = Math.PI / 2;                 // parts 는 Y-up · 홀더는 Z-up
       const off = AMR_BASKET.offsetMm;
-      // ⛔ **몸통과 겹치지 않고 뒤에 이어 붙는다** (실기 담당자 2026-08-31 정정 — 처음엔 절반을
+      // ⛔ **몸통과 겹치지 않고 뒤에 이어 붙는다** (주인님 2026-08-31 정정 — 처음엔 절반을
       // 겹쳐 그려 바구니가 로봇을 먹었다). 그래서 절반이 아니라 **두 깊이의 절반 합**이다.
       const wall = AMR_BASKET.wallMm ?? 3;
       const back = -(AMR_MM.depthMm / 2 + (AMR_BASKET.innerDMm + 2 * wall) / 2);
@@ -294,8 +321,9 @@ export function RobotTwin({
     // 치수는 `AMR_MM` 이 정본이다 (Burger 실물 · `docs/evidence/2026-08-07/amr-burger-mm.md`).
     const amrBody = new THREE.Mesh(
       new THREE.BoxGeometry(mm(AMR_MM.widthMm), mm(AMR_MM.depthMm), mm(AMR_MM.heightMm)),
-      new THREE.MeshStandardMaterial({ color: 0x8a8f98, roughness: 0.8 }),
+      new THREE.MeshStandardMaterial({ color: 0x14181b, roughness: 0.72 }),
     );
+    amrBody.name = 'amr-body-fallback';
     amrBody.position.z = mm(AMR_MM.heightMm) / 2;   // 판 위에 **얹는다** — 원점은 바닥 중앙
     amrNode.add(amrBody);
 
@@ -351,6 +379,37 @@ export function RobotTwin({
     };
     ownMat(amrBody);
 
+    // ── 다음 정차 목표 — 현재 실기 터틀봇을 덮어쓰지 않는 두 번째 완전한 모델이다.
+    // 초록 반투명 + 현재→목표 점선이라 「여기로 갈 예정」임을 한눈에 가른다. 그리기만 한다.
+    const targetGroup = new THREE.Group();
+    targetGroup.name = 'amr-target';
+    targetGroup.visible = false;
+    zUpToYUp.add(targetGroup);
+    let targetVisual = null;
+    const rebuildTargetVisual = () => {
+      if (targetVisual) targetGroup.remove(targetVisual);
+      targetVisual = amrNode.clone(true);
+      targetVisual.visible = true;
+      targetVisual.position.set(0, 0, 0); targetVisual.rotation.set(0, 0, 0);
+      targetVisual.traverse((o) => {
+        if (!o.isMesh || !o.material) return;
+        const paint = (m) => {
+          const own = m.clone(); own.color?.setHex(0x36c878);
+          own.transparent = true; own.opacity = 0.32; own.depthWrite = false;
+          return own;
+        };
+        o.material = Array.isArray(o.material) ? o.material.map(paint) : paint(o.material);
+      });
+      targetGroup.add(targetVisual);
+    };
+    rebuildTargetVisual();
+    const targetPathGeo = new THREE.BufferGeometry();
+    targetPathGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(6), 3));
+    const targetPath = new THREE.Line(targetPathGeo,
+      new THREE.LineDashedMaterial({ color: 0x36c878, dashSize: mm(35), gapSize: mm(18), transparent: true, opacity: 0.8 }));
+    targetPath.name = 'amr-target-path'; targetPath.visible = false;
+    zUpToYUp.add(targetPath);
+
     // 바퀴 굴리기 (2026-09-06 · `GRILL-conveyor-twin` #8) — 실물 메시가 붙은 뒤에만 있다. 옛 GLB·대체 상자면 null 로 남는다
     let burgerMounted = null;
     let lastAmrXY = null;        // 지난 틱의 자리(base mm) — 이번 틱과의 차가 굴러간 거리다
@@ -363,8 +422,14 @@ export function RobotTwin({
       amrBody.geometry.dispose();
       amrMats.length = 0;
       const mounted = mountBurgerZUpXForward(proto.clone(true));
-      mounted.traverse(ownMat);
+      mounted.name = 'amr-burger';
+      mounted.traverse((o) => {
+        ownMat(o);
+        // 실영상의 버거 본체는 흰색이 아니라 검정/진회색이다. 바구니는 별도 자식이라 이 색을 먹지 않는다.
+        if (o.isMesh && o.material?.color) { o.material.color.setHex(0x14181b); o.material.map = null; o.material.needsUpdate = true; }
+      });
       amrNode.add(mounted);
+      rebuildTargetVisual();
       burgerMounted = mounted;  // 바퀴 굴리기(아래 틱)가 이 안에서 `wheel_*` 노드를 찾는다
       lastAmrKey = ' ';        // 재질이 바뀌었으니 다음 틱이 고스트 상태를 다시 칠하게 한다
     });
@@ -393,7 +458,7 @@ export function RobotTwin({
     let aimAt = null;         // 이번 틱에 겨눌 점 (홀더 좌표 · 미터)
     let lastAimKey = ' ';
     // 시선 화살 — **카메라가 어디를 보는가.** 손끝 자리만 맞추는 솔버(`reach.js`)는 방향을
-    // 안 푸므로, 자리는 맞는데 **카메라가 벽을 볼 수 있다**(실기 담당자 지적 2026-08-28).
+    // 안 푸므로, 자리는 맞는데 **카메라가 벽을 볼 수 있다**(주인님 지적 2026-08-28).
     // 그래서 방향을 숫자로 감추지 않고 **그려서 보인다.** 공구축은 `tcp` 노드의 local **+Y**
     // 다 (`frame-axes.js` §TCP). 노드가 조립좌표계(scale 0.001) 안이라 스케일을 되돌린다.
     // ── 시야 발자국 — **카메라가 판 위 어디를 보고 있나.**
@@ -497,7 +562,7 @@ export function RobotTwin({
         c.needsUpdate = true;
         return c;
       };
-      // ⛔ **한 번만 칠하면 늦게 붙는 메시가 하얗게 남는다** (2026-09-04 · 실기 담당자
+      // ⛔ **한 번만 칠하면 늦게 붙는 메시가 하얗게 남는다** (2026-09-04 · 주인님
       // *"같은 재질로 보여서 헷갈림"*). `robot.js` 의 `IDLE_MS` 가 팔 STL 은 잡아 주지만
       // 그리퍼는 우리 코드가 나중에 붙이고, 브래킷도 그렇다 — 그러면 파란 팔에 **흰 손**이
       // 달려 실물과 구분이 안 된다. 이미 칠한 재질은 표시해 두고 **새 것만 다시 칠한다.**
@@ -542,8 +607,8 @@ export function RobotTwin({
     //    돌아간 사용자 좌표계에서는 **축이 안 뜨는 것이 신호다.**
     let userNode = null;
     let userLine = null;
-    let lastUserKey = ' ';
-    let lastAxesKey = ' ';
+    let lastUserKey = '\0';
+    let lastAxesKey = '\0';
     const syncUser = () => {
       // ⚠ **로봇보다 먼저 좌표계가 올 수 있다.** 여기서 걸러 두지 않으면 첫 틱에 키만 기록되고
       //    로봇이 온 뒤에는 「같은 키」로 읽혀 `user1` 이 **영영 안 세워진다.**
@@ -581,14 +646,14 @@ export function RobotTwin({
       if (!robot) return;
       axes?.dispose();
       axes = createFrameAxes({ robot, gripperGroup: gripMount });
-      lastAxesKey = ' ';                        // 선택을 다시 걸어야 한다
+      lastAxesKey = '\0';                        // 선택을 다시 걸어야 한다
       if (import.meta.env.DEV) window.__twin = { ...(window.__twin ?? {}), axes };
     };
 
     const tick = () => {
       if (wsRef.current !== lastWs) { lastWs = wsRef.current; drawCell(lastWs); }
       // 터틀봇 — **홈에서 얼마나 갔나**를 얹는다. 브리지 pose 의 원점이 곧 홈이다
-      // (홈에서 브링업하므로 · 실기 담당자 2026-08-28 「항상 홈에서 시작」).
+      // (홈에서 브링업하므로 · 주인님 2026-08-28 「항상 홈에서 시작」).
       //
       // ⚠ **홈의 요각이 실측이 아니다** (`AMR_HOME.deg` 는 가정 0). 그래서 회전 합성을
       // 여기서 만들지 않고 **더하기만** 한다 — 요각을 재는 날 `AMR_HOME.deg` 한 값만 고치면
@@ -605,6 +670,9 @@ export function RobotTwin({
       const live = { user1: userDefRef.current };
       const at = toFrame({ xMm: a?.xMm ?? 0, yMm: a?.yMm ?? 0, zMm: 0 }, 'odom', 'base', live);
       const yaw = yawToFrame(a?.thetaDeg ?? 0, 'odom', 'base', live);
+      const target = amrTargetRef.current;
+      const targetAt = target ? toFrame({ xMm: target.xMm, yMm: target.yMm, zMm: 0 }, 'odom', 'base', live) : null;
+      const targetYaw = target ? yawToFrame(target.thetaDeg ?? 0, 'odom', 'base', live) : null;
       // **실측 여부를 key 에 넣는다** — 실기 자세가 우연히 홈과 같아도 고스트가 안 벗겨지면
       // 「확인된 자리」와 「가정한 자리」가 화면에서 같아진다.
       // 거치대 — 좌표계가 생기면 세운다. **매 틱 다시 판정한다**(연결이 늦게 와도 살아난다)
@@ -617,7 +685,12 @@ export function RobotTwin({
         const lift = CARRIER_GRASP_TRUTH.tcpAboveTableMm;   // 실측 14.9 — 안전선 상판과의 차(옛 식)는 10mm 낮게 그렸다 (2026-09-06)
         // ⛔ **파지점은 벽이지 중심이 아니다.** 미는 식은 **`props.carrierBodyOffset` 한 곳**이
         // 든다 — 여기와 시뮬에 각각 적었다가 한쪽만 고쳐 8mm 어긋난 적이 있다 (2026-08-31).
-        const { dxMm: ox, dyMm: oy } = carrierBodyOffset(g2[5]);
+        const hold = inHandRef.current ? holdRef.current : null;
+        const holdOffset = Array.isArray(hold?.offsetMm) && hold.offsetMm.length >= 2
+          && hold.offsetMm.slice(0, 2).every(Number.isFinite) ? hold.offsetMm : null;
+        const fallbackOffset = carrierBodyOffset(g2[5]);
+        const ox = holdOffset?.[0] ?? fallbackOffset.dxMm;
+        const oy = holdOffset?.[1] ?? fallbackOffset.dyMm;
         // 주인은 하나다 — **들려 있으면 손 · 아니면 지금 본 자리 · 둘 다 없으면 안 그린다.**
         const seen = atRef.current;
         // **손에 들려 있으면 고스트의 손끝 노드에서 잰다** (2026-09-06). 팔은 관절 보간으로 그리는데 `held` 숫자는 직선 보간이라
@@ -640,7 +713,8 @@ export function RobotTwin({
         } else if (window.__ghostTcpMm) window.__ghostTcpMm = null;
         if (tcpNode && held && inHandRef.current) {
           const wp = window.__ghostTcpMm.wp;
-          const yawGrasp = (yawToFrame(g2[5], 'user1', 'base', live) * Math.PI) / 180;
+          const graspRz = Number.isFinite(hold?.graspRzDeg) ? hold.graspRzDeg : g2[5];
+          const yawGrasp = (yawToFrame(graspRz, 'user1', 'base', live) * Math.PI) / 180;
           const dYaw = Math.atan2(Math.sin(yawNow - yawGrasp), Math.cos(yawNow - yawGrasp));
           const tu = toFrame({ xMm: wp.x * 1000, yMm: wp.y * 1000, zMm: wp.z * 1000 }, 'base', 'user1', live);
           if (tu) {
@@ -650,8 +724,10 @@ export function RobotTwin({
         }
         // 판 위 실측이면 검출 요각을 더한다(손에 들리면 손목이 돈 만큼만). 요각은 user1 기준이고 user1 은 회전 0 이라 그대로 라디안으로
         const seenYaw = !hand && !held && seen && Number.isFinite(yawRef.current) ? (yawRef.current * Math.PI) / 180 : 0;
-        carrierNode.rotation.z = (carrierNode.userData.yaw0 ?? carrierNode.rotation.z) + (hand?.dYaw ?? 0) + seenYaw;
-        carrierNode.userData.paint?.(Boolean(seen) && !hand && !held);
+        const heldYaw = hand && Number.isFinite(hold?.yawDeg) ? (hold.yawDeg * Math.PI) / 180 : 0;
+        carrierNode.rotation.z = (carrierNode.userData.yaw0 ?? carrierNode.rotation.z) + (hand?.dYaw ?? 0) + heldYaw + seenYaw;
+        // 손으로 옮길 때는 마지막 검출의 분홍/황동 상태를 보존한다. false로 다시 칠하면 실측 물체가 회색 가정으로 바뀐다.
+        if (!hand && !held) carrierNode.userData.paint?.(Boolean(seen));
         const src = hand ? { xMm: hand.xMm, yMm: hand.yMm, zMm: hand.zMm } : held
           ? { xMm: held[0] + ox, yMm: held[1] + oy, zMm: held[2] - lift }
           // ⚠ 검출은 **윗면 중심**이라 키를 빼야 바닥이 된다(노드 원점이 바닥이다).
@@ -663,6 +739,34 @@ export function RobotTwin({
         const cp = src ? toFrame(src, 'user1', 'base', live) : null;
         carrierNode.visible = cp !== null;
         if (cp) carrierNode.position.set(mm(cp.xMm), mm(cp.yMm), mm(cp.zMm));
+        // 총알의 **검출 world xy → 거치대 local xy** 변환은 판 위에서 한 번만 한다.
+        // 집은 뒤에는 그 local 오프셋을 유지해 거치대와 함께 움직인다. 검출 배열이 없으면
+        // `roundsOnBoard`만으로 중앙 총알을 만들지 않고 숨긴다(D219).
+        const seenBullets = Array.isArray(bulletsRef.current)
+          ? bulletsRef.current.filter((p) => Array.isArray(p) && p.length >= 2 && p.slice(0, 2).every(Number.isFinite))
+          : [];
+        if (cp && seen && !hand && !held && seenBullets.length) {
+          const c = Math.cos(carrierNode.rotation.z); const s = Math.sin(carrierNode.rotation.z);
+          const floorSkinMm = CARRIER.roundSeatMm != null
+            ? CARRIER.hMm - CARRIER.roundSeatMm
+            : (CARRIER.grip?.gripThicknessMm ?? 2);
+          const offsets = seenBullets.map((p) => {
+            const bp = toFrame({ xMm: p[0], yMm: p[1], zMm: seen[2] - CARRIER.hMm }, 'user1', 'base', live);
+            if (!bp) return null;
+            const dx = bp.xMm - cp.xMm; const dy = bp.yMm - cp.yMm;
+            return { xMm: c * dx + s * dy, yMm: -s * dx + c * dy, zMm: floorSkinMm };
+          }).filter(Boolean);
+          carrierNode.userData.roundOffsets = offsets.length === seenBullets.length ? offsets : [];
+        }
+        const roundOffsets = carrierNode.userData.roundOffsets ?? [];
+        carrierNode.userData.syncRounds?.(cp ? roundOffsets : []);
+        if (cp && roundOffsets.length) {
+          carrierNode.updateMatrixWorld(true);
+          window.__carrierRoundsMm = carrierRoundNodes.slice(0, roundOffsets.length).map((node) => {
+            const wp = zUpToYUp.worldToLocal(node.getWorldPosition(new THREE.Vector3()));
+            return { x: wp.x * 1000, y: wp.y * 1000, z: wp.z * 1000 };
+          });
+        } else window.__carrierRoundsMm = [];
         // 계측 훅 — 거치대가 어디에(base mm) · 무엇을 따라(hand/number/seen) 서 있나. 게이트가 「손에 붙어 있나」를 잰다
         window.__carrierMm = cp ? { paint: carrierNode.userData.painted ? 'pink' : 'grey', x: cp.xMm, y: cp.yMm, z: cp.zMm, src: hand ? 'hand' : (held ? 'number' : 'seen'), yawDeg: (carrierNode.rotation.z * 180) / Math.PI } : null;
       }
@@ -707,6 +811,24 @@ export function RobotTwin({
           setAmrGhost(!a || replayRef.current);
         }
       }
+      targetGroup.visible = Boolean(targetAt && targetYaw !== null);
+      targetPath.visible = Boolean(targetGroup.visible && at);
+      if (targetGroup.visible) {
+        targetGroup.position.set(mm(targetAt.xMm), mm(targetAt.yMm), mm(targetAt.zMm));
+        targetGroup.rotation.z = (targetYaw * Math.PI) / 180;
+      }
+      if (targetPath.visible) {
+        const p = targetPathGeo.getAttribute('position');
+        p.setXYZ(0, mm(at.xMm), mm(at.yMm), mm(at.zMm + 4));
+        p.setXYZ(1, mm(targetAt.xMm), mm(targetAt.yMm), mm(targetAt.zMm + 4));
+        p.needsUpdate = true; targetPathGeo.computeBoundingSphere(); targetPath.computeLineDistances();
+      }
+      window.__amrTarget = targetGroup.visible ? {
+        visible: true,
+        currentMm: at ? { x: at.xMm, y: at.yMm } : null,
+        targetMm: { x: targetAt.xMm, y: targetAt.yMm },
+        distanceMm: at ? Math.hypot(targetAt.xMm - at.xMm, targetAt.yMm - at.yMm) : null,
+      } : { visible: false };
 
       // ── 손끝을 베이스로. ⚠ **실기 `tcpMmDeg` 는 user1 기준이다** (D87)
       // 가상 손끝이 있으면 그것이 이긴다 — **시뮬 자세로 두면 무엇이 보이나**를 답한다
@@ -741,7 +863,7 @@ export function RobotTwin({
       // ⛔ 한때 몸 한가운데를 겨눴는데(2026-08-28), 그러면 그리퍼가 로봇 **안으로** 들어간다.
       // 계약이 추종을 *"안전 높이를 유지하며 따라만 간다"* 로 정의한다
       // (`VISION-CONTRACT.md` §추종 · D132) — 닿는 동작이 아니라 **따라가는** 동작이다.
-      // **높이는 지금 그대로 두고 터틀봇 바로 위로만 미끄러진다** (실기 담당자 2026-08-28).
+      // **높이는 지금 그대로 두고 터틀봇 바로 위로만 미끄러진다** (주인님 2026-08-28).
       //
       // 왜 내려가지 않나 — 실기 추종(`follow.py`)이 **평행이동만** 한다. 손목 방향은 풀지 않고
       // *"수직에서 N° 기울었다"* 로 **검사만** 하고 넘는다. 즉 자세는 사람이 잡아 두는 것이고,
@@ -853,7 +975,7 @@ export function RobotTwin({
       if (ghost) {
         // 고스트는 **교시 자세 미리보기 전용**으로 되돌렸다 (2026-08-28).
         // 한때 여기서 관절을 풀어 터틀봇을 겨눴는데, 솔버가 **손끝 자리만** 맞추고 방향은
-        // 안 풀어 **카메라가 벽을 봤다**(실기 담당자 지적 · 시선 화살이 그걸 보여줬다).
+        // 안 풀어 **카메라가 벽을 봤다**(주인님 지적 · 시선 화살이 그걸 보여줬다).
         // 실기 추종(`follow.py`)도 방향을 풀지 않고 **검사만** 한다 — 자세는 사람이 잡는다.
         // 그래서 화면도 팔을 움직이지 않고, 대신 아래 §시야 발자국으로 **보이나**를 답한다.
         const gj = ghostJointsRef.current;

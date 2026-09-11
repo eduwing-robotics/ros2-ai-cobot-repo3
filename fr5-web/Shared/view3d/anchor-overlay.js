@@ -11,7 +11,7 @@
 import { assembleProps } from './parts.js';
 
 /**
- * 앵커 id → 세울 소품. **태그 중심이 아니라 태그 = 끝이다** (실기 담당자 08-19) — 중심으로
+ * 앵커 id → 세울 소품. **태그 중심이 아니라 태그 = 끝이다** (주인님 08-19) — 중심으로
  * 잡으면 몸이 양쪽으로 자라 판을 빠져나간다. 길이·단면은 실맵 프리셋과 같은 값
  * (나르는 것이 77mm 더미탄 · `presets.js realmap`).
  *
@@ -25,13 +25,13 @@ export const ANCHOR_PROPS = {
     opts: { lengthMm: 560, wMm: 120, hMm: 80, belt: true } },
   33: { type: 'conveyor', anchor: 'end',                                    // 컨베이어1 · 투입
     opts: { lengthMm: 640, wMm: 120, hMm: 80, belt: true } },
-  // 시나리오 거치대 (실기 담당자 08-19) — **실물이 오기 전까지의 가상 지그.**
+  // 시나리오 거치대 (주인님 08-19) — **실물이 오기 전까지의 가상 지그.**
   // 실물이 자리에 서면 그 줄을 지운다 — 실물을 그림으로 덮지 않는다 (D135 §only 와 같은 규칙)
   //
   // ⛔ **18(거치대2) — 2026-08-27 (D149).** 실물이 섰다. 가상 지그는 200×200 인데 실물은
   //    **122×122 · 두께 27.9mm** 였고, 태그가 물건에서 **351mm** 떨어져 그 자리도 틀렸다 —
   //    **크기도 자리도 틀린 그림을 실물 위에 덮고 있었다.**
-  // ⛔ **15(거치대1) · 21(거치대3) — 2026-09-04.** 실기 담당자 *"AR 에서의 거치대는 이제 없어도
+  // ⛔ **15(거치대1) · 21(거치대3) — 2026-09-04.** 주인님 *"AR 에서의 거치대는 이제 없어도
   //    될 듯. 글로벌캠 화면에서 AR 이 거치대를 가려버림. 그냥 충돌 표시만."*
   //    분홍 실물 거치대가 섰고, 그 자리는 이제 **색 검출**이 매 판 낸다
   //    (`scripts/map/color-find.py` · D173). 태그 자리에 200×200 판을 덮으면 **사람이
@@ -62,7 +62,7 @@ export function anchorItems(adoc) {
  * 그린다** — 돌려주는 `changed` 가 true 일 때만 호출자가 렌더 한 장을 찍으면 된다
  * (조작대 PiP 는 상시 렌더를 꺼 둔 정적 무대다 · `CamView` §상시 렌더를 끈다).
  */
-export function createAnchorOverlay(scene) {
+export function createAnchorOverlay(scene, { materialStyle = null } = {}) {
   let group = null;
   let lastKey = '';
   const clear = () => {
@@ -73,6 +73,13 @@ export function createAnchorOverlay(scene) {
     group = null;
   };
   return {
+    /** tagId 32/33의 활성 구간. 반환 true일 때만 정적 PiP를 다시 그리면 된다. */
+    setConveyorTravel(tagId, signedMm) {
+      return group?.userData.setConveyorTravel(`anchor-${tagId}`, signedMm) ?? false;
+    },
+    setConveyorPose(tagId, pose) {
+      return group?.userData.setConveyorPose(`anchor-${tagId}`, pose) ?? false;
+    },
     update(adoc) {
       const items = anchorItems(adoc);
       const ids = items.map((i) => i.id.replace('anchor-', ''));
@@ -80,7 +87,7 @@ export function createAnchorOverlay(scene) {
       if (key === lastKey) return { count: items.length, ids, changed: false };
       lastKey = key;
       clear();
-      if (items.length) { group = assembleProps(items); scene.add(group); }
+      if (items.length) { group = assembleProps(items, { materialStyle }); scene.add(group); }
       return { count: items.length, ids, changed: true };
     },
     dispose() { clear(); lastKey = ''; },

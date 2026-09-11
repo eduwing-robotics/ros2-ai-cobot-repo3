@@ -4,12 +4,13 @@ import assert from 'node:assert/strict';
 import { buildCycle, unloadSteps, stepSeconds, observedStop, DEMO_SPEED_PCT } from './cycle.js';
 import { AMR_HOME, AMR_DROP, AMR_DRIVE_MM_S, AMR_SHUTTLE_MM, AMR_ARRIVE_ERR_MM, AMR_TURN_DEFICIT_DEG, JOINT_DEG_S_AT_FULL, MOVE_FIXED_S } from '../workcell.js';
 
-// 시뮬 탭 `makeSteps` 와 같은 id 아홉 — 자세는 시험용 (좌표를 지어내는 것이 아니라 **모양**만 맞춘 것)
+// 시뮬 탭 `makeSteps` 와 같은 9자세+사전성형 — 자세는 시험용 (좌표를 지어내는 것이 아니라 **모양**만 맞춘 것)
 const G = [657.2, -1103.0, -366.0, 178.8, -1.3, -90.3];
 const at = (x, y, z) => [x, y, z, G[3], G[4], G[5]];
 const LOAD = [
   { id: 'approach', grip: 100, pose: at(G[0], G[1], G[2] + 120) },
-  { id: 'grasp', grip: 100, pose: at(G[0], G[1], G[2]) },
+  { id: 'pregrip', grip: 60, pose: at(G[0], G[1], G[2] + 120) },
+  { id: 'grasp', grip: 60, pose: at(G[0], G[1], G[2]) },
   { id: 'close', grip: 40, pose: at(G[0], G[1], G[2]) },
   { id: 'lift', grip: 40, pose: at(G[0], G[1], G[2] + 120) },
   { id: 'carry', grip: 40, pose: at(500, -900, G[2] + 120) },
@@ -20,13 +21,15 @@ const LOAD = [
 ];
 const J = (k) => [80 + k, -54, 129, -167, -89, 8];
 const SOLVED = LOAD.map((_, k) => ({ jointsDeg: J(k * 3) }));
+const load = (id) => LOAD.find((s) => s.id === id);
+const solved = (id) => SOLVED[LOAD.findIndex((s) => s.id === id)];
 const USER = [-401.846, 497.329, 342.076, -0.005, 0, 0.001];
 
 test('내리기 8칸은 싣기 자세의 되쓰기다 — 새 좌표 0', () => {
   const u = unloadSteps(LOAD);
   assert.equal(u.length, 8);
-  assert.deepEqual(u[0].pose, LOAD[5].pose);            // 바구니 위 = over
-  assert.deepEqual(u[5].pose, LOAD[1].pose);            // 판에 내려놓기 = grasp
+  assert.deepEqual(u[0].pose, load('over').pose);            // 바구니 위 = over
+  assert.deepEqual(u[5].pose, load('grasp').pose);            // 판에 내려놓기 = grasp
   assert.equal(u[2].grip, 40);                          // 문는 값은 싣기 ③ 과 같다
   assert.equal(unloadSteps(LOAD.slice(0, 4)), null);    // 칸이 모자라면 못 만든다
 });
@@ -38,40 +41,45 @@ test('관절 시간은 제일 많이 도는 관절 ÷ (28.9 × 10%) + 고정비�
   assert.ok(stepSeconds([0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0], 100, 40) > 0);       // 그리퍼만 움직여도 시간이 든다
 });
 
-test('사이클 21구간(주행 4 + 싣기 9 + 내리기 8) · 주행 시간은 거리 ÷ 실측 속도 · 시작·끝은 홈', () => {
+test('사이클 22구간(주행 4 + 싣기 10 + 내리기 8) · 집어 든 뒤 첫 주행 · 시작·끝은 홈', () => {
   const c = buildCycle({ load: LOAD, solved: SOLVED, stop: AMR_DROP, userDef: USER });
   assert.equal(c.why, null);
-  assert.equal(c.acts.length, 1 + 9 + 2 + 8 + 1);
+  assert.equal(c.acts.length, 1 + 10 + 2 + 8 + 1);
+  const ids = c.acts.map((a) => a.id);
+  assert.equal(ids[0], 'approach');
+  assert.ok(ids.indexOf('close') < ids.indexOf('lift') && ids.indexOf('lift') < ids.indexOf('d-in') && ids.indexOf('d-in') < ids.indexOf('carry'), ids.join(','));
   const dOut = c.acts.find((a) => a.id === 'd-out');
   assert.ok(Math.abs(dOut.durMs / 1000 - (AMR_SHUTTLE_MM / AMR_DRIVE_MM_S + 0.3)) < 0.01);
   const s0 = c.sample(0);
   assert.deepEqual(s0.amrUser1, [AMR_HOME.xMm, AMR_HOME.yMm]);
-  assert.deepEqual(s0.carrierHeldTcp, LOAD[1].pose.slice(0, 3));   // 판 위
+  assert.deepEqual(s0.carrierHeldTcp, load('grasp').pose.slice(0, 3));   // 판 위
   assert.ok(s0.pose && Math.abs(s0.pose.xMm) < 1e-6 && Math.abs(s0.pose.yMm) < 1e-6, 'odom 원점 = 홈');
   const end = c.sample(c.totalMs);
   assert.deepEqual(end.amrUser1, [AMR_HOME.xMm, AMR_HOME.yMm]);
-  assert.deepEqual(end.carrierHeldTcp, LOAD[1].pose.slice(0, 3));  // 다시 판 위
+  assert.deepEqual(end.carrierHeldTcp, load('grasp').pose.slice(0, 3));  // 다시 판 위
   assert.equal(s0.trail.length, 2, '예정 경로 리본 = 홈 → 먼 끝');
 });
 
-test('실은 채 갈 때 거치대는 바구니와 같이 움직이고, 앞으로 500mm 는 요각 방향이다', () => {
+test('실은 채 갈 때 거치대는 바구니와 같이 움직이고, 추가 이송은 홈 기준 700mm 안이다', () => {
   const c = buildCycle({ load: LOAD, solved: SOLVED, stop: AMR_DROP, userDef: USER });
   const dOut = c.acts.find((a) => a.id === 'd-out');
   const far = c.sample(dOut.t0Ms + dOut.durMs - 1);
   const dx = far.amrUser1[0] - AMR_DROP.xMm;
   assert.ok(Math.abs(dx + AMR_SHUTTLE_MM) < 2, `요각 180° 라 −x 로 ${AMR_SHUTTLE_MM} — 실제 ${dx.toFixed(1)}`);
+  assert.ok(AMR_DROP.fromHomeMm + AMR_SHUTTLE_MM <= 700, '검증된 직진 끝 700mm를 넘지 않는다');
   // 거치대는 **실제** 바구니에 있다 — 명령 자리 + 유령의 도착 오차(짧게 선 만큼 되돌아온 쪽). 명령 자리와의 차가 곧 driftMm (2026-09-06)
-  const offX = far.carrierHeldTcp[0] - (LOAD[6].pose[0] + dx);
+  const offX = far.carrierHeldTcp[0] - (load('insert').pose[0] + dx);
   assert.ok(Math.abs(Math.abs(offX) - far.driftMm) < 0.5 && far.driftMm > 30, `거치대가 실제 바구니와 같이 갔다 — 명령 자리와 ${offX.toFixed(1)} · 유령 ${far.driftMm.toFixed(1)}`);
-  assert.equal(far.carrierHeldTcp[2], LOAD[6].pose[2]);
-  assert.deepEqual(far.armJoints, SOLVED[8].jointsDeg);                 // 팔은 ⑨ 자세로 기다린다
-  assert.deepEqual(far.tcpMmDeg, LOAD[8].pose);                         // 손끝 자세도 ⑨ — 시야 발자국 재료
+  assert.equal(far.carrierHeldTcp[2], load('insert').pose[2]);
+  assert.deepEqual(far.armJoints, solved('retreat').jointsDeg);                 // 팔은 ⑨ 자세로 기다린다
+  assert.deepEqual(far.tcpMmDeg, load('retreat').pose);                         // 손끝 자세도 ⑨ — 시야 발자국 재료
   // 도착 오차 유령 — 주행 끝에서 실측 37.5mm 만큼 주행 방향으로 짧다 (odom 으로 준다)
   assert.ok(Math.abs(far.driftMm - 37.5) < 0.5, `${far.driftMm}`);
   assert.ok(far.driftPose && Math.abs(Math.hypot(far.driftPose.xMm - far.pose.xMm, far.driftPose.yMm - far.pose.yMm) - 37.5) < 0.5);
   const s0 = c.sample(0);
   assert.equal(s0.driftMm, 0, '출발 전엔 오차 0');
-  const mid = c.sample(c.acts[2].t0Ms + c.acts[2].durMs / 2);            // 싣기 ② 한가운데
+  const graspAct = c.acts.find((a) => a.id === 'grasp');
+  const mid = c.sample(graspAct.t0Ms + graspAct.durMs / 2);            // 싣기 ② 한가운데
   assert.equal(mid.tcpMmDeg.length, 6);
 });
 
@@ -94,7 +102,7 @@ test('모든 구간이 재생에서 한 번은 잡힌다 — 0ms 칸이 건너�
 test('제자리 회전 정차 후보(요각 270)는 유령 요각이 덜 돈 각만큼 어긋난다 (감사 ②-2)', () => {
   const stop = { xMm: AMR_HOME.xMm, yMm: AMR_HOME.yMm, yawDeg: 270, fromHomeMm: 0, turnFromHomeDeg: 90 };
   const c = buildCycle({ load: LOAD, solved: SOLVED, stop, userDef: USER });
-  const din = c.acts[0];
+  const din = c.acts.find((a) => a.id === 'd-in');
   assert.ok(din.durMs > 0, '회전만 있는 구간도 시간이 있다');
   const afterTurn = c.sample(din.t0Ms + din.durMs);
   assert.ok(Math.abs(Math.abs(afterTurn.driftYawDeg) - AMR_TURN_DEFICIT_DEG) < 1e-9, `${afterTurn.driftYawDeg}`);
@@ -150,14 +158,14 @@ test('관측을 반영하면 바구니 쪽 4칸만 실제 자리로 옮겨지고
   const c = buildCycle({ load: LOAD, solved: SOLVED, stop, userDef: USER, observed: o, unloadSolved: uj });
   assert.equal(c.why, null);
   assert.deepEqual(c.acts.find((a) => a.id === 'u-reach').nextJ, J(51));
-  assert.deepEqual(c.acts.find((a) => a.id === 'u-place').nextJ, SOLVED[1].jointsDeg);   // 판 쪽은 싣기 되쓰기 그대로
+  assert.deepEqual(c.acts.find((a) => a.id === 'u-place').nextJ, solved('grasp').jointsDeg);   // 판 쪽은 싣기 되쓰기 그대로
 });
 
 test('바구니 속 거치대는 실제 바구니(유령)에 있다 — 되돌아온 뒤 도착 오차만큼 명령 자리와 다르다', () => {
   const c = buildCycle({ load: LOAD, solved: SOLVED, stop: AMR_DROP, userDef: USER });
   const back = c.acts.find((a) => a.id === 'd-back');
   const s = c.sample(back.t0Ms + back.durMs - 1);
-  const dx = s.carrierHeldTcp[0] - LOAD[6].pose[0]; const dy = s.carrierHeldTcp[1] - LOAD[6].pose[1];
+  const dx = s.carrierHeldTcp[0] - load('insert').pose[0]; const dy = s.carrierHeldTcp[1] - load('insert').pose[1];
   assert.ok(Math.abs(Math.hypot(dx, dy) - AMR_ARRIVE_ERR_MM) < 0.5, `${Math.hypot(dx, dy)}`);
 });
 
@@ -170,7 +178,7 @@ test('⓪ 도착 자리(in) = 유령이 들어와 선 자리 · 싣기를 그 �
   // 열린 루프: 놓고 손을 뺀 순간(retreat · 바구니 상태 시작) 바구니 속 자리가 손끝이 놓은 자리와 도착 오차만큼 다르다 — 카메라 없는 싣기의 빗나감
   const rel0 = c0.acts.find((a) => a.id === 'retreat');
   const s0 = c0.sample(rel0.t0Ms + rel0.durMs - 1);
-  const jump0 = Math.hypot(s0.carrierHeldTcp[0] - LOAD[6].pose[0], s0.carrierHeldTcp[1] - LOAD[6].pose[1]);
+  const jump0 = Math.hypot(s0.carrierHeldTcp[0] - load('insert').pose[0], s0.carrierHeldTcp[1] - load('insert').pose[1]);
   assert.ok(Math.abs(jump0 - AMR_ARRIVE_ERR_MM) < 0.5, `열린 루프 튐 ${jump0}`);
   // 관측 반영: 싣기 9칸이 도착 자리 기준으로 풀렸다고 치면(loadAmr) 놓는 순간 튐 0
   const LOAD_IN = LOAD.map((s) => (['carry', 'over', 'insert', 'release', 'retreat'].includes(s.id)
@@ -181,9 +189,62 @@ test('⓪ 도착 자리(in) = 유령이 들어와 선 자리 · 싣기를 그 �
   const c1 = buildCycle({ load: LOAD_IN, solved: SOLVED, stop, userDef: USER, loadAmr: oIn, unloadSolved: uj });
   const rel1 = c1.acts.find((a) => a.id === 'retreat');
   const s1 = c1.sample(rel1.t0Ms + rel1.durMs - 1);
-  const jump1 = Math.hypot(s1.carrierHeldTcp[0] - LOAD_IN[6].pose[0], s1.carrierHeldTcp[1] - LOAD_IN[6].pose[1]);
+  const insertIn = LOAD_IN.find((s) => s.id === 'insert');
+  const jump1 = Math.hypot(s1.carrierHeldTcp[0] - insertIn.pose[0], s1.carrierHeldTcp[1] - insertIn.pose[1]);
   assert.ok(jump1 < 0.01, `관측 반영 튐 ${jump1}`);
   // pose = 실제 자리 · driftPose = 명령 자리 — 둘 사이가 도착 오차
   assert.ok(Math.abs(s1.driftMm - AMR_ARRIVE_ERR_MM) < 0.01);
   assert.deepEqual(s1.realUser1.map((v) => +v.toFixed(3)), [oIn.xMm, oIn.yMm].map((v) => +v.toFixed(3)));
+});
+
+test('carrierKnown — 이미 찾았으면 거치대 관측이 사라지고 집어 든 뒤 터틀봇을 본다', () => {
+  const J = [0, -60, 90, -120, -90, 0];
+  const observe = { carrier: { jointsDeg: J, pose: at(400, -1100, -100) }, amr: { jointsDeg: J.map((v) => v + 1), pose: at(500, -900, 0) }, lookS: 2 };
+  const c0 = buildCycle({ load: LOAD, solved: SOLVED, stop: AMR_DROP, userDef: USER, observe });
+  const c1 = buildCycle({ load: LOAD, solved: SOLVED, stop: AMR_DROP, userDef: USER, observe, carrierKnown: true });
+  const ids0 = c0.acts.map((a) => a.id); const ids1 = c1.acts.map((a) => a.id);
+  assert.ok(ids0.includes('o-carrier'));
+  assert.ok(!ids1.includes('o-carrier') && !ids1.includes('o-carrier-move'), ids1.join(','));
+  assert.ok(ids1.includes('o-amr-in'), '터틀봇 관측은 남는다');
+  assert.ok(ids1.indexOf('lift') < ids1.indexOf('d-in') && ids1.indexOf('d-in') < ids1.indexOf('o-amr-in'), ids1.join(','));
+});
+
+test('정차 뒤 이어하기 — 홈 주행·정차 관측을 빼고 현재 팔 자세에서 첫 접근을 시작한다', () => {
+  const initialArm = { jointsDeg: [48, -65, 68, -93, -90, 48], tcpMmDeg: [31, -1070, -59, 180, 0, 91] };
+  const observe = { amr: { jointsDeg: J(70), pose: at(500, -900, 0) }, lookS: 2 };
+  const c = buildCycle({ load: LOAD, solved: SOLVED, stop: AMR_DROP, userDef: USER, observe,
+    carrierKnown: true, startAtStop: true, initialArm });
+  const ids = c.acts.map((a) => a.id);
+  assert.equal(c.why, null);
+  assert.equal(ids[0], 'approach');
+  assert.ok(!ids.includes('d-in') && !ids.includes('o-amr-in'), ids.join(','));
+  assert.deepEqual(c.acts[0].prevJ, initialArm.jointsDeg);
+  assert.deepEqual(c.acts[0].prevPose, initialArm.tcpMmDeg);
+  assert.deepEqual(c.sample(0).amrUser1, [AMR_DROP.xMm, AMR_DROP.yMm]);
+  assert.deepEqual(c.sample(0).trail[0], c.sample(0).pose, '예정 경로도 홈이 아니라 현재 정차 자리에서 시작');
+});
+
+test('heldScan — 들기 뒤 터틀봇이 이동하고 「바구니를 본다(든 채)」 다음 ⑤가 출발한다', () => {
+  const J = [0, -60, 90, -120, -90, 0];
+  const observe = { amr: { jointsDeg: J.map((v) => v + 1), pose: at(500, -900, 0) }, lookS: 2 };
+  const heldScan = { pose: at(520, -880, 40), jointsDeg: J.map((v) => v + 5) };
+  const c = buildCycle({ load: LOAD, solved: SOLVED, stop: AMR_DROP, userDef: USER, observe, carrierKnown: true, heldScan });
+  const ids = c.acts.map((a) => a.id);
+  assert.ok(!ids.includes('o-amr-in'), ids.join(','));
+  const k = ids.indexOf('o-basket-held'); assert.ok(k > 0);
+  assert.equal(ids[k - 1], 'd-in'); assert.equal(ids[k + 1], 'carry');
+  assert.ok(ids.indexOf('lift') < ids.indexOf('d-in'));
+  assert.equal(c.acts[k].scanTarget, 'basketFloor');
+  assert.deepEqual(c.acts[k + 1].prevJ, heldScan.jointsDeg);
+});
+
+test('d-in — 거치대를 든 lift 자세로 팔·그리퍼를 고정하고 터틀봇만 움직인다', () => {
+  const c = buildCycle({ load: LOAD, solved: SOLVED, stop: AMR_DROP, userDef: USER });
+  const dIn = c.acts.find((a) => a.id === 'd-in');
+  const mid = c.sample(dIn.t0Ms + dIn.durMs / 2);
+  assert.equal(mid.carrierInHand, true);
+  assert.deepEqual(mid.armJoints, solved('lift').jointsDeg);
+  assert.deepEqual(mid.tcpMmDeg, load('lift').pose);
+  assert.equal(mid.gripperPct, load('lift').grip);
+  assert.deepEqual(mid.carrierHeldTcp, load('lift').pose.slice(0, 3));
 });
