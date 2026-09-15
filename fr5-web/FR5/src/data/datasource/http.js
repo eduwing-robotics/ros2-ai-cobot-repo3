@@ -555,6 +555,9 @@ export const datasource = {
   // 글로벌캠 색 검출 산출(브리지 상주가 쓴다 · 계약 §color) — `follow.targetSource` 와 무관하게 마법사 ① 의 대강값이 읽는다
   // 상주 검출기가 계속 덮어쓰는 살아 있는 파일 — 캐시된 옛 t를 받으면 5초 신선도에서 영원히 탈락한다.
   carrierPose: () => api('GET', '/config/carrier-pose.json', null, { cache: 'no-store', signal: AbortSignal.timeout(4000) }),
+  // 촬영 시나리오의 마지막 한 칸 — 터틀봇 완전 정차와 고스트를 사람이 확인한 뒤에만 부른다.
+  // 서버가 owner·ARMED·표적·조건 27을 다시 검사하며 연속 추종 상태는 만들지 않는다.
+  followStep: () => api('POST', '/follow/step', { who, token: ownerToken, confirm: '현장확인' }),
   runs: () => api('GET', '/runs'),
   run: (runId) => api('GET', `/runs/${encodeURIComponent(runId)}`),
   logRun: (runId, line) => api('POST', '/runs', { runId, line }),

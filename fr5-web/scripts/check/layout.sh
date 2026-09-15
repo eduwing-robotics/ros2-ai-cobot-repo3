@@ -77,9 +77,8 @@ const TOUCH_M = 0.003;   // 3mm
   const initial = Array.from(seam.instanceMatrix.array);
   const fixed = input.children.filter((o) => o !== seam).map((o) => o.matrix.toArray());
   check('치수와 태그 일치', () => {
-    for (const [id, tag] of [['convIn', 33], ['convOut', 32]]) {
+    for (const id of ['convIn', 'convOut']) {
       const prop = real.props.find((p) => p.id === id);
-      assert.deepEqual(prop.opts, ANCHOR_PROPS[tag].opts);
       const size = new THREE.Box3().setFromObject(PROPS.conveyor(prop.opts));
       const dimensions = size.getSize(new THREE.Vector3()).multiplyScalar(1000);
       assert.ok(Math.abs(size.min.y) < 1e-7);
@@ -87,6 +86,8 @@ const TOUCH_M = 0.003;   // 3mm
       assert.ok(Math.abs(dimensions.z - prop.opts.wMm) < 0.01);
       assert.ok(Math.abs(dimensions.y - prop.opts.hMm) < 0.01);
     }
+    assert.deepEqual(real.props.find((p) => p.id === 'convIn').opts, ANCHOR_PROPS[33].opts);
+    assert.equal(ANCHOR_PROPS[32], undefined); // 컨베이어2 글로벌카메라 AR 제거 계약
   });
   check('표면만 전진', () => {
     assert.equal(api.setConveyorTravel('convIn', 17), true);

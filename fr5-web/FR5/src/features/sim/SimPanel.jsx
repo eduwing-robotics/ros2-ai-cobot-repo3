@@ -5,7 +5,8 @@
 // 돌려준다. 그래서 이건 그림이 아니라 **실기 기구학·실기 게이트로 푼 시뮬레이션**이다.
 //
 // **탭이 답하는 질문 하나** (2026-09-06 · `SIM-TAB-CONVERGE-LOOP` phase 5) — 「거치대가 *여기* 있으면 팔이 할 수 있나 · 얼마나 걸리나」.
-// 그래서 절은 **하나**다 — 입력 한 줄 · 풀기 · 세 층 답 · 사이클(구간 목록이 곧 10칸+관측+내리기). 「따라간다」 절은 3D 좌상단 스위치 하나로 돌아갔고
+// 그래서 기본 작업 마법사는 **한 절**이다 — 입력 한 줄 · 풀기 · 세 층 답 · 사이클(구간 목록이 곧 10칸+관측+내리기).
+// 촬영 시나리오는 주인님 요청대로 그 앞의 별도 절이며, 저장된 front430·front860 각 정차점에서 follow/step 한 번씩을 맡는다. 「따라간다」 절은 3D 좌상단 스위치 하나로 돌아갔고
 // (같은 상태가 두 곳에 있던 것), 관측 자세 후보는 사이클의 관측 칸에 흡수됐고(phase 3), 실측 되감기는 시뮬이 아니라
 // **터틀봇 탭**으로 갔다(`TbPanel` §되감기). 어느 것도 지운 게 아니라 제자리로 보낸 것이다.
 //
@@ -35,6 +36,7 @@ import { Guard } from './Guard.jsx';
 import { RunLog } from './RunLog.jsx';
 import { AutoRunControls } from './automatic/AutoRunControls.jsx';
 import { useLimitedAutomatic } from './automatic/useLimitedAutomatic.js';
+import { CaptureScenario } from './CaptureScenario.jsx';
 import { bulletEvidence, foldYaw, singleViewFused } from '@fr5/shared/data/sim/aim.js';
 import { CARRIER_GRASP_TRUTH } from '@fr5/shared/data/props.js';
 import { chunkJoints, arrived, maxJointDelta, chunkSeconds, BIG_CHUNK_DEG } from '@fr5/shared/data/sim/motion-chunks.js';
@@ -85,7 +87,9 @@ function actMark(a, steps, solved, contact, uFrom) {
   return { mark, bad };
 }
 
-export function SimPanel({ state, onReplay, onAmrTarget = null, carrierInput = null, measuredCarrier = null, pickCarrier = false, onPickCarrier = null, onClearInput = null, onCarrierSeen = null }) {
+export function SimPanel({ state, onReplay, onAmrTarget = null, carrierInput = null, measuredCarrier = null,
+  pickCarrier = false, onPickCarrier = null, onClearInput = null, onCarrierSeen = null,
+  captureEnabled = false, onEnableCapture = null, followPreview = null, onCaptureGhost = null }) {
   // **정차 자리는 사이클이 고른다** (2026-09-06 · phase 2). 풀기 때 후보 7(채택 + 6)을 전부 평가하고 우선순위로 하나를 집는다.
   // `pick` 은 그 결과이고, 사람이 드롭다운으로 덮을 수 있다(덮어도 평가값은 그대로 보인다).
   // ⛔ 고른다고 터틀봇이 움직이지 않는다. 이 화면은 **그 자리였다면 팔이 어떻게 되나**만 푼다.
@@ -267,16 +271,20 @@ export function SimPanel({ state, onReplay, onAmrTarget = null, carrierInput = n
   //    정차 후보의 `pathName` 경로로 슬롯 `run-path` 를 시작하고 `/ws/state` 로 도착(mode slot→idle · 속도 0 · 목표 30mm 안)을 본다. 경로가 없는 후보는 예전처럼 손으로.
   //    팔은 조건 27 이 자동으로 막는다. STOP 은 둘 다 세운다. 목업 팔이면 기록만
   const tbRef = useRef(null);
-  const [tbStatus, setTbStatus] = useState({ connected: false, stopped: false, pose: null });
+  const [tbStatus, setTbStatus] = useState({ connected: false, stopped: false, pose: null, robotId: null,
+    mode: null, geofence: null, velocity: null });
   const tbStatusKey = useRef('');
   useEffect(() => datasource.tb?.subscribeState?.((snap) => {
     tbRef.current = snap;
     const robot = connectedTb(snap); const pose = tbPose(snap);
     const moving = !!robot && (Math.abs(robot.velocity?.linearMmS ?? 0) > TB_STOP_LINEAR_DEADBAND_MM_S
       || Math.abs(robot.velocity?.angularDegS ?? 0) > TB_STOP_ANGULAR_DEADBAND_DEG_S || robot.mode === 'slot');
-    const next = { connected: !!robot, stopped: !!robot && !moving, pose };
+    const robotId = Object.keys(snap?.robots ?? {}).find((id) => snap.robots[id] === robot) ?? null;
+    const next = { connected: !!robot, stopped: !!robot && !moving, pose, robotId,
+      mode: robot?.mode ?? null, geofence: robot?.geofence ?? null, velocity: robot?.velocity ?? null };
     const key = JSON.stringify([next.connected, next.stopped,
-      pose ? Math.round(pose.xMm) : null, pose ? Math.round(pose.yMm) : null, pose ? Math.round(pose.thetaDeg * 2) / 2 : null]);
+      pose ? Math.round(pose.xMm) : null, pose ? Math.round(pose.yMm) : null, pose ? Math.round(pose.thetaDeg * 2) / 2 : null,
+      next.geofence?.inside ?? null, next.geofence?.reason ?? null]);
     if (key !== tbStatusKey.current) { tbStatusKey.current = key; setTbStatus(next); }
 
     // 오래된 측정, 측정 뒤 주행, 자세 점프(재부팅·odom 재설정 포함)는 정확한 바구니 값의 근거를 없앤다.
@@ -289,7 +297,9 @@ export function SimPanel({ state, onReplay, onAmrTarget = null, carrierInput = n
     }
   }) ?? undefined, []);   // eslint-disable-line react-hooks/exhaustive-deps
   const goDrive = async (a) => {
-    const pathName = a.id === 'd-in' ? (stop.pathName ?? null) : (a.id === 'd-home' ? (stop.pathHome ?? null) : null);
+    const driveAllowed = () => typeof a.guard !== 'function' || a.guard() !== false;
+    if (!driveAllowed()) return false;
+    const pathName = a.pathName ?? (a.id === 'd-in' ? (stop.pathName ?? null) : (a.id === 'd-home' ? (stop.pathHome ?? null) : null));
     if (isMock) return true;                       // 목업 팔이면 터틀봇 칸은 예전처럼 그냥 넘어간다(기록 없음 · 게이트가 첫 실기 줄을 팔 줄로 읽는다)
     if (!pathName) { setGoing(null); log('go', { label: a.label, sent: null, mock: false, tb: { path: null, manual: true }, gate: { ok: true, reasons: ['저장 경로 없음 — 사람이 터틀봇 탭에서 보냈다고 본다'] } }); return true; }
     const snap = tbRef.current; const robots = snap?.robots ?? {};
@@ -297,10 +307,12 @@ export function SimPanel({ state, onReplay, onAmrTarget = null, carrierInput = n
     if (!robot) { setGoing({ label: a.label, k: 1, n: 1, why: '터틀봇 브리지에 연결된 로봇이 없어요 — 터틀봇 탭에서 주소·연결 확인' }); return false; }
     const who = state?.owner ?? 'sim';
     const path = await datasource.tb.getPath(pathName);
+    if (!driveAllowed()) return false;
     const goal = Array.isArray(path?.points) && path.points.length ? path.points[path.points.length - 1] : null;
     if (!goal) { setGoing({ label: a.label, k: 1, n: 1, why: `경로 ${pathName} 를 터틀봇 브리지에서 못 읽었어요` }); return false; }
     setGoing({ label: a.label, k: 1, n: 1, why: null, deg: null });
     const cl = await datasource.tb.claimOwner(robot, who);
+    if (!driveAllowed()) return false;
     if (cl && cl.ok === false) { setGoing({ label: a.label, k: 1, n: 1, why: `터틀봇 조종권을 못 잡았어요 — ${cl.reason ?? ''}` }); return false; }
     const st = await datasource.tb.startSlot('run-path', robot, who, { path: pathName });
     if (!st || st.ok === false) { setGoing({ label: a.label, k: 1, n: 1, why: `run-path 시작 거부 — ${st?.reason ?? '응답 없음'}` }); log('go', { label: a.label, sent: { cmd: 'slot', slot: 'run-path', path: pathName, robot, who }, mock: false, gate: { ok: false, reasons: [st?.reason ?? '응답 없음'] } }); return false; }
@@ -311,6 +323,7 @@ export function SimPanel({ state, onReplay, onAmrTarget = null, carrierInput = n
     const t0 = Date.now(); let seenSlot = false; let r = null;
     while (Date.now() - t0 < budget) {                                                    // eslint-disable-line no-await-in-loop
       await new Promise((res) => setTimeout(res, 300));                                    // eslint-disable-line no-await-in-loop
+      if (!driveAllowed()) return false;
       r = tbRef.current?.robots?.[robot] ?? null;
       if (r?.mode === 'slot') seenSlot = true;
       if (!seenSlot && Date.now() - t0 > 10000) break;                                     // 10초 안에 슬롯이 안 뜨면 시작이 안 된 것
@@ -830,6 +843,31 @@ export function SimPanel({ state, onReplay, onAmrTarget = null, carrierInput = n
     setConfirmed: setAutoConfirm, request: autoRequest, gate: autoGate,
     onStage: onAutoStage, onResult: onAutoResult, start: startAutomatic,
     stop: stopAutomatic, confirmPreview: confirmAutoPreview, startWhy: autoBlocked } = auto;
+  const runCaptureFront430 = (guard) => goDrive({ id: 'capture-front430', pathName: 'front430', label: '촬영: 터틀봇 430mm 직진', guard });
+  const runCaptureFront860 = (guard) => goDrive({ id: 'capture-front860', pathName: 'front860', label: '촬영: 추종 뒤 터틀봇 430mm 추가 직진', guard });
+  const followCaptureOnce = async (guard) => {
+    if (typeof guard === 'function' && !guard()) return { ok: false, reason: '자동 실행이 취소됐어요' };
+    if (!tbStatus.stopped || stateRef.current?.amr?.moving !== false) return { ok: false, reason: '터틀봇 완전 정차를 확인할 수 없어요' };
+    const result = await datasource.followStep();
+    await log('capture-follow', { result, readback: { jointsDeg: stateRef.current?.jointsDeg ?? null,
+      tcpMmDeg: stateRef.current?.tcpMmDeg ?? null, phase: stateRef.current?.phase ?? null } });
+    return result;
+  };
+  const moveCaptureInitialGhost = async (preview, active) => goStep({
+    label: '촬영: 출발 전 FR5 조준', nextJ: preview?.jointsDeg ?? null,
+    prevJ: stateRef.current?.jointsDeg ?? null, prevGrip: null, nextGrip: null,
+    pose: preview?.tcpMmDeg ?? null,
+    guard: () => {
+      if (typeof active === 'function' && !active()) return '자동 실행이 취소됐어요';
+      const tb = connectedTb(tbRef.current);
+      if (!tb || tb.mode !== 'idle'
+        || Math.abs(tb.velocity?.linearMmS ?? 0) >= TB_STOP_LINEAR_DEADBAND_MM_S
+        || Math.abs(tb.velocity?.angularDegS ?? 0) >= TB_STOP_ANGULAR_DEADBAND_DEG_S
+        || stateRef.current?.amr?.moving !== false) return '터틀봇이 정차 상태가 아니라 FR5 출발 조준을 보내지 않아요';
+      return null;
+    },
+  });
+  const stopCapture = () => Promise.all([datasource.stop(), datasource.tb?.estopAll?.()]);
 
   const okCount = solved?.filter((o) => o.jointsDeg).length ?? 0;
   const gateOk = solved?.filter((o) => o.gate?.ok).length ?? 0;
@@ -899,7 +937,12 @@ export function SimPanel({ state, onReplay, onAmrTarget = null, carrierInput = n
 
   return (
     <div className="sim">
-      {/* 4단 마법사 (D194) — 절은 여전히 하나. 질문 하나 · 큰 버튼 하나 · 결과 한 문장. 실험 장치(사이클 재생·정차 후보·26칸·장부)는 「자세히」 안에 */}
+      <CaptureScenario state={state} isMock={isMock} tbStatus={tbStatus}
+        armPreview={followPreview} onCaptureGhost={onCaptureGhost} onMoveInitialGhost={moveCaptureInitialGhost}
+        captureEnabled={captureEnabled} onEnableCapture={onEnableCapture}
+        onRunFront430={runCaptureFront430} onFollowOnce={followCaptureOnce}
+        onRunFront860={runCaptureFront860} onStop={stopCapture} />
+      {/* 4단 기본 마법사 (D194) — 촬영 시나리오와 분리된 한 절. 질문 하나 · 큰 버튼 하나 · 결과 한 문장. 실험 장치(사이클 재생·정차 후보·26칸·장부)는 「자세히」 안에 */}
       <Section id="sim-cycle" title="거치대를 집어 바구니에 — 네 단계" note="자동은 지정 단계까지만 · S3 계획 / S3R 높은 준비 / S4 고스트 확인 뒤 집어 올림">
         <nav className="wizard" data-t="sim-wizard" aria-label="단계">
           {stageBtn(1, '어디 있나', true)}{stageBtn(2, '할 수 있나', s2ok)}{stageBtn(3, '한 칸씩', s3ok)}{stageBtn(4, '기록', true)}

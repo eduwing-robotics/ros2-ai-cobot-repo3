@@ -80,6 +80,10 @@ check('살아 있는 carrier-pose 폴링은 브라우저 캐시를 쓰지 않는
 const simSource = readFileSync(join(ROOT, 'FR5/src/features/sim/SimPanel.jsx'), 'utf8');
 const mainSource = readFileSync(join(ROOT, 'FR5/src/screens/main.jsx'), 'utf8');
 const twinSource = readFileSync(join(ROOT, 'FR5/src/features/live/RobotTwin.jsx'), 'utf8');
+const captureSource = readFileSync(join(ROOT, 'FR5/src/features/live/CaptureTwin.jsx'), 'utf8');
+const captureScenarioSource = readFileSync(join(ROOT, 'FR5/src/features/sim/CaptureScenario.jsx'), 'utf8');
+const followSimSource = readFileSync(join(ROOT, 'FR5/src/features/live/useFollowSim.js'), 'utf8');
+const bridgeMainSource = readFileSync(join(ROOT, 'FR5/bridge/main.py'), 'utf8');
 const contactSource = readFileSync(join(ROOT, 'FR5/src/features/sim/contact.js'), 'utf8');
 const composeSource = readFileSync(join(ROOT, 'Shared/data/sim/scene-compose.js'), 'utf8');
 const graspSource = readFileSync(join(ROOT, 'Shared/data/sim/grasp.js'), 'utf8');
@@ -140,6 +144,78 @@ check('S4 총알 검출 좌표 하나가 트윈과 MuJoCo 접촉 장면에 모�
     && /carrierUser1:[\s\S]*bulletsUser1Mm:\s*liveBullets/.test(simSource)
     && /sceneKey !== nextKey/.test(contactSource)
     && /prop:live-round-/.test(composeSource));
+check('촬영 컴포넌트는 분홍 거치대·실주행 판정·추종 고스트를 URL 하나로 묶는다',
+  /const captureMode = captureParams\.get\('capture'\) === '1' \|\| carrierOnAmr/.test(mainSource)
+    && /captureMode \|\| captureParams\.get\('follow'\) === 'sim'/.test(mainSource)
+    && /const \[captureEnabled, setCaptureEnabled\] = useState\(captureMode\)/.test(mainSource)
+    && /<CaptureTwin capture=\{captureEnabled && !replay\}/.test(mainSource)
+    && /setCaptureEnabled\(true\); setFollowSim\(true\)/.test(mainSource)
+    && /amrMoving=\{!replay && state\.amr\?\.moving === true\}/.test(mainSource)
+    && /carrierOnAmr=\{capture\}/.test(captureSource)
+    && /amrMoving=\{capture && amrMoving\}/.test(captureSource)
+    && /data-t="capture-hud"/.test(captureSource)
+    && /basketCarrierNode\.name = 'amr-basket-carrier'/.test(twinSource)
+    && /amrNode\.add\(basketCarrierNode\)/.test(twinSource)
+    && /src: 'basket-confirmed'/.test(twinSource));
+check('촬영 컨베이어는 실맵의 투입 벨트만 재사용하고 실제 터틀봇 odom 이동량만 보낸다',
+  /buildPreset\('realmap'\)\.props\.filter\(\(p\) => p\.type === 'conveyor' && p\.id === 'convIn'\)/.test(twinSource)
+    && !/p\.id === 'convOut'/.test(twinSource)
+    && /holder\.name = `live-conveyor:\$\{spec\.id\}`/.test(twinSource)
+    && /if \(amrMovingRef\.current && lastConveyorXY\)/.test(twinSource)
+    && /d > 0 && d <= 100/.test(twinSource)
+    && /c\.belt\?\.setTravelMm\?\.\(conveyorTravelMm\)/.test(twinSource)
+    && /source: 'tb-odom'/.test(twinSource));
+check('촬영 시나리오는 한 번의 시작으로 FR5 조준→front430 추종→front860 최종 추종을 직렬로 연다',
+  /pathName: 'front430'/.test(simSource) && /pathName: 'front860'/.test(simSource)
+    && /const startAutomatic = async/.test(captureScenarioSource)
+    && /onMoveInitialGhost\?\.\(initialGhost,[\s\S]*onRunFront430\?\.[\s\S]*followStoppedTarget\(token, initialGhost,[\s\S]*onRunFront860\?\.[\s\S]*followStoppedTarget\(token, firstFollowGhost/.test(captureScenarioSource)
+    && /FINAL_STOP_X_MM = 860/.test(captureScenarioSource)
+    && /setPhase\('DONE'\); setConfirmed\(false\)/.test(captureScenarioSource)
+    && /followStep: \(\) => api\('POST', '\/follow\/step', \{ who, token: ownerToken, confirm: '현장확인' \}\)/.test(httpSource));
+check('촬영 고스트는 세 팔 이동 전에 2초 고정되고 각 정차 뒤에만 최신 목표로 교체된다',
+  /GHOST_PREVIEW_MS = 2000/.test(captureScenarioSource)
+    && /lockPreview\(initialPreview\)[\s\S]*wait\(token, GHOST_PREVIEW_MS\)[\s\S]*onMoveInitialGhost/.test(captureScenarioSource)
+    && /NEW_FOLLOW_TARGET_MM = 25/.test(captureScenarioSource)
+    && /\['wrist', 'odom'\]\.includes\(liveTarget\?\.source\)/.test(captureScenarioSource)
+    && /FOLLOW_TARGET_MAX_AGE_S = 1/.test(captureScenarioSource)
+    && /tcpDistance\(p\.tcpMmDeg, previousGhost\.tcpMmDeg\) < NEW_FOLLOW_TARGET_MM/.test(captureScenarioSource)
+    && /followStoppedTarget\(token, initialGhost, firstStopWhy/.test(captureScenarioSource)
+    && /followStoppedTarget\(token, firstFollowGhost, finalStopWhy/.test(captureScenarioSource)
+    && /captureGhost\?\.jointsDeg \?\? sim\?\.jointsDeg/.test(mainSource));
+check('두 촬영 추종은 moved:false를 성공 처리하지 않고 실제 TCP 도착 전 다음 단계를 열지 않는다',
+  /result\.moved !== true[\s\S]*FR5 추종 실기 이동이 0건/.test(captureScenarioSource)
+    && /tcpArrived\(stateRef\.current\?\./.test(captureScenarioSource)
+    && /FOLLOW_ARRIVE_MM = 5/.test(captureScenarioSource) && /FOLLOW_ARRIVE_DEG = 2/.test(captureScenarioSource)
+    && /await log\('capture-follow'/.test(simSource));
+check('촬영 STOP은 실행 토큰을 먼저 폐기하고 대기·터틀봇 명령 경계마다 취소를 다시 본다',
+  /runTokenRef\.current \+= 1;[\s\S]*setPhase\('STOPPED'\)/.test(captureScenarioSource)
+    && /if \(!tokenAlive\(token\)\) return/.test(captureScenarioSource)
+    && /onRunFront430\?\.\(\(\) => tokenAlive\(token\)\)/.test(captureScenarioSource)
+    && /onRunFront860\?\.\(\(\) => tokenAlive\(token\)\)/.test(captureScenarioSource)
+    && /driveAllowed\(\)[\s\S]*getPath[\s\S]*driveAllowed\(\)[\s\S]*claimOwner[\s\S]*driveAllowed\(\)[\s\S]*startSlot/.test(simSource));
+check('새로고침 뒤 Chrome 폼 복원보다 늦게 촬영 현장확인을 다시 잠근다',
+  /setConfirmationReady\(false\); setConfirmed\(false\)/.test(captureScenarioSource)
+    && /setTimeout\(\(\) => setConfirmationReady\(true\), 100\)/.test(captureScenarioSource)
+    && /addEventListener\('pageshow', resetConfirmation\)/.test(captureScenarioSource));
+check('같은 추종 목표라도 안전 설정·서보·모드·정착 상태가 바뀌면 IK 게이트를 다시 묻는다',
+  /const gateKey = JSON\.stringify/.test(followSimSource)
+    && /state\?\.appliedSettings\?\.appliedAt/.test(followSimSource)
+    && /const gateChanged = r\.gateKey !== gateKey/.test(followSimSource)
+    && /r\.gateKey = gateKey/.test(followSimSource));
+check('추종은 관절 경계를 래핑하지 않고 평행 그리퍼 동치 TCP 둘을 IK·경로 게이트에 태운다',
+  /followPoseCandidates/.test(followSimSource)
+    && /Promise\.all\(followPoseCandidates\(goal\)/.test(followSimSource)
+    && /maxJointDelta\(state\?\.jointsDeg/.test(followSimSource)
+    && /def _follow_motion_solution\(goal, cfg\)/.test(bridgeMainSource)
+    && /cmds\.motion\(joints, cfg\["speedPct"\], True, True\)/.test(bridgeMainSource));
+check('촬영 시나리오는 원점·첫 정차점·지오펜스·두 로봇 정차와 FR5 실기 준비를 모두 fail-closed로 본다',
+  /ORIGIN_MM = 30/.test(captureScenarioSource) && /ORIGIN_DEG = 3/.test(captureScenarioSource)
+    && /FIRST_STOP_X_MM = 430/.test(captureScenarioSource) && /FIRST_STOP_TOL_MM = 80/.test(captureScenarioSource)
+    && /t\?\.geofence\?\.inside !== true/.test(captureScenarioSource)
+    && /s\.phase === 'ARMED'/.test(captureScenarioSource)
+    && /s\.mode === 0/.test(captureScenarioSource)
+    && /s\.speedOverridePct >= 10/.test(captureScenarioSource)
+    && /!t\.stopped \|\| s\?\.amr\?\.moving !== false/.test(captureScenarioSource));
 const aimSource = readFileSync(join(ROOT, 'FR5/src/features/sim/AimBlock.jsx'), 'utf8');
 check('자동 S2는 거치대 결측을 최대 3회 다시 보고, 총알 부족이면 4개 자세를 탐색하며 STOP 뒤 승인하지 않는다',
   /AUTO_SCAN_ATTEMPTS\s*=\s*3/.test(aimSource)
@@ -206,15 +282,21 @@ try {
   check('① 의 큰 버튼은 「거치대 찾기」 하나다', (await p.eval(`[...document.querySelectorAll('[data-t="sim-stage"][data-n="1"] button.big')].map(b => b.textContent).join('|')`)).includes('거치대 찾기'));
   const visibleCtl = await p.eval(`[...document.querySelectorAll('[data-t="sim-cycle"] button, [data-t="sim-cycle"] select, [data-t="sim-cycle"] input')].filter(e => e.offsetParent !== null && !e.closest('details:not([open])')).length`);
   check('기본 화면의 조작 요소가 11개 이하다 (자동 상한·확인·시작·정지 포함)', visibleCtl <= 11, `지금 ${visibleCtl}개`);
-  // ── 탭 재구성 (2026-09-06 · `SIM-TAB-CONVERGE-LOOP` phase 5) — 절은 둘뿐이다: 입력+9칸(세 층 답) · 사이클.
+  // ── 탭 재구성 (2026-09-06 · `SIM-TAB-CONVERGE-LOOP` phase 5 + 촬영 시나리오) — 촬영 절 + 기존 기본 마법사.
   //    「따라간다」 절은 3D 좌상단 스위치 하나로 돌아갔고, 관측 후보는 사이클 관측 칸에 흡수, 되감기는 터틀봇 탭으로 갔다.
   //    지운 게 아니라 옮긴 것이므로 **옮겨간 자리에 살아 있는지**까지 본다(3D 스위치 · 터틀봇 탭은 맨 끝에서).
-  check('맨 위가 「컨베이어 한 사이클」 절이다 — 탭이 답하는 질문이 먼저다',
-    (await p.eval(`document.querySelector('.sim > *')?.dataset.t`)) === 'sim-cycle');
+  check('맨 위가 별도 「촬영 시나리오」 절이다 — front430·front860 두 추종이 먼저 보인다',
+    (await p.eval(`document.querySelector('.sim > *')?.dataset.t`)) === 'capture-scenario');
   check('시뮬 탭에 따라가기·관측 후보·되감기 절이 없다 (옮겼다)',
     (await p.eval(`['sim-follow', 'sim-view', 'sim-runs', 'sim-why', 'sim-carrier'].filter((k) => document.querySelector('[data-t="' + k + '"]')).join(',')`)) === '');
-  check('절이 하나다 — 입력 · 세 층 답 · 사이클(구간 목록이 10칸을 품는다)',
-    (await p.eval(`[...document.querySelectorAll('.sim > [data-t]')].map((e) => e.dataset.t).join(',')`)) === 'sim-cycle');
+  check('절이 둘이다 — 촬영 시나리오와 기존 입력·세 층 답·사이클',
+    (await p.eval(`[...document.querySelectorAll('.sim > [data-t]')].map((e) => e.dataset.t).join(',')`)) === 'capture-scenario,sim-cycle');
+  check('촬영 시나리오는 여섯 칸이며 시작 전 자동 버튼 1개가 잠기고 STOP만 따로 있다',
+    (await p.eval(`document.querySelectorAll('[data-t="capture-scenario"] .capturesteps li').length`)) === 6
+      && (await p.eval(`document.querySelectorAll('[data-t="capture-scenario"] .row button').length`)) === 2
+      && (await p.eval(`document.querySelector('[data-t="capture-scenario-confirm"]')?.checked`)) === false
+      && (await p.eval(`document.querySelector('[data-t="capture-scenario-auto-start"]')?.disabled`)) === true
+      && (await p.eval(`!!document.querySelector('[data-t="capture-scenario-stop"]')`)) === true);
   // 따라가기는 3D 스위치 **하나**가 주인이다 — 있는 것과 도는 것은 다르므로 눌러서 바뀌는지까지 본다.
   // 스위치는 `disabled={!state.connected}` 라 WebSocket 첫 판을 기다린다(2026-09-04 실측: 원격이 한 박자 늦어 게이트가 자기 경합을 결함으로 보고했다)
   await p.waitFor(`document.querySelector('[data-t="followsim"] button')?.disabled === false`, { timeoutMs: 15000 });
@@ -235,7 +317,17 @@ try {
   const matCount = await p.eval(`(() => { const s = window.__twin?.stage?.scene; return ['작업대1','작업대2','작업대3'].filter((n) => {
     let mapped = false; s?.getObjectByName('stand:' + n)?.traverse((o) => { const ms = Array.isArray(o.material) ? o.material : [o.material]; if (ms.some((m) => !!m?.map)) mapped = true; }); return mapped;
   }).length; })()`);
-  check('작업대 셋은 새 판을 덧대지 않고 기존 글로벌캠 대조 매트 텍스처를 쓴다', matCount === 3, `${matCount}/3`);
+  check('작업대 셋은 기존 글로벌캠 대조 매트 텍스처를 쓴다', matCount === 3, `${matCount}/3`);
+  const continuousMats = JSON.parse(await p.eval(`(() => { const s = window.__twin?.stage?.scene; return JSON.stringify(['작업대1','작업대2'].map((n) => {
+    const m = s?.getObjectByName('bench-mat:' + n); const p = m?.getWorldPosition(m.position.clone()); const g = m?.geometry?.parameters ?? {};
+    return { name: n, widthMm: Math.round((g.width ?? 0) * 1000), depthMm: Math.round((g.depth ?? 0) * 1000), xMm: Math.round((p?.x ?? 0) * 1000), yMm: Math.round((p?.y ?? 0) * 1000), zMm: Math.round((p?.z ?? 0) * 1000) };
+  })); })()`));
+  const [mat1, mat2] = continuousMats;
+  check('작업대1·2 검정 매트가 같은 줄에서 각 상판 가로 800mm를 전부 채우며 맞닿는다',
+    continuousMats.length === 2 && continuousMats.every((m) => m.widthMm === 800 && m.depthMm === 96)
+      && mat1.yMm === mat2.yMm && mat1.zMm === mat2.zMm
+      && Math.abs(mat1.xMm - mat2.xMm) === (mat1.widthMm + mat2.widthMm) / 2,
+    JSON.stringify(continuousMats));
   await p.waitFor(`!!window.__twin?.stage?.scene?.getObjectByName('amr-burger')`, { timeoutMs: 8000 });
   const burgerColors = JSON.parse(await p.eval(`(() => { const b = window.__twin?.stage?.scene?.getObjectByName('amr-burger'); const c = []; b?.traverse((o) => { if (o.isMesh && o.material?.color) c.push(o.material.color.getHex()); }); return JSON.stringify([...new Set(c)]); })()`));
   check('실제 터틀봇 모델은 글로벌카메라와 같은 검정/진회색이다', burgerColors.length > 0 && burgerColors.every((c) => c === 0x14181b), burgerColors.map((c) => `#${c.toString(16).padStart(6, '0')}`).join(','));
@@ -305,10 +397,12 @@ try {
   check('10칸이 풀린다 (mock URDF IK · user1 좌표계)', solvedOk && /닿는 자세 10\/10/.test(score), score.slice(0, 40));
   const targetShown = await p.waitFor(`window.__amrTarget?.visible === true && !!document.querySelector('[data-t="amr-target-note"]')`, { timeoutMs: 8000 });
   const targetInfo = JSON.parse(await p.eval(`JSON.stringify(window.__amrTarget ?? null)`));
+  const targetPathVisible = await p.eval(`window.__twin.stage.scene.getObjectByName('amr-target-path')?.visible === true`);
   check('계획 통과 뒤 현재 터틀봇과 별개인 초록 목표 고스트·점선이 선다', targetShown
-    && targetInfo.currentMm && Math.abs(targetInfo.distanceMm - AMR_DROP.fromHomeMm) < 1
-    && (await p.eval(`window.__twin.stage.scene.getObjectByName('amr-target-path')?.visible === true`)),
-  targetInfo ? `현재→목표 ${targetInfo.distanceMm?.toFixed(1)}mm` : '목표 없음');
+    && targetInfo.currentMm && targetInfo.targetMm && targetInfo.distanceMm > 1
+    && Math.abs(targetInfo.distanceMm - Math.hypot(targetInfo.targetMm.x - targetInfo.currentMm.x, targetInfo.targetMm.y - targetInfo.currentMm.y)) < 1
+    && targetPathVisible,
+  targetInfo ? `${JSON.stringify(targetInfo)} · 점선 ${targetPathVisible}` : '목표 없음');
   if (argv.includes('--shot')) {
     const targetRect = await p.rect('[data-t="twin"]');
     await p.screenshot(join(shotDir, 'amr-target.png'), targetRect ?? undefined);

@@ -12,9 +12,10 @@ import { URDF_BASE_Z_MM, AMR_HOME, AMR_HOME_ALT, DEPTH_USEFUL_MM } from '@fr5/sh
 import { toFrame, yawToFrame } from '@fr5/shared/data/frames.js';
 import { REACH_MM } from '@fr5/shared/data/motion/limits.js';
 import { AMR_MM } from '@fr5/shared/data/layout/catalog.js';
+import { buildPreset } from '@fr5/shared/data/layout/presets.js';
 import { loadBurger, mountBurgerZUpXForward, rollWheels } from '@fr5/shared/view3d/burger.js';
 // 소품 — **옮기는 거치대**와 **터틀봇 바구니.** 치수 정본은 `props.js` 고 여기는 그리기만 한다.
-import { carrier, round, amrBasket } from '@fr5/shared/view3d/parts.js';
+import { carrier, round, amrBasket, conveyor } from '@fr5/shared/view3d/parts.js';
 import { CARRIER, CARRIER_GRASP_TRUTH, AMR_BASKET, carrierBodyOffset } from '@fr5/shared/data/props.js';
 import { mm } from '@fr5/shared/data/units/units.js';
 
@@ -28,6 +29,10 @@ import { mm } from '@fr5/shared/data/units/units.js';
  * ▶ 브리지가 `follow` 를 상태에 실어 주면 그때 이 상수를 지우고 그 값을 쓴다.
  */
 const PREVIEW_STANDOFF_MM = 165;
+
+// 촬영용 컨베이어는 새 좌표를 만들지 않는다. 실맵의 투입 컨베이어 하나만 골라 쓰고,
+// 현재 작업대 높이·실기 좌표계는 아래 틱에서 다시 받는다.
+const CAPTURE_CONVEYORS = buildPreset('realmap').props.filter((p) => p.type === 'conveyor' && p.id === 'convIn');
 
 /** 시선 화살 길이 — 보기용이다. 카메라 사거리와 무관하다 */
 const SIGHT_MM = 400;
@@ -67,6 +72,7 @@ export function RobotTwin({
   axesFrames = [],   // 켤 프레임 축 이름들 — 계측 전용 (`SHARED-CORE.md` §프레임 축)
   amrPose = null,    // 터틀봇 실기 자세 — **홈 기준**(odom).
                      // `null` = 「아직/더는 모른다」 → 홈에 **반투명**으로 세운다(가정 표시)
+  amrMoving = false, // FR5 브리지가 조건 27의 데드밴드로 판정한 실주행 상태
   tcpMmDeg = null,   // 실기 손끝 — ⚠ **user1 기준**이다 (D87). 그릴 때 `toFrame` 을 거친다
   handEye = null,    // { tMm:[x,y,z] } — 손끝 프레임에서 본 카메라 원점 (실기 실측)
   amrTrail = null,   // 주행 기록의 자취 — **odom 샘플 배열**. 그릴 때 `toFrame` 을 거친다
@@ -82,6 +88,7 @@ export function RobotTwin({
   carrierAtMm = null,
   carrierYawDeg = null,            // 검출이 낸 거치대 요각(user1 · 가로 85 가 x 와 평행이면 0 · [−90,90)). 실측일 때만 뜻이 있다
   carrierBulletsUser1Mm = null,     // 같은 손목 스캔의 총알 xy — 개수만으로 중앙에 만들지 않는다(D219)
+  carrierOnAmr = false,             // 사람 확인 `?carrier=basket` — 초록 바구니의 자식으로 따라가는 화면 전용 상태
   amrIsReplay = false, // 되감는 중인가 — **실물이 아니면 화면이 그렇게 말해야 한다**
   amrDriftPose = null, // 도착 오차 유령(odom) — 시연이 「실제로 선 자리」를 줄 때만. 회색 반투명 상자 (2026-09-06 · GRILL #12)
   amrTargetPose = null, // 시뮬이 고른 다음 정차 목표(odom) — 실기와 별도인 초록 반투명 버거
@@ -117,6 +124,8 @@ export function RobotTwin({
   yawRef.current = carrierYawDeg;
   const bulletsRef = useRef(carrierBulletsUser1Mm);
   bulletsRef.current = carrierBulletsUser1Mm;
+  const carrierOnAmrRef = useRef(false);
+  carrierOnAmrRef.current = carrierOnAmr;
   // **게이트 값은 사용자 좌표계 기준이라 그대로 그리면 600mm 어긋난다** (2026-08-07).
   // 베이스로 환산해서 들고 다닌다 — 환산이 안 되면 `null` 이고, 그러면 판정면을 안 그린다.
   const wsRef = useRef(null);
@@ -129,6 +138,8 @@ export function RobotTwin({
   // 터틀봇 — 매 프레임 최신값을 읽는다 (관절과 같은 규약: 리렌더 없이 ref)
   const amrRef = useRef(null);
   amrRef.current = amrPose;
+  const amrMovingRef = useRef(false);
+  amrMovingRef.current = amrMoving;
   const amrTargetRef = useRef(null);
   amrTargetRef.current = amrTargetPose;
   const tcpRef = useRef(null);
@@ -213,6 +224,22 @@ export function RobotTwin({
     drawCell(wsRef.current);
     let lastWs = wsRef.current;
 
+    // ── 촬영용 가상 컨베이어 — 실맵의 투입 벨트만 현재 작업대 위에 세운다.
+    // `carrierOnAmr` 촬영 링크에서만 보이며, 실제 장비라고 오인하지 않도록 화면 문구도
+    // 「가상」이라고 말한다. 벨트 표면은 기존 `conveyor().userData.belt` 구현을 그대로 쓴다.
+    const captureConveyors = CAPTURE_CONVEYORS.map((spec) => {
+      const holder = new THREE.Group();
+      holder.name = `live-conveyor:${spec.id}`;
+      holder.visible = false;
+      const model = conveyor(spec.opts ?? {});
+      model.rotation.x = Math.PI / 2;             // parts Y-up → 트윈 Z-up
+      holder.add(model);
+      zUpToYUp.add(holder);
+      return { spec, holder, belt: model.userData.belt };
+    });
+    let conveyorTravelMm = 0;
+    let lastConveyorXY = null;
+
     // ── 옮기는 거치대 — **판 위에 놓인 소품.** (2026-08-31 · D161)
     //
     // ⚠ **자리는 실측이 아니라 「마지막으로 사람이 문 자리」다.** 거치대는 태그 옆 100mm
@@ -290,6 +317,7 @@ export function RobotTwin({
     amrNode.name = 'amr-live';
     amrNode.visible = false;    // 옮길 수 있기 전에는 **안 그린다** (아래 틱이 켠다)
     zUpToYUp.add(amrNode);
+    let basketCarrierNode = null;
     // 초록 바구니 — **터틀봇 등에 달려 같이 움직인다** (주인님 2026-08-31). 그래서 씬에서도
     // `amrNode` 의 **자식**이다. 형제로 두면 로봇이 갈 때 바구니만 제자리에 남는다.
     // ⚠ 로봇 기준 자리(`AMR_BASKET.offsetMm`)를 **아직 안 쟀다** — 그동안은 「등 뒤 절반」이라는
@@ -315,6 +343,22 @@ export function RobotTwin({
         });
       }
       amrNode.add(b);
+
+      // 주인님이 현재 적재를 눈으로 확인한 촬영 모드(`?carrier=basket`). 바구니와 같은
+      // `amrNode`의 자식이라 TurtleBot odom이 바뀌면 별도 좌표 계산 없이 함께 움직인다.
+      // 총알 위치는 재지 않았으므로 몸통만 그리고 중앙 총알을 지어내지 않는다(D219).
+      basketCarrierNode = carrier({ rounds: 0 });
+      basketCarrierNode.name = 'amr-basket-carrier';
+      basketCarrierNode.rotation.x = Math.PI / 2;
+      basketCarrierNode.position.set(mm(off?.x ?? back), mm(off?.y ?? 0),
+        mm((off?.z ?? (AMR_BASKET.floorAboveGroundMm ?? 0)) + wall));
+      basketCarrierNode.traverse((o) => {
+        if (!o.material?.color) return;
+        o.material = o.material.clone();
+        o.material.color.setHex(0xe8579b);
+      });
+      basketCarrierNode.visible = false;
+      amrNode.add(basketCarrierNode);
     } catch { /* 소품이 로봇을 못 죽인다 */ }
     // 대체 상자를 **먼저** 세우고 GLB 가 오면 갈아 끼운다. 안 오면 상자로 버틴다 (D15·D18) —
     // 메시가 없다고 로봇이 사라지면 「판 위에 뭐가 있나」라는 판단 근거가 같이 사라진다.
@@ -670,6 +714,39 @@ export function RobotTwin({
       const live = { user1: userDefRef.current };
       const at = toFrame({ xMm: a?.xMm ?? 0, yMm: a?.yMm ?? 0, zMm: 0 }, 'odom', 'base', live);
       const yaw = yawToFrame(a?.thetaDeg ?? 0, 'odom', 'base', live);
+
+      // 컨베이어의 x·y는 실맵(lab)에서, z는 지금 브리지가 주는 작업대 상판에서 온다.
+      // 09-04에 판 높이가 바뀌었으므로 프리셋의 옛 z를 쓰면 벨트가 상판 속에 묻힌다.
+      const showCaptureConveyors = carrierOnAmrRef.current && !replayRef.current;
+      for (const c of captureConveyors) {
+        const p = toFrame({ xMm: c.spec.posMm[0], yMm: c.spec.posMm[1], zMm: 0 }, 'lab', 'base', live);
+        const r = yawToFrame(c.spec.rotDeg ?? 0, 'lab', 'base', live);
+        const support = p && wsRef.current?.boxes?.find((b) => b.name?.startsWith('작업대')
+          && p.xMm >= b.xMm[0] && p.xMm <= b.xMm[1]
+          && p.yMm >= b.yMm[0] && p.yMm <= b.yMm[1]);
+        c.holder.visible = Boolean(showCaptureConveyors && p && r !== null && support);
+        if (c.holder.visible) {
+          c.holder.position.set(mm(p.xMm), mm(p.yMm), mm(support.topZMm));
+          c.holder.rotation.z = (r * Math.PI) / 180;
+        }
+      }
+      // 정지 중 odom 잡음에는 벨트가 기어가지 않는다. 실제 이동 판정이 참일 때의 평면
+      // 이동량만 누적하고, 재접속 점프(한 틱 100mm 초과)는 화면 연출에 넣지 않는다.
+      if (showCaptureConveyors && a && at) {
+        if (amrMovingRef.current && lastConveyorXY) {
+          const d = Math.hypot(at.xMm - lastConveyorXY[0], at.yMm - lastConveyorXY[1]);
+          if (d > 0 && d <= 100) {
+            conveyorTravelMm += d;
+            captureConveyors.forEach((c) => c.belt?.setTravelMm?.(conveyorTravelMm));
+          }
+        }
+        lastConveyorXY = [at.xMm, at.yMm];
+      } else lastConveyorXY = null;
+      window.__liveConveyors = {
+        source: 'tb-odom', moving: Boolean(amrMovingRef.current),
+        visible: captureConveyors.filter((c) => c.holder.visible).map((c) => c.spec.id),
+        travelMm: Math.round(conveyorTravelMm * 10) / 10,
+      };
       const target = amrTargetRef.current;
       const targetAt = target ? toFrame({ xMm: target.xMm, yMm: target.yMm, zMm: 0 }, 'odom', 'base', live) : null;
       const targetYaw = target ? yawToFrame(target.thetaDeg ?? 0, 'odom', 'base', live) : null;
@@ -725,10 +802,11 @@ export function RobotTwin({
         // 판 위 실측이면 검출 요각을 더한다(손에 들리면 손목이 돈 만큼만). 요각은 user1 기준이고 user1 은 회전 0 이라 그대로 라디안으로
         const seenYaw = !hand && !held && seen && Number.isFinite(yawRef.current) ? (yawRef.current * Math.PI) / 180 : 0;
         const heldYaw = hand && Number.isFinite(hold?.yawDeg) ? (hold.yawDeg * Math.PI) / 180 : 0;
+        const loadedOnAmr = carrierOnAmrRef.current && !hand && !held;
         carrierNode.rotation.z = (carrierNode.userData.yaw0 ?? carrierNode.rotation.z) + (hand?.dYaw ?? 0) + heldYaw + seenYaw;
         // 손으로 옮길 때는 마지막 검출의 분홍/황동 상태를 보존한다. false로 다시 칠하면 실측 물체가 회색 가정으로 바뀐다.
-        if (!hand && !held) carrierNode.userData.paint?.(Boolean(seen));
-        const src = hand ? { xMm: hand.xMm, yMm: hand.yMm, zMm: hand.zMm } : held
+        if (!hand && !held && !loadedOnAmr) carrierNode.userData.paint?.(Boolean(seen));
+        const src = loadedOnAmr ? null : hand ? { xMm: hand.xMm, yMm: hand.yMm, zMm: hand.zMm } : held
           ? { xMm: held[0] + ox, yMm: held[1] + oy, zMm: held[2] - lift }
           // ⚠ 검출은 **윗면 중심**이라 키를 빼야 바닥이 된다(노드 원점이 바닥이다).
           //    그리고 여기엔 `carrierBodyOffset` 을 **안 쓴다** — 그 보정은 「파지점이 벽이라
@@ -769,6 +847,18 @@ export function RobotTwin({
         } else window.__carrierRoundsMm = [];
         // 계측 훅 — 거치대가 어디에(base mm) · 무엇을 따라(hand/number/seen) 서 있나. 게이트가 「손에 붙어 있나」를 잰다
         window.__carrierMm = cp ? { paint: carrierNode.userData.painted ? 'pink' : 'grey', x: cp.xMm, y: cp.yMm, z: cp.zMm, src: hand ? 'hand' : (held ? 'number' : 'seen'), yawDeg: (carrierNode.rotation.z * 180) / Math.PI } : null;
+        if (basketCarrierNode) basketCarrierNode.visible = loadedOnAmr;
+        if (loadedOnAmr && basketCarrierNode && at && yaw !== null) {
+          const th = (yaw * Math.PI) / 180;
+          const lx = basketCarrierNode.position.x * 1000;
+          const ly = basketCarrierNode.position.y * 1000;
+          window.__carrierMm = {
+            paint: 'pink', src: 'basket-confirmed', yawDeg: yaw,
+            x: at.xMm + lx * Math.cos(th) - ly * Math.sin(th),
+            y: at.yMm + lx * Math.sin(th) + ly * Math.cos(th),
+            z: at.zMm + basketCarrierNode.position.z * 1000,
+          };
+        }
       }
       // 도착 오차 유령 — 시연이 준 자리에만 선다. 명령 자리와의 거리를 계측 훅으로 낸다
       const dp = driftRef.current;

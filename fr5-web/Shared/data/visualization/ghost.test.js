@@ -15,5 +15,7 @@ test('진행 중 명령 목표가 공동 고스트보다 먼저다', () => {
 test('공동 고스트는 만료 전만 보인다', () => {
   assert.equal(selectVisualGhost({ visualGhost }, 10).seq, 9);
   assert.equal(selectVisualGhost({ visualGhost }, 12), null);
+  assert.equal(selectVisualGhost({ t: 10, visualGhost }).seq, 9); // 관전자 시계 대신 브리지 시각
+  assert.equal(selectVisualGhost({ t: 12, visualGhost }), null);
   assert.equal(selectVisualGhost({ visualGhost: { ...visualGhost, jointsDeg: [0, 1] } }, 10), null);
 });

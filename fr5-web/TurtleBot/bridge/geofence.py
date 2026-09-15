@@ -9,6 +9,14 @@ import math
 
 POSE_MAX_AGE_S = 2.0        # 이보다 늙은 pose 로는 판정하지 않는다 — fail-closed (계약 §안전 규칙과 같은 값)
 
+# TB-CONTRACT §tb3_2 실기 출발 프로필. 원점의 받침 합집합을 현장에서 확인한 뒤 승인된
+# front430 전용 예외다. 일반 슬롯·텔레옵·회전에는 절대 열리지 않고, x>100mm 면 즉시 163mm로 돌아간다.
+FRONT430_BASE_INSET_MM = 163.0
+FRONT430_START_INSET_MM = 150.0
+FRONT430_RESTORE_X_MM = 100.0
+FRONT430_ORIGIN_TOL_MM = 30.0
+FRONT430_HEADING_TOL_DEG = 3.0
+
 
 class Geofence:
     """여유선 안인지 판정한다. 값은 전부 mm — 변환은 어댑터 경계에서 이미 끝났다."""
@@ -19,7 +27,7 @@ class Geofence:
         self.frame = frame
         self.error = None
 
-    def evaluate(self, pose, pose_age_sec):
+    def evaluate(self, pose, pose_age_sec, inset_mm=None):
         """상태 스냅샷의 geofence 값을 만든다 — { inside, marginMm, reason }."""
         if pose is None or pose_age_sec is None:
             return _blocked("pose 가 없어요 — fail-closed")
@@ -31,7 +39,8 @@ class Geofence:
 
         edge = _distance_to_boundary(x, y, self.polygon)
         signed = edge if _point_inside(x, y, self.polygon) else -edge
-        margin = signed - self.inset_mm
+        inset = self.inset_mm if inset_mm is None else float(inset_mm)
+        margin = signed - inset
         if margin >= 0:
             return {"inside": True, "marginMm": round(margin, 1), "reason": None}
         # 밖이면 얼마나 밖인지를 숫자로 말한다 — "막혔다" 만으로는 들어야 하는지 판단이 안 선다
@@ -39,7 +48,7 @@ class Geofence:
         return {
             "inside": False,
             "marginMm": round(margin, 1),
-            "reason": f"{where} — 가장자리까지 {signed:.0f}mm · 여유선 {self.inset_mm:.0f}mm",
+            "reason": f"{where} — 가장자리까지 {signed:.0f}mm · 여유선 {inset:.0f}mm",
         }
 
 
@@ -89,6 +98,27 @@ def blocks_motion(fence, state, linear_mm_s, angular_deg_s):
     if state and state.get("inside"):
         return None
     return (state or {}).get("reason") or "지오펜스 — 이동 거부"
+
+
+def front430_start_inset(robot, slot_name, params, pose, configured_inset_mm):
+    """승인된 tb3_2/front430 원점 직진 구간이면 150mm, 아니면 None.
+
+    ponytail: 단일 촬영 경로 예외라 일반 정책 엔진을 만들지 않는다. 다른 경로가 필요해지면
+    config 기반 예외 목록으로 승격한다.
+    """
+    if robot != "tb3_2" or slot_name != "run-path" or (params or {}).get("path") != "front430":
+        return None
+    if configured_inset_mm != FRONT430_BASE_INSET_MM or not isinstance(pose, dict):
+        return None
+    x, y, theta = pose.get("xMm"), pose.get("yMm"), pose.get("thetaDeg")
+    if not all(_finite(v) for v in (x, y, theta)):
+        return None
+    heading = (theta + 540) % 360 - 180
+    if not (-FRONT430_ORIGIN_TOL_MM <= x <= FRONT430_RESTORE_X_MM):
+        return None
+    if abs(y) > FRONT430_ORIGIN_TOL_MM or abs(heading) > FRONT430_HEADING_TOL_DEG:
+        return None
+    return FRONT430_START_INSET_MM
 
 
 # ── 기하 (표준 알고리즘 · 의존성 0) ──────────────────────────────────────────

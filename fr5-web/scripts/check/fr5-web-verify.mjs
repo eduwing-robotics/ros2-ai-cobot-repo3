@@ -126,6 +126,13 @@ try {
   // 5. 3D 쌍둥이 — URDF 실로딩 + 픽셀이 실제로 움직인다
   check('URDF+그리퍼 로딩 완료 깃발',
     !!(await p.waitFor(`document.querySelector('[data-t="twin"]')?.dataset.ready === '1'`, { timeoutMs: 20000 })));
+  check('작업대1·2 검정 매트가 같은 깊이로 전폭을 채운다',
+    await p.eval(`(() => {
+      const mats = ['작업대1', '작업대2'].map((name) => window.__twin?.stage?.getObjectByName('bench-mat:' + name));
+      return mats.every((mat) => mat
+        && Math.abs(mat.geometry.parameters.width - 0.8) < 1e-6
+        && Math.abs(mat.geometry.parameters.depth - 0.096) < 1e-6);
+    })()`));
   const rect = await p.rect('[data-t="twin"] canvas');
   const shot1 = `${OUT}/fr5-twin-1.png`;
   const shot2 = `${OUT}/fr5-twin-2.png`;

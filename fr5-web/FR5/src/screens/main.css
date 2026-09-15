@@ -491,6 +491,25 @@ table.joints, table.tcp { width: 100%; border-collapse: collapse; font-size: 13p
 .follownote .bad { color: var(--c-danger); }
 .follownote .hint { color: var(--c-fg-mute); }
 
+/* 촬영용 트윈 상태 — 하단 설명 바로 위에 붙여 영상 프레임을 가리지 않는다.
+ * `data-moving` 하나로 실제 터틀봇 정지/주행과 가상 벨트 정지/작동을 같이 읽는다. */
+.capturehud { position: absolute; left: var(--s-3); bottom: 38px; z-index: 2;
+              display: flex; flex-direction: column; gap: 2px; pointer-events: none;
+              padding: 6px 9px; border: 1px solid var(--c-line); border-radius: 4px;
+              background: var(--c-bg); color: var(--c-fg-dim);
+              box-shadow: 0 2px 8px rgb(0 0 0 / 12%); }
+.capturehud b { color: var(--c-fg); font-size: 12px; }
+.capturehud span { font-size: 11px; }
+.capturehud small { color: var(--c-fg-mute); font-size: 10px; }
+.capturehud[data-moving="true"] { border-color: var(--c-ok); background: var(--c-ok-soft); }
+
+/* 별도 촬영 시나리오 — 완료 상태는 색만이 아니라 문장으로도 함께 읽힌다. */
+.capturesteps { display: flex; flex-wrap: wrap; gap: var(--s-1); list-style: none;
+                margin: 0 0 var(--s-2); padding: 0; }
+.capturesteps li { padding: 3px 8px; border: 1px solid var(--c-line); border-radius: var(--r-ctl);
+                   color: var(--c-fg-mute); font-size: 11px; }
+.capturesteps li[data-done="true"] { border-color: transparent; background: var(--c-ok-soft); color: var(--c-ok); }
+
 
 /* ── 「시뮬」 탭 (2026-08-31 · D162) ─────────────────────────────────────────
  * ⛔ **새 스타일을 만들지 않는다.** `.program` 의 정의를 그대로 따른다 — 값이 아니라

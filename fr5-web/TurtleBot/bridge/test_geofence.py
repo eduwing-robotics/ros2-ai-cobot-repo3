@@ -126,5 +126,36 @@ class BlocksMotion(unittest.TestCase):
             self.assertTrue(geofence.blocks_motion(self.f, self.outside, lin, ang))
 
 
+class Front430StartException(unittest.TestCase):
+    def override(self, **kw):
+        args = {
+            "robot": "tb3_2", "slot_name": "run-path", "params": {"path": "front430"},
+            "pose": {"xMm": 0, "yMm": 0, "thetaDeg": 0}, "configured_inset_mm": 163.0,
+        }
+        args.update(kw)
+        return geofence.front430_start_inset(**args)
+
+    def test_only_front430_at_origin_gets_150(self):
+        inset = self.override()
+        self.assertEqual(inset, 150.0)
+        st = geofence.parse(RECT).evaluate({"xMm": 0, "yMm": 100, "thetaDeg": 0}, FRESH, inset)
+        self.assertTrue(st["inside"])  # 가장자리 150mm가 이 촬영 출발에서만 정확히 통과
+
+    def test_restores_163_after_x_100(self):
+        self.assertIsNone(self.override(pose={"xMm": 100.1, "yMm": 0, "thetaDeg": 0}))
+
+    def test_never_reused_for_other_motion(self):
+        self.assertIsNone(self.override(params={"path": "front200"}))
+        self.assertIsNone(self.override(slot_name="patrol"))
+        self.assertIsNone(self.override(robot="tb3_1"))
+
+    def test_drift_or_rotation_closes_exception(self):
+        self.assertIsNone(self.override(pose={"xMm": 20, "yMm": 31, "thetaDeg": 0}))
+        self.assertIsNone(self.override(pose={"xMm": 20, "yMm": 0, "thetaDeg": 3.1}))
+
+    def test_does_not_lower_a_different_configured_boundary(self):
+        self.assertIsNone(self.override(configured_inset_mm=170.0))
+
+
 if __name__ == "__main__":
     unittest.main()

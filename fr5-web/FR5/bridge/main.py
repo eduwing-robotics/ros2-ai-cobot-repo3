@@ -373,12 +373,6 @@ def follow_last_tag_z(cfg):
         return None
 
 
-# 마지막으로 **보낸** 목표 — `should_move` 가 이걸 기준으로 「따라갈 만한가」를 판정한다.
-# ⛔ 단계 3(움직임)이 붙기 전에는 **아무도 여기에 안 쓴다.** 지금은 늘 `None` 이라
-# 등급이 항상 「첫목표」로 나온다 — 그게 사실이다(아직 한 번도 안 보냈다).
-follow_last_sent = None
-
-
 # 손끝이 늙으면 **지금 자세가 아니다.** 표적과 같은 규율을 손끝에도 건다 — 다가가는 쪽과
 # 기울기 판정이 둘 다 이 값을 쓰므로, 낡은 값이면 「어느 쪽에 서 있나」부터 틀린다.
 FOLLOW_TCP_MAX_AGE_S = 2.0
@@ -409,10 +403,39 @@ def follow_goal(target, cfg):
     pose, why = follow.target_pose(target["user1Mm"], tcp, cfg)
     if pose is None:
         return None, why
-    go, dist, grade = follow.should_move(pose, follow_last_sent, cfg)
+    # 다른 제안·지점 이동이 추종 사이에 팔을 옮길 수 있다. 옛 추종 목표가 아니라
+    # **지금 실제 TCP**와 비교해야 멀리 있는 팔을 데드밴드로 잘못 건너뛰지 않는다.
+    go, dist, grade = follow.should_move(pose, tcp, cfg)
     return {"tcpMmDeg": [round(v, 1) for v in pose],
             "wouldMove": go, "distMm": round(dist, 1) if dist is not None else None,
             "grade": grade}, None
+
+
+def _follow_pose_candidates(tcp):
+    """평행 그리퍼의 180° 동치 TCP 둘. 관절각을 래핑하지 않고 각각 IK로 다시 푼다."""
+    out = [list(tcp)]
+    flipped = list(tcp)
+    flipped[5] = ((float(flipped[5]) + 360.0) % 360.0) - 180.0
+    if abs(flipped[5] - float(tcp[5])) > 1e-6:
+        out.append(flipped)
+    return out
+
+
+def _follow_motion_solution(goal, cfg):
+    """동치 TCP를 모두 실제 IK·경로 게이트에 태우고 가장 작은 통과 해를 고른다."""
+    ref = (session.lastState or {}).get("jointsDeg")
+    tried = []
+    for tcp in _follow_pose_candidates(goal["tcpMmDeg"]):
+        joints = session.adapter.inverse_kin(tcp, ref)
+        if joints is None:
+            tried.append({"tcpMmDeg": tcp, "jointsDeg": None,
+                          "reasons": ["해가 없다 — 도달 밖이거나 그 자세가 불가능하다"], "deltaDeg": math.inf})
+            continue
+        reasons = cmds.motion(joints, cfg["speedPct"], True, True)
+        delta = max(abs(float(v) - float(ref[i])) for i, v in enumerate(joints)) \
+            if isinstance(ref, list) and len(ref) == 6 else math.inf
+        tried.append({"tcpMmDeg": tcp, "jointsDeg": joints, "reasons": reasons, "deltaDeg": delta})
+    return min(tried, key=lambda c: (bool(c["reasons"]), c["deltaDeg"])) if tried else None
 
 
 def follow_amr():
@@ -694,16 +717,17 @@ async def follow_step(body: dict):
     if not goal["wouldMove"]:
         return {"ok": True, "moved": False, "goal": goal, "target": target,
                 "reasons": [f"데드밴드 안이다 ({goal['distMm']}mm) — 안 간다"]}
-    ref = (session.lastState or {}).get("jointsDeg")
-    joints = await asyncio.to_thread(session.adapter.inverse_kin, goal["tcpMmDeg"], ref)
-    if joints is None:
-        return refuse(["해가 없다 — 도달 밖이거나 그 자세가 불가능하다"], 409)
+    solution = await asyncio.to_thread(_follow_motion_solution, goal, cfg)
+    if solution is None or solution["reasons"]:
+        return refuse((solution or {}).get("reasons") or ["해가 없다 — 도달 밖이거나 그 자세가 불가능하다"], 409)
+    joints = solution["jointsDeg"]
+    goal = {**goal, "tcpMmDeg": [round(float(v), 1) for v in solution["tcpMmDeg"]],
+            "jointsDeg": [round(float(v), 3) for v in joints],
+            "toolYawEquivalentDeg": 180 if solution["tcpMmDeg"] != goal["tcpMmDeg"] else 0}
     # `scan_path=True` — 지점 이동이므로 경로를 5° 간격으로 표본해 전부 게이트에 태운다
     reasons = await asyncio.to_thread(cmds.motion, joints, cfg["speedPct"], True, False)
     if reasons:
         return refuse(reasons, 409)
-    global follow_last_sent                                 # noqa: PLW0603 — 모듈 상태가 정본이다
-    follow_last_sent = goal["tcpMmDeg"]
     log("follow-step", f"by={(body or {}).get('who')} → {goal['tcpMmDeg']}")
     return {"ok": True, "moved": True, "goal": goal, "target": target, "reasons": []}
 

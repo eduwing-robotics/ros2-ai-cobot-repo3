@@ -9,7 +9,7 @@ import { useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { datasource } from '../data/datasource/index.js';
 import { ControlDock } from '../features/control/ControlDock.jsx';
-import { RobotTwin } from '../features/live/RobotTwin.jsx';
+import { CaptureTwin } from '../features/live/CaptureTwin.jsx';
 import { GlobalCameraPip } from '../features/live/CamView.jsx';
 import { WristDepthCameraPip } from '../features/live/DepthView.jsx';
 import { LivePanel } from '../features/live/LivePanel.jsx';
@@ -111,6 +111,10 @@ function SafetyBar({ s, who }) {
 }
 
 function App() {
+  const captureParams = new URLSearchParams(location.search);
+  const carrierOnAmr = captureParams.get('carrier') === 'basket';
+  const captureMode = captureParams.get('capture') === '1' || carrierOnAmr;
+  const [captureEnabled, setCaptureEnabled] = useState(captureMode);
   const [tab, setTab] = useState('live');
   const [state, setState] = useState(EMPTY);
   // 3D 가 무엇을 그리나. null 이면 실물이고, 패널이 채우면 미리보기·되감기다.
@@ -146,7 +150,7 @@ function App() {
   useEffect(() => datasource.subscribeTbPose(setAmrPose), []);
   // 추종 시뮬레이션 — **화면에서만** 팔이 표적을 따라간다 (실기는 안 움직인다).
   // 되감기 중에는 끈다 — 그때는 「그 주행의 그때 자세」가 고스트의 주인이다
-  const [followSim, setFollowSim] = useState(false);
+  const [followSim, setFollowSim] = useState(() => captureMode || captureParams.get('follow') === 'sim');
   // 거치대 입력 (phase 4) — 판 위 클릭으로 받은 user1 (x, y). **가정**이다. 실측 표적(색 검출)이 있으면 그것이 이긴다
   const [carrierInput, setCarrierInput] = useState(null);
   // 시뮬 탭이 **직접 읽은** 색 검출·융합 자리(2026-09-07) — 실기 프로필은 `follow.target` 이 odom 이라 `measuredCarrier` 가 비어 트윈에 거치대가 안 그려졌다
@@ -154,16 +158,19 @@ function App() {
   const [pickCarrier, setPickCarrier] = useState(false);
   const measuredCarrier = state.follow?.target?.source === 'color' ? (state.follow.target.user1Mm ?? null) : null;
   const sim = useFollowSim(state, followSim && !replay);
+  // 촬영 단계의 고스트는 스냅샷이다. 팔이 가까워져 표적 출처가 odom→wrist로 승격돼도
+  // 같은 단계 안에서는 움직이지 않고, 터틀봇 완전 정차 뒤에만 다음 스냅샷으로 바뀐다.
+  const [captureGhost, setCaptureGhost] = useState(null);
   // ── 글로벌 PiP 고스트의 주인 (D195·D196 · `rnd/PIP-GHOST-CONVERGE-LOOP-2026-09-07.md` D1·D2).
   //    영상 = 실기(불투명)라 반투명 후보는 **사실(브리지가 보낸 목표) > 되감기 > 추종 시뮬 > 미리보기**.
   //    트윈의 `ghostJointsDeg` 와 후보 집합은 같지만 **함수를 합치지 않는다** — 트윈은 미리보기 때
   //    불투명 몸이 계획이고 고스트가 실물(반전)이라 같은 사슬을 쓰면 뜻이 뒤집힌다.
   const mt = state.motionTarget;
   const goingTarget = mt && mt.doneAt == null && Array.isArray(mt.jointsDeg) && mt.jointsDeg.length >= 6 ? mt.jointsDeg : null;
-  const pipPlan = replay?.armJoints ?? sim?.jointsDeg ?? view?.jointsDeg ?? null;
+  const pipPlan = replay?.armJoints ?? captureGhost?.jointsDeg ?? sim?.jointsDeg ?? view?.jointsDeg ?? null;
   // 킬-실험 스위치(개발용 · 크럭스 「손끝까지 사슬이 실영상에 얹히나」) — `?ghost=live` 면 지금 관절각을 고스트로 세운다.
   //   실물과 겹치면 사슬 OK · 어긋나면 그 픽셀 차가 답이다. 명령은 0 이고 팔은 안 움직인다
-  const ghostLiveCheck = new URLSearchParams(location.search).get('ghost') === 'live';
+  const ghostLiveCheck = captureParams.get('ghost') === 'live';
   const pipGhost = ghostLiveCheck && Array.isArray(state.jointsDeg) ? { kind: 'live-check', jointsDeg: state.jointsDeg }
     : goingTarget ? { kind: 'target', jointsDeg: goingTarget }
       : pipPlan ? { kind: 'plan', jointsDeg: pipPlan } : null;
@@ -172,8 +179,10 @@ function App() {
   const sharedGhost = state.owner === who && datasource.hasOwnerToken()
     ? replay?.armJoints ? { robotId: state.robotId ?? 'fr5-lab-a', kind: 'replay',
       jointsDeg: replay.armJoints, gripperPct: replay.gripperPct ?? null }
-      : sim?.jointsDeg ? { robotId: state.robotId ?? 'fr5-lab-a', kind: 'simulation',
-        jointsDeg: sim.jointsDeg, gripperPct: sim.gripperPct ?? null }
+      : captureGhost?.jointsDeg ? { robotId: state.robotId ?? 'fr5-lab-a', kind: 'simulation',
+        jointsDeg: captureGhost.jointsDeg, gripperPct: captureGhost.gripperPct ?? null }
+        : sim?.jointsDeg ? { robotId: state.robotId ?? 'fr5-lab-a', kind: 'simulation',
+          jointsDeg: sim.jointsDeg, gripperPct: sim.gripperPct ?? null }
         : view?.jointsDeg ? { robotId: state.robotId ?? 'fr5-lab-a', kind: 'preview',
           jointsDeg: view.jointsDeg, gripperPct: view.gripperPct ?? null }
           : null
@@ -227,7 +236,9 @@ function App() {
           {/* 고스트 — 미리보기(view) 중일 때만 실물 현재 자세를 반투명으로 겹친다. 실기를 안
               쳐다봐도 "지금 어디 ↔ 가면 어디"가 한 화면에 (2026-08-07 요청). 미연결이면
               보여줄 실물 자세가 없어 안 그린다 */}
-          <RobotTwin jointsDeg={view?.jointsDeg ?? state.jointsDeg ?? [0, 0, 0, 0, 0, 0]}
+          <CaptureTwin capture={captureEnabled && !replay}
+            amrMoving={!replay && state.amr?.moving === true}
+            jointsDeg={view?.jointsDeg ?? state.jointsDeg ?? [0, 0, 0, 0, 0, 0]}
             // 손목 끝 LED — 매뉴얼 §The end LED 그대로: 빨강 오류 · 초록 수동 · 파랑 자동. 미연결이면 꺼짐
             ledColor={!state.connected ? null
               : (state.phase === 'FAIL_CLOSED' || state.safety?.emergencyStop || state.safety?.collisionDetected) ? 0xe03b3b
@@ -237,6 +248,7 @@ function App() {
               // 고스트의 주인은 **하나뿐이다.** 되감기 > 추종 시뮬 > 미리보기 순 —
               // 앞의 것이 켜져 있으면 뒤는 안 그린다(둘이 겹치면 어느 쪽인지 아무도 모른다)
               replay?.armJoints
+              ?? captureGhost?.jointsDeg
               ?? sim?.jointsDeg
               ?? (view && state.connected ? (state.jointsDeg ?? null) : null)
             }
@@ -355,6 +367,7 @@ function App() {
               : '실물 자세')}
             {view && state.connected && <span className="mm"> · 반투명은 지금 실물 자리</span>}
             {!replay?.pose && amrTargetPose && <span className="mm" data-t="amr-target-note"> · 초록 반투명 터틀봇은 이동 목표(실기 명령 아님)</span>}
+            {captureEnabled && !replay && <span className="mm" data-t="carrier-on-amr-note"> · 사람 확인: 분홍 거치대는 초록 바구니 안</span>}
           </p>
         </section>
         <aside className="side">
@@ -373,6 +386,13 @@ function App() {
             return <Panel state={state} who={who} onView={setView} onReplay={setReplay}
               onAmrTarget={setAmrTargetPose}
               followSim={followSim} onFollowSim={setFollowSim}
+              followPreview={sim}
+              onCaptureGhost={setCaptureGhost}
+              captureEnabled={captureEnabled} onEnableCapture={() => {
+                setCaptureEnabled(true); setFollowSim(true);
+                const q = new URLSearchParams(location.search); q.set('capture', '1');
+                history.replaceState(null, '', `${location.pathname}?${q}${location.hash}`);
+              }}
               carrierInput={carrierInput} measuredCarrier={measuredCarrier} onCarrierSeen={setCarrierSeen}
               pickCarrier={pickCarrier} onPickCarrier={setPickCarrier} onClearInput={() => setCarrierInput(null)} />;
           })()}</div>

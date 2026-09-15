@@ -37,12 +37,14 @@ runs = RunStore(logs.emit)
 maps = MapStore()
 paths = path_mod.PathStore()
 owners = OwnerRegistry(ROBOT_IDS, lambda robot, who: adapter.patch(robot, owner=who), logs.emit)
+active_slot_params = {}  # robot -> (slot, params). 10Hz 감시에서 run 파일을 반복해서 읽지 않는다.
 
 
 def _slot_exited(robot, run_id, result):
     # 어떤 이유로든 프로세스가 죽으면 — 브리지가 정지를 보장한다 (감사 R1)
     adapter.stop(robot)
     adapter.patch(robot, activeSlot=None, activeRunId=None)
+    active_slot_params.pop(robot, None)
     runs.end(run_id, result)
 
 
@@ -120,9 +122,14 @@ for _rid, _f in FENCES.items():
                   f"지오펜스 켬 — 점 {len(_f.polygon)}개 · 여유선 {_f.inset_mm:.0f}mm · frame={_f.frame}")
 
 
-def fence_state(robot, r):
+def fence_state(robot, r, slot_name=None, params=None):
     f = FENCES.get(robot)
-    return f.evaluate(r["pose"], r["poseAgeSec"]) if f else None
+    if not f:
+        return None
+    if slot_name is None and r.get("activeSlot"):
+        slot_name, params = active_slot_params.get(robot, (r.get("activeSlot"), {}))
+    inset = geofence.front430_start_inset(robot, slot_name, params, r.get("pose"), f.inset_mm)
+    return f.evaluate(r["pose"], r["poseAgeSec"], inset_mm=inset)
 
 
 def fence_block(robot, r, linear=1, angular=0):
@@ -260,17 +267,19 @@ async def start_slot(name: str, body: dict):
         return refuse("조종권이 없어요", 403)
     if adapter.robots()[robot]["mode"] != "idle":
         return refuse(f"mode={adapter.robots()[robot]['mode']} — 시작은 idle 에서만 (TB-CONTRACT §모드 전이)")
-    blocked = fence_block(robot, adapter.robots()[robot])  # 슬롯은 움직이는 것이 일이다 — 밖이면 시작부터 거부
+    params = body.get("params") or {}
+    start_state = fence_state(robot, adapter.robots()[robot], name, params)
+    blocked = geofence.blocks_motion(FENCES.get(robot), start_state, 1, 0)  # 슬롯은 움직이는 것이 일이다
     if blocked:
         return refuse(f"지오펜스 — {blocked}")
     f = slot_scan.slot_file(name)
     if not f:
         return refuse("없는 슬롯", 404)
-    params = body.get("params") or {}
     if len(json.dumps(params)) > safety.PARAMS_MAX:
         return refuse("params 4KB 상한 초과")
     active_map = adapter.robots()[robot]["activeMap"]
     run = runs.create(robot, active_map, name, params)
+    active_slot_params[robot] = (name, params)
     adapter.patch(robot, mode="slot", activeSlot=name, activeRunId=run["id"])
     procs.start(robot, name, f, run["id"], maps.yaml_path(active_map) if active_map else "", params)
     return JSONResponse(ok(runId=run["id"]), status_code=202)   # spawn 성공만 뜻한다 (계약)

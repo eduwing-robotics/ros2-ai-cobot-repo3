@@ -8,13 +8,14 @@
 #
 #   cam-web-verify.mjs  12건  포트 5188 · AR/cam.html + 사진 속 태그 재검출 정합
 #   xr-web-verify.mjs         포트 5189 · AR/xr.html
+#   visual-ghost-web-verify   포트 5162+5191+5192 · FR5 미리보기 → 브리지 → AR/cam.html
 #
 # 둘 다 자기 vite 를 자기 포트에 띄운다 — 남의 dev 서버에 붙지 않는다.
 set -uo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 
 # 없으면 **건너뛰지 않고 실패한다.** 조용히 건너뛰는 게이트는 게이트가 아니다.
-for tool in node npm python3; do
+for tool in node npm python3 uv; do
   command -v "$tool" >/dev/null || { echo "  $tool 이 없다 — AR 실렌더 게이트를 돌릴 수 없다"; exit 1; }
 done
 # 정합 판정의 정답은 **사진에서 다시 검출한 태그 중심**이라 cv2 가 있어야 한다.
@@ -25,12 +26,12 @@ python3 -c 'import cv2' 2>/dev/null || {
 # 게이트 전용 포트를 남이 쥐고 있으면 멈춘다 (`fr5-render.sh` 와 같은 이유 — 고아에 붙으면
 # 남의 화면을 우리 것으로 잘못 판정한다). `--strictPort` 라 붙는 대신 죽지만, 원인이 안 보인다.
 BUSY=""
-for port in 5188 5189; do
+for port in 5162 5188 5189 5191 5192; do
   lsof -ti tcp:"$port" >/dev/null 2>&1 && BUSY="$BUSY $port"
 done
 if [ -n "$BUSY" ]; then
   echo "  게이트 전용 포트를 이미 누가 쓴다:$BUSY"
-  echo "    for p in 5188 5189; do lsof -ti tcp:\$p | xargs -r kill -9; done"
+  echo "    for p in 5162 5188 5189 5191 5192; do lsof -ti tcp:\$p | xargs -r kill -9; done"
   exit 1
 fi
 
@@ -48,6 +49,7 @@ run() {          # $1 표시 이름 · $2 스크립트
 
 run "글로벌 카메라 겹치기" cam-web-verify.mjs
 run "WebXR 겹치기"       xr-web-verify.mjs
+run "공동 FR5 고스트"     visual-ghost-web-verify.mjs
 
 [ "$FAIL" -eq 0 ] && echo "AR 실렌더 OK" || echo "AR 실렌더 실패"
 exit "$FAIL"

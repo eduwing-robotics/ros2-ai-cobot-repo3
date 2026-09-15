@@ -13,13 +13,14 @@
 // 시뮬레이션은 사람이 볼 때만 필요하므로, 보는 쪽이 부른다.
 import { useEffect, useRef, useState } from 'react';
 import { datasource } from '../../data/datasource/http.js';
+import { maxJointDelta } from '@fr5/shared/data/sim/motion-chunks.js';
 
 // ⭐ **2026-09-04 — 브리지 목표를 그대로 쓴다.** 여기서 자리를 다시 만들지 않는다.
 // 그 전에는 높이(165)와 자세(`[180, 0, 0]`)를 **여기서 따로 지어냈고**, 그 탓에 둘이 났다:
 //   ① 높이가 프로필과 55mm 갈렸다 (프로필이 220 이 된 뒤로 · D166)
 //   ② **`rz` 를 0 으로 박아 IK 가 「해가 없다」를 냈다** — 실기 목표는 지금 손목 각
 //      (162.8°)을 쓰고 그건 풀리는데, 0 은 그 자리에서 안 풀린다. **고스트가 영영 안 떴다.**
-//      실기 담당자가 *"고스트가 안 움직이는데"* 라고 한 것이 정확히 이 자리다.
+//      주인님이 *"고스트가 안 움직이는데"* 라고 한 것이 정확히 이 자리다.
 // 브리지 `follow.goal` 은 프로필 높이·현재 자세로 이미 풀린 값이다 — **정본을 베끼지 않는다**
 // (하드 룰 5). 사본을 두면 화면과 팔이 다른 데를 말하고, 그건 그림이 틀린 것보다 나쁘다.
 //
@@ -33,6 +34,8 @@ const DOWN_RX_RY = [180, 0];
 const MIN_STEP_MM = 25;
 // 아무리 빨라도 이 간격 — `/ik` 는 컨트롤러 왕복이라 공짜가 아니다
 const MIN_GAP_MS = 500;
+const wrapDeg = (d) => ((d % 360) + 540) % 360 - 180;
+export const followPoseCandidates = (tcp) => [tcp, [...tcp.slice(0, 5), wrapDeg(tcp[5] + 180)]];
 
 /**
  * `state.follow.target` 을 따라가는 **시뮬레이션 관절각**.
@@ -42,17 +45,27 @@ const MIN_GAP_MS = 500;
  */
 export function useFollowSim(state, on) {
   const [sim, setSim] = useState(null);
-  const lastRef = useRef({ at: 0, tcp: null, busy: false });
+  const [retry, setRetry] = useState(0);
+  const lastRef = useRef({ at: 0, tcp: null, gateKey: null, busy: false });
 
   const target = state?.follow?.target?.user1Mm ?? null;
   const key = target ? target.map((v) => Math.round(v)).join(',') : null;
+  // 목표가 그대로여도 안전 전제는 나중에 준비될 수 있다. 연결 직후 조건 26 실패를
+  // 영구 캐시하지 않도록, 실제 /ik 게이트에 영향을 주는 상태만 작은 지문으로 묶는다.
+  const gateKey = JSON.stringify([
+    state?.appliedSettings?.appliedAt ?? null, state?.enabled ?? null, state?.mode ?? null,
+    state?.phase ?? null, state?.safety?.code ?? null, state?.safety?.mainErrorCode ?? null,
+    state?.safety?.subErrorCode ?? null, state?.safety?.emergencyStop ?? null,
+    state?.safety?.safetyStop ?? null, state?.safety?.collisionDetected ?? null,
+    state?.motionTarget?.doneAt ?? null, state?.amr?.moving ?? null,
+  ]);
 
   useEffect(() => {
     if (!on || !state?.connected) { setSim(null); return; }
     // ⛔ **표적을 놓쳤다고 그림을 지우지 않는다** (2026-09-04). 앵커 추적기는 2.0초마다
     // 도는데 표적 나이 상한은 2.5초라, 한 판만 늦어도 `target` 이 잠깐 `null` 이 된다.
     // 그때 시뮬을 통째로 비우면 고스트가 **깜빡이며 사라지고**, 사람 눈에는 「안 움직인다」로
-    // 보인다 — 실기 담당자가 오늘 그렇게 보셨다.
+    // 보인다 — 주인님이 오늘 그렇게 보셨다.
     // ⚠ **「가는 것은 멈춘다」와 안 부딪힌다** (`VISION-CONTRACT` §못 보면). 그 규칙은
     //    **팔을 보내는 쪽**의 것이다. 여기는 그림이고, 아무것도 안 움직인다 — 지우는 대신
     //    **낡았다고 말한다.** 조용히 옛 자리를 보여주는 것만 아니면 된다.
@@ -70,7 +83,8 @@ export function useFollowSim(state, on) {
     const r = lastRef.current;
     const moved = !r.tcp
       || Math.hypot(goal[0] - r.tcp[0], goal[1] - r.tcp[1], goal[2] - r.tcp[2]) > MIN_STEP_MM;
-    if (!moved || r.busy || Date.now() - r.at < MIN_GAP_MS) {
+    const gateChanged = r.gateKey !== gateKey;
+    if (!moved && !gateChanged) {
       // ⛔ **다시 풀지 않아도 「낡음」은 걷는다** (2026-09-04). 표적이 잠깐 사라졌다 돌아오면
       // 깃발만 남는데, 데드밴드(25mm) 때문에 다시 풀 일이 없어 **영영 낡은 걸로 보인다.**
       // 「표적이 보인다」와 「그림을 다시 그렸다」는 다른 사실이다 — 깃발은 앞엣것을 말한다.
@@ -78,15 +92,29 @@ export function useFollowSim(state, on) {
       setSim((v) => (v && v.stale ? { ...v, stale: false } : v));
       return;
     }
+    if (r.busy || Date.now() - r.at < MIN_GAP_MS) {
+      // 앞 요청이 끝나는 순간 안전 지문 변경을 놓치지 않게 한 번만 뒤에서 다시 깨운다.
+      const wait = Math.max(50, MIN_GAP_MS - (Date.now() - r.at));
+      const timer = setTimeout(() => setRetry((v) => v + 1), wait);
+      return () => clearTimeout(timer);
+    }
     r.busy = true;
     let dead = false;
-    datasource.ik(goal).then((res) => {
+    Promise.all(followPoseCandidates(goal).map(async (tcp) => ({ tcp, res: await datasource.ik(tcp) }))).then((tries) => {
       if (dead) return;
+      const picked = tries.sort((a, b) => {
+        const aBad = a.res?.gate?.ok === false || !a.res?.jointsDeg;
+        const bBad = b.res?.gate?.ok === false || !b.res?.jointsDeg;
+        return Number(aBad) - Number(bBad)
+          || maxJointDelta(state?.jointsDeg, a.res?.jointsDeg) - maxJointDelta(state?.jointsDeg, b.res?.jointsDeg);
+      })[0];
+      const res = picked?.res;
       r.at = Date.now();
       r.tcp = goal;
+      r.gateKey = gateKey;
       setSim({
         stale: false,
-        tcpMmDeg: goal,
+        tcpMmDeg: picked?.tcp ?? goal,
         jointsDeg: res?.jointsDeg ?? null,
         reachable: res?.reachable !== false && Boolean(res?.jointsDeg),
         gate: res?.gate ?? null,
@@ -98,7 +126,7 @@ export function useFollowSim(state, on) {
     }).finally(() => { r.busy = false; });
     return () => { dead = true; };
     // ⚠ 브리지 목표도 의존성이다 — 빼면 목표가 바뀌어도 다시 안 푼다
-  }, [on, key, state?.connected, state?.follow?.goal?.tcpMmDeg?.join(',')]);
+  }, [on, key, gateKey, retry, state?.connected, state?.follow?.goal?.tcpMmDeg?.join(',')]);
 
   return sim;
 }

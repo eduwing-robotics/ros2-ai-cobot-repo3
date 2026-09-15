@@ -31,6 +31,15 @@ import { resolveTheme } from './zone-theme.js';
  */
 const MARK_LIFT_MM = 1;
 
+// 2026-09-13 주인님 현장 확인 — 작업대1·2의 검정 매트는 같은 줄로 이어지고,
+// 작업대2도 상판 가로 끝까지 찬다. 스캔 사진의 검정 영역은 작업대2 양끝이 잘려 있어
+// 그대로 쓰면 실제로 이어진 매트가 트윈에서 끊긴다. 얇은 보정면 하나로만 덮는다.
+const CONTINUOUS_MAT_DEPTH_MM = 96;
+const CONTINUOUS_MAT_NAMES = new Set(['작업대1', '작업대2']);
+const continuousMatMaterial = new THREE.MeshStandardMaterial({
+  color: 0x1b1c1e, roughness: 0.96, metalness: 0,
+});
+
 function plane(w, h, color, opacity) {
   const m = new THREE.Mesh(
     new THREE.PlaneGeometry(w, h),
@@ -180,7 +189,7 @@ export function makeWorkspace(ws, { showProps = true, theme } = {}) {
       sh.rotation.x = Math.PI / 2;                     // Y-up → Z-up (카트 홀더와 같은 다리)
       sh.position.set(mm((x0 + x1) / 2), mm((y0 + y1) / 2), mm(cellFloorZ));
       sh.name = `stand:${b.name ?? i}`;
-      // 작업대 상판 무늬 — 스캔 정사영(2026-09-05). 검은 매트 위치까지 들어 있으므로 새 판을 덧그리지 않는다.
+      // 작업대 상판 무늬 — 스캔 정사영(2026-09-05).
       sh.add(sideStand({
         topMap: BENCH_MAPS[b.name] ? scanTexture(BENCH_MAPS[b.name]) : null,
         wMm: x1 - x0, dMm: y1 - y0,
@@ -189,6 +198,18 @@ export function makeWorkspace(ws, { showProps = true, theme } = {}) {
         tubeMm: SIDE_STAND.tubeMm,
         casterMm: SIDE_STAND.casterMm,
       }));
+      if (CONTINUOUS_MAT_NAMES.has(b.name)) {
+        // ponytail: 천의 처짐·모서리 R은 생략한다. 상판 배치 축척에서 필요한 진실은
+        // 두 판 사이가 끊기지 않는 전폭 직사각형이며, 더 정밀한 외곽은 재촬영 때 텍스처로 교체한다.
+        const mat = new THREE.Mesh(
+          new THREE.BoxGeometry(mm(x1 - x0), mm(1), mm(CONTINUOUS_MAT_DEPTH_MM)),
+          continuousMatMaterial,
+        );
+        mat.position.set(0, mm(b.topZMm - cellFloorZ + 0.5), 0);
+        mat.name = `bench-mat:${b.name}`;
+        mat.receiveShadow = true;
+        sh.add(mat);
+      }
       g.add(sh);
     }
 
