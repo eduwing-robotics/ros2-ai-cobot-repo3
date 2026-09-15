@@ -1,0 +1,56 @@
+보정값: grip_offset.json 에서 읽음 (+34.9, -86.5, -194.2) mm
+Loading weights:   0%|          | 0/1468 [00:00<?, ?it/s]Loading weights:  32%|███▏      | 465/1468 [00:00<00:00, 4635.56it/s]Loading weights:  63%|██████▎   | 929/1468 [00:00<00:00, 3170.61it/s]Loading weights:  87%|████████▋ | 1273/1468 [00:00<00:00, 2434.20it/s]Loading weights: 100%|██████████| 1468/1468 [00:00<00:00, 1729.43it/s]
+[load] SAM3 6.1s  prompt=['bullet', 'metal ring']
+카메라 토픽을 기다립니다…
+[cam ] 640x480 color / 640x480 aligned depth  fx=604.5
+[center] 화면 중심 (320, 240)
+에러코드 -> 0,0,0
+RobotEnable(1) -> 0
+SetSpeed(10) -> 0
+속도: 서보 5% / 큰 이동 10%
+좌표계: tool=1 user=1  (로봇 현재 설정과 맞춰야 tool discrepancy 를 피한다)
+자세 유지: rx=179.764 ry=0.123 rz=179.295  (이동은 MoveL)
+
+[그리퍼] 활성화 후 35 로 벌립니다
+    ActGripper -> 0
+    그리퍼 35 완료 (12.7초, done=1 위치 도달)
+
+[시작 위치로 이동] 관절 = [71.232, -77.373, 88.429, -100.799, -89.955, -18.064]
+  [깊이] 바닥 325mm, 임계 300mm → 후보 18개 중 4개 통과
+  [합의] SAM3 1개 · 깊이 4개 → 합의 1개
+QFontDatabase: Cannot find font directory /home/kimsunil/sam3_env/lib/python3.12/site-packages/cv2/qt/fonts.
+Note that Qt no longer ships fonts. Deploy some (from https://dejavu-fonts.github.io/ for example) or switch to fontconfig.
+QFontDatabase: Cannot find font directory /home/kimsunil/sam3_env/lib/python3.12/site-packages/cv2/qt/fonts.
+Note that Qt no longer ships fonts. Deploy some (from https://dejavu-fonts.github.io/ for example) or switch to fontconfig.
+QFontDatabase: Cannot find font directory /home/kimsunil/sam3_env/lib/python3.12/site-packages/cv2/qt/fonts.
+Note that Qt no longer ships fonts. Deploy some (from https://dejavu-fonts.github.io/ for example) or switch to fontconfig.
+QFontDatabase: Cannot find font directory /home/kimsunil/sam3_env/lib/python3.12/site-packages/cv2/qt/fonts.
+Note that Qt no longer ships fonts. Deploy some (from https://dejavu-fonts.github.io/ for example) or switch to fontconfig.
+QFontDatabase: Cannot find font directory /home/kimsunil/sam3_env/lib/python3.12/site-packages/cv2/qt/fonts.
+Note that Qt no longer ships fonts. Deploy some (from https://dejavu-fonts.github.io/ for example) or switch to fontconfig.
+
+대상: 탄두(꽂힘)  픽셀=(358,216)  거리=277mm  전체 1개
+   - 탄두(꽂힘) pix=(358,216) Z=277mm L=13.3mm h= 42.0mm area=601px [Z+깊이]
+
+[servo] 화면 중심(320,240)으로 정렬. 허용오차 = 물체 반크기 (하한 3.0px)
+  X·Y 동시
+  보폭 기준 거리 = 277mm (선정 시 1회 측정, 서보 중 고정)
+  [XY 1] 오차  45.3px (허용 4.0) → 상대이동 dx=-10.5 dy=-6.7 mm
+  [깊이] 바닥 325mm, 임계 300mm → 후보 16개 중 2개 통과
+  [XY 2] 오차  26.1px (허용 4.0) → 상대이동 dx=-6.1 dy=-3.7 mm
+  [깊이] 바닥 325mm, 임계 300mm → 후보 20개 중 2개 통과
+  [XY 3] 오차   8.1px (허용 4.0) → 상대이동 dx=-1.9 dy=-1.1 mm
+  [깊이] 바닥 325mm, 임계 300mm → 후보 17개 중 1개 통과
+  [XY] 3회만에 완료 (오차 2.7px ≤ 허용 4.0px)
+
+[정렬 완료] 대상 = 탄두(꽂힘)
+[정렬 완료] TCP  = (294.30, -1091.68, -86.61)
+[정렬 완료] 픽셀 = (322.7, 240.2)  화면 중심 (320, 240)
+[정렬 완료] 관절 = [69.961, -75.510, 86.085, -100.319, -89.961, -19.341]
+[정렬 완료] 기록 추가: aligned_poses.json (30건)
+
+[종류] 탄두 설정 사용 — 보정값 있음, 놓기 있음, 박기 1단계, 그리퍼 17
+
+[하강] 상대 이동 (+38.23, -87.87, -200.99) mm
+       정렬 294.30, -1091.68, -86.61  →  목표 332.53, -1179.55, -287.60
+       ⚠️ Z 를 201mm 내립니다. 처음이면 --grip-offset "38.2,-87.9,-150" 으로 덜 내려 X/Y 만 먼저 확인하세요.

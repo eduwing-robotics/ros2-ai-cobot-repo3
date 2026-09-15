@@ -1,0 +1,86 @@
+보정값: grip_offset.json 에서 읽음 (+34.9, -86.5, -194.2) mm
+Loading weights:   0%|          | 0/1468 [00:00<?, ?it/s]Loading weights:  30%|██▉       | 439/1468 [00:00<00:00, 4316.69it/s]Loading weights:  59%|█████▉    | 871/1468 [00:00<00:00, 1425.21it/s]Loading weights:  75%|███████▌  | 1106/1468 [00:00<00:00, 1599.90it/s]Loading weights:  91%|█████████ | 1334/1468 [00:01<00:00, 1041.92it/s]Loading weights: 100%|██████████| 1468/1468 [00:01<00:00, 1158.41it/s]
+[load] SAM3 6.5s  prompt=['bullet', 'metal ring']
+카메라 토픽을 기다립니다…
+[cam ] 640x480 color / 640x480 aligned depth  fx=604.5
+[center] 화면 중심 (320, 240)
+에러코드 -> 0,0,0
+RobotEnable(1) -> 0
+SetSpeed(10) -> 0
+속도: 서보 5% / 큰 이동 10%
+좌표계: tool=1 user=1  (로봇 현재 설정과 맞춰야 tool discrepancy 를 피한다)
+자세 유지: rx=-179.549 ry=-0.138 rz=174.396  (이동은 MoveL)
+
+[그리퍼] 활성화 후 35 로 벌립니다
+    ActGripper -> 0
+    그리퍼 35 완료 (12.8초, done=1 위치 도달)
+
+[시작 위치로 이동] 관절 = [71.232, -77.373, 88.429, -100.799, -89.955, -18.064]
+QFontDatabase: Cannot find font directory /home/kimsunil/sam3_env/lib/python3.12/site-packages/cv2/qt/fonts.
+Note that Qt no longer ships fonts. Deploy some (from https://dejavu-fonts.github.io/ for example) or switch to fontconfig.
+QFontDatabase: Cannot find font directory /home/kimsunil/sam3_env/lib/python3.12/site-packages/cv2/qt/fonts.
+Note that Qt no longer ships fonts. Deploy some (from https://dejavu-fonts.github.io/ for example) or switch to fontconfig.
+QFontDatabase: Cannot find font directory /home/kimsunil/sam3_env/lib/python3.12/site-packages/cv2/qt/fonts.
+Note that Qt no longer ships fonts. Deploy some (from https://dejavu-fonts.github.io/ for example) or switch to fontconfig.
+QFontDatabase: Cannot find font directory /home/kimsunil/sam3_env/lib/python3.12/site-packages/cv2/qt/fonts.
+Note that Qt no longer ships fonts. Deploy some (from https://dejavu-fonts.github.io/ for example) or switch to fontconfig.
+QFontDatabase: Cannot find font directory /home/kimsunil/sam3_env/lib/python3.12/site-packages/cv2/qt/fonts.
+Note that Qt no longer ships fonts. Deploy some (from https://dejavu-fonts.github.io/ for example) or switch to fontconfig.
+
+대상: 탄두(꽂힘)  픽셀=(372,278)  거리=258mm  전체 1개
+   - 탄두(꽂힘) pix=(372,278) Z=258mm L=14.2mm
+
+[servo] 화면 중심(320,240)으로 정렬. 허용오차 = 물체 반크기 (하한 3.0px)
+  X·Y 동시
+  보폭 기준 거리 = 258mm (선정 시 1회 측정, 서보 중 고정)
+  [XY 1] 오차  64.3px (허용 4.0) → 상대이동 dx=-12.2 dy=+8.8 mm
+  [XY 2] 오차  35.6px (허용 4.0) → 상대이동 dx=-7.4 dy=+5.4 mm
+  [XY 3] 오차  14.8px (허용 4.0) → 상대이동 dx=-3.1 dy=+2.2 mm
+  [XY 4] 오차   6.0px (허용 4.0) → 상대이동 dx=-1.2 dy=+0.9 mm
+  [XY] 4회만에 완료 (오차 3.7px ≤ 허용 4.0px)
+
+[정렬 완료] 대상 = 탄두(꽂힘)
+[정렬 완료] TCP  = (287.97, -1064.42, -86.72)
+[정렬 완료] 픽셀 = (323.1, 242.0)  화면 중심 (320, 240)
+[정렬 완료] 관절 = [68.461, -79.046, 90.491, -101.179, -89.968, -20.844]
+[정렬 완료] 기록 추가: aligned_poses.json (18건)
+
+[하강] 상대 이동 (+34.94, -86.46, -194.23) mm
+       정렬 287.97, -1064.42, -86.72  →  목표 322.91, -1150.88, -280.95
+       ⚠️ Z 를 194mm 내립니다. 처음이면 --grip-offset "34.9,-86.5,-150" 으로 덜 내려 X/Y 만 먼저 확인하세요.
+[하강 완료] TCP = (322.00, -1149.04, -278.98)
+[하강 완료] 목표와의 차이 = (-0.92, +1.84, +1.97) mm
+
+[그리퍼] 22 으로 잡습니다
+    그리퍼 22 완료 (2.6초, done=2 물체에 걸려 정지)
+  그리퍼 LED가 초록색인지 확인하세요.
+
+[들어올리기] 상대 이동 (0, 0, +100.0) mm
+[들어올리기 완료] TCP = (321.98, -1149.00, -182.86)  실제 상승 +98.11mm
+
+[경유점으로 이동] 절대 이동 → (125.97, -1145.94, -189.01)  자세 (179.77, 0.12, 179.31)
+       현재 (321.98, -1148.99, -182.71)  거리 196.1mm
+[경유점으로 이동 완료] TCP = (126.81, -1145.96, -189.01)  차이 (+0.84, -0.03, -0.01) mm
+
+[놓을 위치로 하강] 절대 이동 → (125.97, -1145.93, -271.08)  자세 (179.77, 0.12, 179.31)
+       현재 (126.81, -1145.96, -189.01)  거리 82.1mm
+[놓을 위치로 하강 완료] TCP = (125.98, -1145.95, -269.62)  차이 (+0.01, -0.02, +1.46) mm
+
+[박기 1/3 (-1.0mm)] 절대 이동 → (125.97, -1145.93, -272.08)  자세 (179.77, 0.12, 179.31)
+       현재 (125.98, -1145.95, -269.62)  거리 2.5mm
+[박기 1/3 (-1.0mm) 완료] TCP = (125.98, -1145.94, -272.04)  차이 (+0.01, -0.01, +0.04) mm
+
+[박기 2/3 (-2.0mm)] 절대 이동 → (125.97, -1145.93, -273.08)  자세 (179.77, 0.12, 179.31)
+       현재 (125.98, -1145.94, -272.04)  거리 1.0mm
+[박기 2/3 (-2.0mm) 완료] TCP = (125.99, -1145.93, -272.34)  차이 (+0.01, -0.00, +0.74) mm
+
+[박기 3/3 (-3.0mm)] 절대 이동 → (125.97, -1145.93, -274.08)  자세 (179.77, 0.12, 179.31)
+       현재 (125.99, -1145.93, -272.34)  거리 1.7mm
+[박기 3/3 (-3.0mm) 완료] TCP = (125.99, -1145.94, -273.95)  차이 (+0.02, -0.01, +0.13) mm
+
+[그리퍼] 35 로 벌려 놓습니다
+    그리퍼 35 완료 (2.7초, done=1 위치 도달)
+
+픽앤플레이스 완료.
+
+[exited with code 0]

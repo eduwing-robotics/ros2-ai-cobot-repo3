@@ -1,0 +1,524 @@
+# SAM 3 (Segment Anything Model 3) 사용법 정리
+
+> 출처: [PyTorch KR 게시글](https://discuss.pytorch.kr/t/meta-segment-anything-model-3-sam-3-open-vocabulary/8270),
+> [facebookresearch/sam3](https://github.com/facebookresearch/sam3),
+> [HF transformers SAM3 문서](https://github.com/huggingface/transformers/blob/main/docs/source/en/model_doc/sam3.md)
+> 작성일: 2026-09-07
+
+---
+
+## 1. SAM 3가 무엇인가
+
+SAM 3는 Meta FAIR의 프롬프트 기반 개방형 어휘(open-vocabulary) 분할 모델이다. SAM 1/2가 "어디(where)"를 클릭·박스로 지정해야 했다면, SAM 3는 **짧은 명사구 텍스트로 "무엇(what)"을 지정**하고 그 개념에 해당하는 **모든 인스턴스**를 한 번에 검출·분할·추적한다.
+
+두 가지 태스크를 하나의 모델이 수행한다.
+
+| 태스크 | 약어 | 프롬프트 | 결과 |
+|---|---|---|---|
+| Promptable Concept Segmentation | PCS | 텍스트 명사구, exemplar 박스 | 해당 개념의 **모든** 인스턴스 마스크 |
+| Promptable Visual Segmentation | PVS | 포인트 / 박스 / 마스크 | 지정한 **특정** 객체 하나 (SAM 1/2 방식) |
+
+핵심 변화는 "고양이"라고 치면 화면 속 고양이 전부가 개별 인스턴스로 나온다는 점이다. 이전 세대에서는 클릭 횟수만큼만 얻을 수 있었다.
+
+### 아키텍처 요약
+
+- **Perception Encoder (PE)**: 이미지-텍스트 쌍으로 사전학습된 인코더. 시각·언어 정보가 같은 임베딩 공간에 정렬된다.
+- **Detector + Presence Head**: "그 개념이 존재하는가(recognition)"와 "어디에 있는가(localization)"를 분리한다. 이 분리가 hallucination(없는 것을 찾아내는 현상)을 억제하고 하드 네거티브를 걸러낸다.
+- **Tracker**: masklet 기반 시공간 추적기. 메모리 뱅크 + 메모리 어텐션으로 프레임 간 ID를 유지한다. 구조적으로는 SAM 2 트래커의 개선판이다.
+
+### 데이터와 벤치마크
+
+- 데이터 엔진 4단계: 미디어 수집 → LLM 기반 라벨 생성 → Llama 계열 VLM 검증 → 비디오 어노테이션
+- 규모: 고유 개념 약 400만 개, 마스크 5,200만 개(합성 포함 시 14억)
+- 벤치마크 **SA-Co**: 고유 개념 약 27만 개(LVIS 대비 50배 이상 어휘). SAM 3는 이 벤치마크에서 인간 성능의 75~80% 수준
+
+### 성능
+
+| 지표 | SAM 3 | 이전 SOTA |
+|---|---|---|
+| LVIS zero-shot mask AP | 47.0 | 38.5 |
+| SA-Co 벤치마크 | 기존 시스템 대비 약 2배 | — |
+| SA-V test (video, cgF1) | 30.3 | — |
+
+---
+
+## 2. 하드웨어 요구사항
+
+- 파라미터 약 0.9B(840M), 체크포인트 약 3.4GB
+- 공식 권장은 **VRAM 24GB 이상**이지만, 실측해 보면 단일 이미지 추론은 훨씬 가볍다. RTX 5060 8GB에서 bf16으로 **피크 2.00 GiB, 추론 300ms**를 확인했다(→ [설치·인증·실행 가이드](sam3-설치-인증-실행-가이드.md)). 24GB 권장치는 비디오나 대량 객체 기준으로 보인다
+- 비디오 추론과 대량 객체는 훨씬 무겁다. 이쪽이 24GB가 필요한 구간이다
+- 추론 속도: H200 기준 단일 이미지(객체 100개) 약 30ms. 실시간(30fps)은 객체 5개 내외까지
+- CPU 추론은 가능하지만 실용 속도가 아니다
+
+---
+
+## 3. 설치
+
+두 갈래가 있다. **처음 써 본다면 B(transformers)가 훨씬 간단하다.**
+
+### A. 공식 저장소 (facebookresearch/sam3)
+
+요구사항: Python ≥ 3.12, PyTorch ≥ 2.7, CUDA ≥ 12.6
+
+```bash
+conda create -n sam3 python=3.12
+conda activate sam3
+
+# CUDA 12.8 휠 기준
+pip install torch torchvision --index-url https://download.pytorch.org/whl/cu128
+
+git clone https://github.com/facebookresearch/sam3.git
+cd sam3
+pip install -e .
+```
+
+선택 의존성:
+
+```bash
+pip install -e ".[notebooks]"      # 예제 노트북 실행용
+pip install -e ".[train,dev]"      # 파인튜닝·개발용
+pip install einops ninja flash-attn-3   # 추론 가속
+```
+
+### B. Hugging Face transformers
+
+```bash
+pip install -U transformers accelerate torch torchvision
+```
+
+### 체크포인트 접근 권한 (양쪽 공통, 필수)
+
+SAM 3 가중치는 gated 저장소다. **서로 별개인 두 단계를 모두 거쳐야 한다.**
+
+1. **게이트 승인** — [huggingface.co/facebook/sam3](https://huggingface.co/facebook/sam3)에서 이름·소속·직함 양식을 제출하고 승인을 받는다. 안 하면 403
+2. **CLI 인증** — 이 장비에서 로그인해 토큰을 저장한다. 안 하면 401
+
+승인 소요는 편차가 크다. 실제로 10분 만에 난 사례가 있고, 커뮤니티에는 며칠~2주 걸린 보고도 있다.
+
+```bash
+hf auth login    # 구버전 CLI: huggingface-cli login
+```
+
+huggingface_hub 1.30부터 이 명령은 토큰 붙여넣기가 아니라 **브라우저 디바이스 인증**을 쓴다. 터미널에 8자리 코드가 찍히면 https://hf.co/oauth/device 에 입력한다. 코드는 300초 만에 만료되고 대화형이라, 자동화 도구가 아니라 **일반 터미널에서 직접** 실행해야 한다.
+
+---
+
+## 4. 이미지 추론
+
+### 4.1 텍스트 프롬프트 — 가장 기본
+
+```python
+import requests
+import torch
+from PIL import Image
+from transformers import Sam3Model, Sam3Processor
+
+model = Sam3Model.from_pretrained("facebook/sam3", device_map="auto")
+processor = Sam3Processor.from_pretrained("facebook/sam3")
+
+image_url = "http://images.cocodataset.org/val2017/000000077595.jpg"
+image = Image.open(requests.get(image_url, stream=True).raw).convert("RGB")
+
+inputs = processor(images=image, text="ear", return_tensors="pt").to(model.device)
+
+with torch.no_grad():
+    outputs = model(**inputs)
+
+results = processor.post_process_instance_segmentation(
+    outputs,
+    threshold=0.5,          # 객체 신뢰도 임계값
+    mask_threshold=0.5,     # 마스크 이진화 임계값
+    target_sizes=inputs.get("original_sizes").tolist(),
+)[0]
+
+print(f"Found {len(results['masks'])} objects")
+```
+
+`results` 구성:
+
+- `masks` — 원본 해상도로 복원된 이진 마스크
+- `boxes` — 절대 픽셀 좌표 xyxy
+- `scores` — 신뢰도
+
+**프롬프트 작성 요령**: 짧은 명사구가 원칙이다. `"a striped cat"`, `"yellow school bus"`처럼 형용사+명사는 잘 동작하지만, `"the cat that is sleeping on the left"` 같은 관계·문장형 표현은 SAM 3 단독으로는 처리 대상이 아니다(→ 7장 SAM 3 Agent).
+
+### 4.2 박스 프롬프트 (exemplar)
+
+박스는 xyxy 픽셀 좌표, 라벨은 1=positive / 0=negative다.
+
+```python
+box_xyxy = [100, 150, 500, 450]
+input_boxes = [[box_xyxy]]     # [batch, num_boxes, 4]
+input_boxes_labels = [[1]]     # 1 = positive
+
+inputs = processor(
+    images=image,
+    input_boxes=input_boxes,
+    input_boxes_labels=input_boxes_labels,
+    return_tensors="pt",
+).to(model.device)
+
+with torch.no_grad():
+    outputs = model(**inputs)
+
+results = processor.post_process_instance_segmentation(
+    outputs, threshold=0.5, mask_threshold=0.5,
+    target_sizes=inputs.get("original_sizes").tolist(),
+)[0]
+```
+
+박스를 여러 개 주면 그 예시들과 같은 종류를 모두 찾는다.
+
+```python
+box1_xyxy = [59, 144, 76, 163]    # 다이얼
+box2_xyxy = [87, 148, 104, 159]   # 버튼
+inputs = processor(
+    images=kitchen_image,
+    input_boxes=[[box1_xyxy, box2_xyxy]],
+    input_boxes_labels=[[1, 1]],
+    return_tensors="pt",
+).to(model.device)
+```
+
+### 4.3 텍스트 + 네거티브 박스 — 오검출 제거
+
+텍스트로 개념을 주고, 빼고 싶은 영역을 negative 박스로 지정한다. 실무에서 제일 자주 쓰게 되는 조합이다.
+
+```python
+# "handle"을 찾되 오븐 손잡이는 제외
+inputs = processor(
+    images=kitchen_image,
+    text="handle",
+    input_boxes=[[[40, 183, 318, 204]]],
+    input_boxes_labels=[[0]],     # 0 = negative
+    return_tensors="pt",
+).to(model.device)
+```
+
+### 4.4 배치 추론
+
+이미지마다 다른 프롬프트를 줄 수 있다.
+
+```python
+images = [cat_image, kitchen_image]
+text_prompts = ["ear", "dial"]
+
+inputs = processor(images=images, text=text_prompts, return_tensors="pt").to(model.device)
+with torch.no_grad():
+    outputs = model(**inputs)
+
+results = processor.post_process_instance_segmentation(
+    outputs, threshold=0.5, mask_threshold=0.5,
+    target_sizes=inputs.get("original_sizes").tolist(),
+)
+print(f"Image 1: {len(results[0]['masks'])} / Image 2: {len(results[1]['masks'])}")
+```
+
+프롬프트 종류를 이미지별로 섞을 때는 해당 없는 자리에 `None`을 넣는다.
+
+```python
+inputs = processor(
+    images=images,
+    text=["laptop", None],
+    input_boxes=[None, [box2_xyxy]],
+    input_boxes_labels=[None, [1]],
+    return_tensors="pt",
+).to(model.device)
+```
+
+### 4.5 raw 출력 접근
+
+```python
+instance_masks = torch.sigmoid(outputs.pred_masks)  # [batch, num_queries, H, W]
+semantic_seg = outputs.semantic_seg                 # [batch, 1, H, W]
+```
+
+---
+
+## 5. 비디오 추론
+
+### 5.1 프레임을 미리 갖고 있는 경우 (pre-loaded)
+
+```python
+import torch
+from transformers import Sam3VideoModel, Sam3VideoProcessor
+from transformers.video_utils import load_video
+
+device = "cuda"
+model = Sam3VideoModel.from_pretrained("facebook/sam3", device_map="auto")
+processor = Sam3VideoProcessor.from_pretrained("facebook/sam3")
+
+video_url = "https://huggingface.co/datasets/hf-internal-testing/sam2-fixtures/resolve/main/bedroom.mp4"
+video_frames, _ = load_video(video_url)
+
+inference_session = processor.init_video_session(
+    video=video_frames,
+    inference_device=device,
+    processing_device="cpu",
+    video_storage_device="cpu",
+    dtype=torch.bfloat16,      # ← 모델 dtype과 반드시 일치. 공식 예제엔 빠져 있다
+)
+
+inference_session = processor.add_text_prompt(
+    inference_session=inference_session,
+    text="person",
+)
+
+outputs_per_frame = {}
+for model_outputs in model.propagate_in_video_iterator(
+    inference_session=inference_session, max_frame_num_to_track=50
+):
+    processed = processor.postprocess_outputs(inference_session, model_outputs)
+    outputs_per_frame[model_outputs.frame_idx] = processed
+```
+
+`processing_device` / `video_storage_device`를 `"cpu"`로 두면 VRAM을 크게 아낄 수 있다.
+
+**주의 1 — `dtype` 기본값이 `torch.float32`다.** 공식 문서 예제에는 이 인자가 없어서, 모델을 bf16/fp16으로 올렸다면 트래커 conv에서 바로 터진다.
+
+```
+RuntimeError: Input type (float) and bias type (c10::BFloat16) should be the same
+```
+
+**주의 2 — 긴 영상의 병목은 VRAM이 아니라 시스템 RAM이다.** `processing_device`/`video_storage_device`를 `"cpu"`로 두면 VRAM은 아끼지만 그만큼 RAM을 쓴다. pre-loaded 방식은 전체 프레임을 메모리에 올리고 트래커 메모리 뱅크가 객체 수 × 프레임 수로 자란다.
+
+RTX 5060 8GB / RAM 15GB(가용 5.7GB) 환경 실측:
+
+| 프롬프트 | 프레임 | VRAM | 결과 |
+|---|---|---|---|
+| `person` | 100 | 2.77 GiB | OK |
+| `person` | 200 | — | RAM OOM |
+| `person,pillow,bed` (객체 9개) | 60 | 3.92 GiB | OK |
+| `person,pillow,bed` | 200 | — | RAM OOM |
+
+VRAM이 남는데도 죽는다. `exit 137`(SIGKILL)로 끝나면 CUDA OOM이 아니라 커널 OOM killer이니 `journalctl -k | grep oom-kill`로 확인한다. 대응은 프레임 수 분할, 메모리 확보, 스트리밍 모드 전환(5.3절) 순이다.
+
+**주의 3 — 결과를 전부 누적하지 않는다.** 프레임마다 마스크를 dict에 쌓으면 RAM이 훨씬 빨리 터진다. 즉시 소비하고 버린다.
+
+### 5.2 프롬프트 여러 개 동시 추적
+
+```python
+processor.add_text_prompt(multi_prompt_session, ["person", "bed", "lamp"])
+
+for model_outputs in model.propagate_in_video_iterator(
+    inference_session=multi_prompt_session, max_frame_num_to_track=50
+):
+    processed = processor.postprocess_outputs(multi_prompt_session, model_outputs)
+    multi_outputs_per_frame[model_outputs.frame_idx] = processed
+
+prompt_to_obj_ids = multi_outputs_per_frame[0]["prompt_to_obj_ids"]
+for prompt, obj_ids in prompt_to_obj_ids.items():
+    print(f"{prompt}: {len(obj_ids)} objects")
+```
+
+`prompt_to_obj_ids`로 어떤 프롬프트가 어떤 객체 ID를 만들었는지 역추적한다.
+
+### 5.3 스트리밍 (카메라 등 실시간 입력)
+
+프레임이 도착하는 대로 넣는다. `init_video_session`에 `video=`를 주지 않는 것이 차이다.
+
+```python
+streaming_session = processor.init_video_session(
+    inference_device=device,
+    processing_device="cpu",
+    video_storage_device="cpu",
+    dtype=torch.bfloat16,     # ← 모델과 일치. 공식 예제엔 빠져 있다
+)
+streaming_session = processor.add_text_prompt(
+    inference_session=streaming_session, text="person"
+)
+
+for frame_idx, frame in enumerate(video_frames[:50]):
+    inputs = processor(images=frame, device=device, return_tensors="pt").to(model.device)
+    model_outputs = model(
+        inference_session=streaming_session,
+        frame=inputs.pixel_values[0].to(torch.bfloat16),   # ← 캐스팅 필요
+        reverse=False,
+    )
+    processed = processor.postprocess_outputs(
+        streaming_session, model_outputs, original_sizes=inputs.original_sizes
+    )
+```
+
+프레임 소스도 통째로 읽지 않아야 의미가 있다. `load_video()` 로 전체를 읽어놓고 루프만 돌리면 RAM 이점이 사라진다. PyAV 등으로 한 장씩 디코딩한다.
+
+#### 실측 트레이드오프
+
+RTX 5060 8GB / RAM 15GB(가용 5.7GB), bedroom.mp4 960x540 기준.
+
+| 조건 | pre-loaded | 스트리밍 | 판정 |
+|---|---|---|---|
+| `person`, 200프레임 | RAM OOM | **OK** (459ms/f, VRAM 3.37 GiB) | 스트리밍 완승 |
+| 객체 9개, 60프레임 | OK (945ms/f) | OK (964ms/f) | 무승부 |
+| 객체 9개, 90프레임 이상 | RAM OOM | **CUDA OOM** | 둘 다 실패 |
+
+**이득 — 긴 영상에서 RAM을 아낀다.** pre-loaded가 죽는 200프레임을 통과하고, 전처리를 미리 하지 않아 속도도 근소하게 빠르다.
+
+**한계 1 — 객체가 많으면 병목이 VRAM으로 옮겨갈 뿐이다.** 트래커 메모리 뱅크가 객체 수에 비례해 GPU에서 자란다. `PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True` 로도 해결되지 않는다. 단편화가 아니라 실사용량 문제다.
+
+**한계 2 — ID 안정성이 실제로 떨어진다.** 같은 영상·프롬프트·프레임 수에서 검출 추이가 갈렸다.
+
+```
+pre-loaded : 0:9  10:9  20:9  30:9  35:9   40:9   50:9   55:9
+스트리밍   : 0:9  10:9  20:9  30:9  35:10  40:10  50:10  55:10
+```
+
+35프레임 부근에서 없던 트랙이 하나 생겨 끝까지 남는다. 가려졌다 나오는 영역을 새 객체로 잘못 잡은 것으로, 미래 프레임 기반 휴리스틱이 꺼진 결과다.
+
+#### 어느 쪽을 쓸 것인가
+
+| 상황 | 선택 |
+|---|---|
+| 긴 영상 + 적은 객체 | 스트리밍 |
+| 짧은 영상 + 많은 객체 | pre-loaded (ID 안정) |
+| 실시간 카메라 입력 | 스트리밍 (선택지 없음) |
+| 긴 영상 + 많은 객체 | 구간 분할 또는 해상도 축소 |
+
+### 5.4 공식 저장소 API로 비디오 추론
+
+```python
+from sam3.model_builder import build_sam3_video_predictor
+
+video_predictor = build_sam3_video_predictor()
+response = video_predictor.handle_request(
+    request=dict(type="start_session", resource_path="<YOUR_VIDEO_PATH>")
+)
+response = video_predictor.handle_request(
+    request=dict(
+        type="add_prompt",
+        session_id=response["session_id"],
+        frame_index=0,
+        text="<YOUR_TEXT_PROMPT>",
+    )
+)
+```
+
+참고로 공식 저장소의 이미지 추론 API는 다음과 같다.
+
+```python
+import torch
+from PIL import Image
+from sam3.model_builder import build_sam3_image_model
+from sam3.model.sam3_image_processor import Sam3Processor
+
+model = build_sam3_image_model()
+processor = Sam3Processor(model)
+image = Image.open("<YOUR_IMAGE_PATH.jpg>")
+inference_state = processor.set_image(image)
+output = processor.set_text_prompt(state=inference_state, prompt="<YOUR_TEXT_PROMPT>")
+masks, boxes, scores = output["masks"], output["boxes"], output["scores"]
+```
+
+**주의**: 공식 저장소의 `Sam3Processor`와 transformers의 `Sam3Processor`는 이름만 같고 서로 다른 클래스다. 한 스크립트에서 섞어 쓰지 않는다.
+
+---
+
+## 6. 성능 튜닝
+
+### 6.1 임베딩 재사용
+
+같은 이미지에 프롬프트만 바꿔 여러 번 돌릴 때, vision 임베딩을 한 번만 계산한다.
+
+```python
+img_inputs = processor(images=image, return_tensors="pt").to(model.device)
+with torch.no_grad():
+    vision_embeds = model.get_vision_features(pixel_values=img_inputs.pixel_values)
+
+for prompt in ["ear", "eye", "nose"]:
+    text_inputs = processor(text=prompt, return_tensors="pt").to(model.device)
+    with torch.no_grad():
+        outputs = model(vision_embeds=vision_embeds, **text_inputs)
+    results = processor.post_process_instance_segmentation(
+        outputs, threshold=0.5, mask_threshold=0.5,
+        target_sizes=img_inputs.get("original_sizes").tolist(),
+    )[0]
+```
+
+반대로 같은 프롬프트를 여러 이미지에 적용할 때는 텍스트 임베딩을 고정한다. 이때 `attention_mask`를 반드시 함께 넘겨야 마스킹이 올바르게 걸린다.
+
+```python
+text_inputs = processor(text="ear", return_tensors="pt").to(model.device)
+with torch.no_grad():
+    text_embeds = model.get_text_features(**text_inputs)
+
+for image in images:
+    img_inputs = processor(images=image, return_tensors="pt").to(model.device)
+    with torch.no_grad():
+        outputs = model(
+            pixel_values=img_inputs.pixel_values,
+            text_embeds=text_embeds,
+            attention_mask=text_inputs.attention_mask,   # 필수
+        )
+```
+
+### 6.2 입력 해상도 낮추기
+
+VRAM과 속도를 맞바꾼다. config와 processor의 크기를 **같이** 바꿔야 한다.
+
+```python
+from transformers import Sam3Config
+
+config = Sam3Config.from_pretrained("facebook/sam3")
+config.image_size = 560
+model = Sam3Model.from_pretrained("facebook/sam3", config=config, device_map="auto")
+processor = Sam3Processor.from_pretrained("facebook/sam3", size={"height": 560, "width": 560})
+```
+
+비디오도 같은 방식으로 `Sam3VideoConfig` + `Sam3VideoProcessor`를 함께 조정한다.
+
+### 6.3 그 외
+
+- `torch.compile`, FP16/BF16, TensorRT 변환으로 추가 가속
+- 서빙 시에는 Celery·Redis Queue 등 작업 큐로 비동기 처리하고, 추론 후 텐서를 명시적으로 해제
+- flash-attn-3 설치 시 어텐션 구간이 빨라진다
+- **`pip install kernels`** — 없으면 NMS 후처리, 구멍 메우기, 잔점 제거가 통째로 스킵되어 마스크 품질이 떨어진다. 실행 시 경고로 알려준다
+
+---
+
+## 7. SAM 3 Agent — 복잡한 문장 프롬프트
+
+SAM 3 자체는 짧은 명사구만 받는다. `"앉아 있는 사람 중 모자를 쓰지 않은 사람"` 같은 지시는 MLLM을 앞단에 두어 처리한다.
+
+1. MLLM이 사용자 명령을 해석해 단순 명사구 프롬프트로 분해한다
+2. SAM 3가 각 명사구에 대해 마스크를 뽑는다
+3. MLLM이 마스크 결과를 보고 조건에 맞는 것만 논리적으로 골라낸다
+
+LangChain·LlamaIndex 등에서 SAM 3를 도구(tool)로 등록하는 방식으로 구성한다.
+
+---
+
+## 8. 자주 걸리는 지점
+
+| 증상 | 원인 / 해결 |
+|---|---|
+| `from_pretrained`에서 401/403 | HF에서 gated 접근 승인 미완 또는 `hf auth login` 미실행 |
+| 마스크가 원본과 크기가 안 맞음 | `post_process_instance_segmentation`에 `target_sizes` 누락 |
+| 검출이 너무 많음/적음 | `threshold`(객체 신뢰도), `mask_threshold`(마스크 이진화)를 따로 조정 |
+| `mat1 and mat2 must have the same dtype` | 박스 프롬프트 + bf16/fp16 조합의 알려진 버그(transformers 5.16.1). `inputs["input_boxes"]`를 모델 dtype으로 캐스팅 |
+| 401 (인증 안 됨) vs 403 (명단에 없음) | 401은 CLI 로그인 필요, 403은 게이트 승인 필요. **둘은 별개 절차다** |
+| 없는 객체를 찾아냄 | 프롬프트를 더 구체적인 명사구로. negative 박스로 영역 배제 |
+| 긴 영상에서 `exit 137` / `Killed` | CUDA OOM이 아니라 **시스템 RAM** OOM. 프레임 수 축소, 결과 누적 금지, 스트리밍 모드 전환 |
+| 긴 영상에서 CUDA OOM | `processing_device`/`video_storage_device`를 `"cpu"`로, `max_frame_num_to_track` 축소, `image_size` 축소 |
+| `Input type (float) and bias type (BFloat16)` | `init_video_session(dtype=...)`를 모델 dtype과 맞춘다. 공식 예제에 누락된 인자다 |
+| 마스크에 구멍·잔점이 많음 | `pip install kernels` |
+| 스트리밍 결과 품질 저하 | 정상 동작. 미래 프레임 휴리스틱이 비활성화됨. 없던 트랙이 생기기도 한다. ID 안정성이 필요하면 pre-loaded |
+| 스트리밍인데 CUDA OOM | 객체 수가 많으면 스트리밍도 VRAM이 부족하다. 프레임 분할 또는 `image_size` 축소 |
+| `Sam3Processor` 인자 오류 | 공식 저장소 클래스와 transformers 클래스를 혼동. import 경로 확인 |
+
+---
+
+## 9. 라이선스
+
+공식 저장소는 **SAM License**를 따른다(저장소의 `LICENSE` 파일 확인). Hugging Face 체크포인트는 연락처 정보 제공 동의 후 접근이 허용되며 Meta 개인정보 정책이 적용된다. 상용 도입 전에는 라이선스 원문을 직접 확인해야 한다.
+
+---
+
+## 10. 링크
+
+- 홈페이지: https://ai.meta.com/sam3/
+- 블로그: https://ai.meta.com/blog/segment-anything-model-3/
+- Playground: https://www.aidemos.meta.com/segment-anything
+- GitHub: https://github.com/facebookresearch/sam3
+- Hugging Face: https://huggingface.co/facebook/sam3
+- transformers 문서: https://huggingface.co/docs/transformers/model_doc/sam3
+- 원 게시글: https://discuss.pytorch.kr/t/meta-segment-anything-model-3-sam-3-open-vocabulary/8270

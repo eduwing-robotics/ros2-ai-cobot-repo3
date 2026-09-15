@@ -1,0 +1,33 @@
+# 파이썬
+__pycache__/
+*.pyc
+*.pyo
+
+# 이미지·영상·문서·모델 가중치.
+# 합쳐서 61MB 다. GitHub 는 100MB 파일을 거부하고 50MB 부터 경고한다.
+# 한 번 커밋하면 히스토리에서 지우기가 번거로우니 처음부터 막는다.
+*.jpg
+*.jpeg
+*.png
+*.gif
+*.pdf
+*.mp4
+*.webm
+*.pt
+*.pth
+IMEAGE/
+PT/
+VISIONSCRIPTS/study/
+
+# 예외: README 에 쓰는 자료만 허용. 각 1MB 이하로 유지할 것
+!docs/*.png
+!docs/*.jpg
+!docs/*.gif
+
+# git 이 사본의 역할을 대신하므로 올리지 않는다
+*.bak
+*.orig
+*.rej
+
+# 실행 중 생기는 것
+*.log

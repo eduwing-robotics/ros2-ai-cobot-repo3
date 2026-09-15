@@ -1,0 +1,5 @@
+# 언어 통계가 문서·씬 파일에 끌려가지 않게 한다
+LEADME/*      linguist-documentation
+MUJOCO/*      linguist-vendored
+*.xml         linguist-detectable=false
+*.txt         linguist-detectable=false
