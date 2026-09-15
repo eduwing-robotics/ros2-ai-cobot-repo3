@@ -1,0 +1,12 @@
+[Unit]
+Description=tb-bridge (real adapter, port 5056)
+After=tb-bringup.service network-online.target
+
+[Service]
+User=kim
+ExecStart=/usr/bin/bash /home/kim/start-bridge.sh
+Restart=on-failure
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target

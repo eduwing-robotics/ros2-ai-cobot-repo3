@@ -1,0 +1,575 @@
+/* FR5 조작 스타일 — 공용 토큰은 @fr5/shared/tokens 에서 온다 (D38 에디토리얼 아카데믹).
+ * 안전 상태만 정상/경고/위험색을 쓰고, 선택·주요 동작은 중립 흑백이다 (FR5/src/README.md). */
+@import '@fr5/shared/tokens/tokens.css';
+
+* { box-sizing: border-box; }
+body { font-variant-numeric: tabular-nums;   /* 수치가 갱신될 때 자릿수 폭이 흔들리지 않게 (ARCHITECTURE §UI 통일) */
+       margin: 0; background: var(--c-bg); color: var(--c-fg); font: var(--f-body);
+       height: 100dvh; display: flex; flex-direction: column; }
+#root { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+
+header { display: flex; align-items: baseline; gap: var(--s-3);
+         padding: var(--s-3) var(--s-4); border-bottom: 1px solid var(--c-line); }
+header h1 { margin: 0; font-size: 16px; }
+header .sub { color: var(--c-fg-mute); font-size: 12px; }
+/* 자리는 `.who` 의 margin-left:auto 가 잡는다 — 여기 auto 를 또 쓰면 아래에서 0 으로
+ * 덮이는 죽은 규칙이 된다 (감사 2026-08-06 P2) */
+header .source { padding: 3px 8px; border-radius: 99px; font-size: 11px;
+                 font-family: var(--ff-mono); }
+header .source[data-src="mock"] { background: var(--c-warn-soft); color: var(--c-warn); }
+header .source[data-src="real"] { background: var(--c-ok-soft); color: var(--c-ok); }
+header .source[data-src="none"] { background: var(--c-sunken); color: var(--c-fg-mute); }
+
+/* 상시 안전 바 — 어느 패널에서도 사라지지 않는다 */
+.safetybar { display: flex; flex-wrap: wrap; gap: var(--s-1);
+             padding: var(--s-2) var(--s-4); border-bottom: 1px solid var(--c-line);
+             background: var(--c-sunken); }
+.safeitem { padding: 3px 9px; border-radius: var(--r-ctl); font-size: 12px;
+            border: 1px solid var(--c-line); color: var(--c-fg-mute); }
+.safeitem b { font-weight: 600; margin-right: 4px; color: var(--c-fg-dim); }
+.safeitem[data-tone="ok"] { background: var(--c-ok-soft); color: var(--c-ok); border-color: transparent; }
+.safeitem[data-tone="warn"] { background: var(--c-warn-soft); color: var(--c-warn); border-color: transparent; }
+.safeitem[data-tone="danger"] { background: var(--c-danger-soft); color: var(--c-danger); border-color: transparent; }
+
+/* 오른쪽 끝 조작 묶음 — 모드 토글이 열고 STOP 이 닫는다. 생김새는 하나로 두고
+ * **색만 위험도로 가른다** — 모드는 중립, STOP 만 위험색이다 (D38 · 주요 동작은 중립 흑백) */
+.safetybar .modetoggle,
+.safetybar .estop { padding: 4px 18px; border-radius: var(--r-ctl); border: 1px solid transparent;
+                    font-weight: 700; font-size: 13px; line-height: 1.4; cursor: pointer; }
+.safetybar .modetoggle:active,
+.safetybar .estop:active { filter: brightness(0.85); }
+
+.safetybar .modetoggle { margin-left: auto; background: var(--c-btn);
+                         border-color: var(--c-line-strong); color: var(--c-btn-fg); }
+.safetybar .modetoggle:hover:not(:disabled) { background: var(--c-btn-hover); }
+.safetybar .modetoggle:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.safetybar .estop { margin-left: var(--s-1); background: var(--c-danger);
+                    border-color: var(--c-danger); color: var(--c-bg); }
+
+header .hublink { font-size: 12px; color: var(--c-fg-dim); text-decoration: none; padding: 2px 8px;
+                  border: 1px solid var(--c-line); border-radius: var(--r-ctl); }
+header .who { margin-left: auto; font-size: 12px; color: var(--c-fg-mute);
+              display: flex; align-items: center; gap: 6px; }
+header .who input { width: 9em; padding: 3px 8px; border: 1px solid var(--c-input);
+                    border-radius: var(--r-ctl); background: var(--c-sunken); color: var(--c-fg);
+                    font: inherit; }
+/* 이름이 비면 그 뒤 전부가 막힌다 — 칸이 스스로 말한다 (감사 2026-08-06 P1).
+ * 안전색이 아니라 테두리만 굵힌다: 위험이 아니라 순서 안내다 (D38) */
+header .who[data-need="true"] { color: var(--c-fg); }
+header .who[data-need="true"] input { border-color: var(--c-line-strong); border-width: 2px;
+                                      background: var(--c-bg); }
+
+.control button { width: 100%; padding: 8px; border: 1px solid var(--c-line-strong);
+                  border-radius: var(--r-ctl); background: var(--c-btn); color: var(--c-btn-fg);
+                  font-size: 13px; cursor: pointer; margin-bottom: var(--s-2); }
+.control button.primary { background: var(--c-primary); color: var(--c-primary-fg); }
+.control button.arm { background: var(--c-warn-soft); color: var(--c-warn);
+                      border-color: var(--c-warn); font-weight: 700; }
+.control button:disabled { opacity: 0.45; cursor: default; }
+.control .confirm { display: flex; gap: 6px; align-items: flex-start; font-size: 12px;
+                    color: var(--c-fg-dim); margin-bottom: var(--s-2); }
+.control .hint { font-size: 11px; color: var(--c-fg-mute); margin: var(--s-1) 0 0; }
+.jog { margin-top: var(--s-2); }
+.jogrow { display: grid; grid-template-columns: 2em 1fr 1fr; gap: var(--s-1);
+          margin-bottom: 4px; align-items: center; font-size: 13px;
+          font-family: var(--ff-mono); }
+.jogrow button { margin: 0; padding: 6px 0; }
+.gripper { margin-top: var(--s-3); padding-top: var(--s-2); border-top: 1px solid var(--c-line); }
+.gripper h3 { font-size: 12px; margin: 0 0 var(--s-1); color: var(--c-fg-dim); }
+.gripper label { display: block; font-size: 12px; color: var(--c-fg-dim); margin: var(--s-1) 0; }
+.gripper input[type="range"] { width: 100%; margin-top: 4px; }
+.griprow { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: var(--s-1);
+           margin-top: var(--s-1); }
+.griprow-2 { grid-template-columns: 1fr 1fr; }
+.griprow button { margin: 0; padding: 6px 0; font-size: 12px; }
+.gripper .gripmm { margin-left: var(--s-2); }
+.gripper dl { display: grid; grid-template-columns: auto 1fr; gap: 2px var(--s-2);
+              font-size: 12px; margin: var(--s-2) 0 0; }
+.gripper dt { color: var(--c-fg-mute); }
+.gripper dd { margin: 0; font-family: var(--ff-mono); }
+.gripper .mm { color: var(--c-fg-mute); font-weight: 400; }
+
+nav { display: flex; gap: var(--s-1); padding: var(--s-2) var(--s-4);
+      border-bottom: 1px solid var(--c-line); }
+/* 탭 다섯(Live·Teach·Program·시뮬레이션·터틀봇 · D182)이 340px 안에 **한 줄로** 선다 —
+ * 글자를 안 꺾고(nowrap) 남는 폭을 나눠 갖는다. D162 「이름이 세로로 접힌다」가 실렌더에서
+ * 실제로 났다(2026-09-05) — 패딩 14→8 로 줄인 것이 그 처방이다. */
+nav button { flex: 1 1 auto; min-width: 0; white-space: nowrap; padding: 7px 8px;
+             background: var(--c-btn); color: var(--c-btn-fg);
+             border: 1px solid var(--c-line-strong); border-radius: var(--r-ctl);
+             font-size: 13px; cursor: pointer; }
+nav button[aria-selected="true"] { background: var(--c-selected); color: var(--c-selected-fg); }
+nav button:disabled { opacity: 0.4; cursor: default; }
+
+/* 레이아웃 — 3D 는 고정, 오른쪽만 바뀐다 (계획 §레이아웃 · 2026-08-03 확정).
+ * 탭이 갈아치우는 것은 `.panelbox` 뿐이다. 쌍둥이와 조작대는 그 밖에 있어 살아남는다. */
+main.workspace { flex: 1; min-height: 0; display: flex; }
+/* position:relative 은 실영상 PiP 의 기준칸이다 (아래 .camview) */
+.stage { flex: 1; min-width: 0; display: flex; flex-direction: column; position: relative; }
+.stage .twin { flex: 1; min-height: 0; }
+.twin { position: relative; }
+.twin canvas { display: block; }
+/* 실물이 아닐 때는 화면이 그렇게 말한다 — 미리보기를 실물로 오인하면 위치를 오판한다 */
+.stage .twinnote { margin: 0; padding: 6px var(--s-4); font-size: 12px;
+                   border-top: 1px solid var(--c-line); color: var(--c-fg-dim); }
+.stage .twinnote[data-live="false"] { background: var(--c-sunken); color: var(--c-fg);
+                                      font-weight: 600; }
+
+/* 카메라 PiP 무리 — 3D 를 줄이지 않는 것이 이 배치의 요점이라 흐름 밖(absolute)에 띄운다.
+ * 우상단인 이유: 아래는 .twinnote 가 쓰고, 3D 궤도 조작은 화면 가운데서 일어난다.
+ * **자리를 무리가 든다** (2026-08-07 뎁스 추가) — 개별 PiP 가 각자 absolute 이면 아래 것의
+ * top 을 위 것의 높이로 계산해야 하는데, 그 높이는 사람이 끌어서 바꾼다. 세로로 쌓는다 */
+/* 프레임 축 스위치 — 3D 위 **좌상단**. 우상단은 카메라 PiP 가, 아래는 `.twinnote` 가,
+ * 가운데는 궤도 조작이 쓴다. 계측 전용이라 눈에 덜 띄게 두되 끌 수 있게 항상 보인다. */
+.axessw { position: absolute; top: var(--s-3); left: var(--s-3); z-index: 2;
+          display: flex; flex-direction: column; align-items: flex-start; gap: 4px; }
+.axesrow { display: flex; gap: 4px; }
+/* 색 안내 — 켰을 때만 붙는다. 글자색은 `AxesHelper` 의 기본 축 색을 그대로 쓴다:
+ * three 는 X 를 (1,0,0), Y 를 (0,1,0), Z 를 (0,0,1) 로 굽는다. 밝은 배경에서 순수 초록·
+ * 파랑이 흐려서 **글자만 진하게** 하고 배경은 그대로 둔다 (색을 바꾸면 축과 안 맞는다). */
+.axeslegend { margin: 0; display: flex; align-items: center; gap: 5px; flex-wrap: wrap;
+              max-width: 260px; padding: 3px 7px; font-size: 11px; color: var(--c-fg-dim);
+              background: var(--c-bg); border: 1px solid var(--c-line); border-radius: 3px;
+              box-shadow: 0 1px 4px rgb(0 0 0 / 10%); }
+.axeslegend .ax { font-weight: 700; }
+.axeslegend .ax-x { color: #d00; }
+.axeslegend .ax-y { color: #0a0; }
+.axeslegend .ax-z { color: #04c; }
+.axessw button { font-size: 11px; padding: 3px 7px; border: 1px solid var(--c-line);
+                 border-radius: 3px; background: var(--c-bg); color: var(--c-fg-dim);
+                 box-shadow: 0 1px 4px rgb(0 0 0 / 10%); }
+/* 눌린 것이 **한눈에** 보여야 한다 — 축이 왜 떠 있는지 못 찾으면 스위치가 없는 것과 같다.
+ * 탭(`nav button[aria-selected]`)과 **같은 토큰**을 쓴다: 화면 안에서 "골라져 있다" 가 두
+ * 가지로 보이면 사람이 그때마다 다시 배운다.
+ * ⚠ **`--c-accent`·`--c-accent-soft` 를 쓰지 않는다 — `Shared/tokens/tokens.css` 에 없다.**
+ *    2026-08-11 실측: 계산된 배경이 `rgba(0,0,0,0)` 으로 떨어져 눌린 표시가 안 보였다.
+ *    같은 없는 토큰을 `.dock .jogstep button[aria-pressed]`(아래)도 쓰고 있다 — 그쪽도 안 보인다. */
+.axessw button[aria-pressed="true"] { background: var(--c-selected);
+                                      color: var(--c-selected-fg);
+                                      border-color: var(--c-selected); font-weight: 600; }
+.axessw button:disabled { opacity: 0.45; }
+
+.campips { position: absolute; top: var(--s-3); right: var(--s-3); z-index: 2;
+           display: flex; flex-direction: column; gap: var(--s-2); align-items: flex-end; }
+.camview { position: relative;   /* .camresize 의 기준칸이다 */
+           display: flex; flex-direction: column;
+           background: var(--c-bg); border: 1px solid var(--c-line); border-radius: 4px;
+           overflow: hidden; box-shadow: 0 2px 8px rgb(0 0 0 / 12%); }
+.camview[data-open="false"] { width: auto; height: auto; }
+.camhead { display: flex; align-items: center; gap: 6px; padding: 4px 6px; font-size: 11px; }
+.camhead b { font-size: 11px; }
+.camhead .camstat { color: var(--c-fg-mute); font-family: var(--ff-mono);
+                    overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* 주소는 있는데 영상이 안 오는 상태를 조용히 두지 않는다 (SAFETY-RULES 제1원칙의 화면판).
+ * `data-stale` 는 **붙어 있는데 프레임이 멎은** 상태다 — 옛 화면이 그대로 걸려 있어
+ * 겉보기엔 정상이라 더 위험하다. 같은 경고색으로 낸다 (2026-08-07) */
+/* `data-warn` 은 아래 상태 띠의 어느 줄이든 경고면 켜진다 — **접었을 때도 보이게 하려고**
+ * 머리띠까지 올린다. 접힌 채 벽에 걸린 화면이 조용한 게 제일 나쁘다 (2026-08-07) */
+.camview[data-live="false"] .camhead,
+.camview[data-warn="true"] .camhead,
+.camview[data-stale="true"] .camhead { background: var(--c-warn-soft); }
+.camview[data-live="false"] .camhead .camstat,
+.camview[data-stale="true"] .camhead .camstat { color: var(--c-warn); font-weight: 600; }
+/* 멎은 프레임은 흐리게 — 이게 지금 화면이 아니라는 걸 눈으로 안다 */
+.camview[data-stale="true"] .cambody img { filter: grayscale(1) opacity(0.45); }
+.camtoggle { margin-left: auto; border: 0; background: none; cursor: pointer; padding: 0 2px;
+             color: var(--c-fg-dim); font-size: 11px; }
+/* 상태 띠 — 영상 **위쪽에 자리를 차지한다.** 영상 위에 겹치면 어두운 장면에서 글자가
+ * 사라지는데, 하필 그때가 카메라를 의심하는 순간이다.
+ * **창을 키우지 않는다** — 게이트가 PiP 를 3D 의 10% 미만으로 묶어 두는데(300x195 = 8.8%)
+ * 띠만큼 키우면 10.2% 로 넘는다. 자리는 영상에서 가져온다. 경고가 길어 줄이 늘면 영상이
+ * 더 줄어드는데, 그 우선순위가 맞다 — 경고 > 영상 */
+.camhud { display: flex; flex-wrap: wrap; gap: 2px 8px; padding: 2px 6px; font-size: 10px;
+          line-height: 1.35; font-family: var(--ff-mono);
+          border-top: 1px solid var(--c-line); }
+.camhud [data-tone="ok"]   { color: var(--c-fg-dim); }
+.camhud [data-tone="mute"] { color: var(--c-fg-mute); }
+.camhud [data-tone="warn"] { color: var(--c-warn); font-weight: 600; }
+/* 띠가 아무리 늘어도 영상이 통째로 사라지지는 않게 — 사라지면 무엇을 의심할지도 모른다 */
+/* ⛔ **겹치는 칸은 카메라 비율을 그대로 쓴다** (2026-08-27 · D148).
+   영상이 `object-fit: contain` 이라 칸 비율이 다르면 안쪽으로 줄고 여백이 생기는데,
+   위에 얹는 `.camzones` 캔버스는 칸 전체를 쓴다 — **둘이 다른 크기에 같은 장면을 그린다.**
+   실측: 칸 298x82 에서 영상 146px vs 3D 298px = 가로 2배 어긋남.
+   `--pip-ar` 은 `usePipSize({aspect})` 가 실제 카메라 해상도에서 준다 (16:9 고정이 아니다 —
+   폰이 4:3 으로 돌아가는 날 그 비율이 그대로 온다). 없으면 16:9 로 떨어진다. */
+.cambody { position: relative; flex: none; aspect-ratio: var(--pip-ar, 16 / 9);
+  min-height: 44px; overflow: hidden;
+           border-top: 1px solid var(--c-line); background: var(--c-sunken); }
+/* 폰을 **가로로 장착**한다 (2026-08-07). 원본 16:9 를 그대로 쓰므로 회전이 없다.
+ * 회전을 없앤 것이 중요하다 — 돌아간 이미지 위에 오버레이를 얹으면 가운데만 맞고
+ * 모서리가 338~587px 어긋난다 (`docs/evidence/2026-08-06/hud-brief-verify.md` §3).
+ * `contain` 이라 칸 비율이 달라도 잘리지 않는다 — 오버레이는 실제 그려진 사각형에 맞춘다. */
+.cambody img { position: absolute; inset: 0; display: block;
+               width: 100%; height: 100%; object-fit: contain; }
+.depth-scan-overlay { position: absolute; inset: 0; pointer-events: none; }
+.depth-scan-overlay svg { display: block; width: 100%; height: 100%; }
+.depth-scan-overlay svg circle,
+.depth-scan-overlay svg path { fill: none; stroke-width: 4; vector-effect: non-scaling-stroke;
+  paint-order: stroke; filter: drop-shadow(0 1px 1px rgb(0 0 0 / 85%)); }
+.depth-scan-overlay .scan-target circle,
+.depth-scan-overlay .scan-target path { stroke: #39e7ff; }
+.depth-scan-overlay .scan-bullet circle { stroke: #ffd83d; }
+.depth-scan-overlay .scan-bullet text { fill: #fff3a6; stroke: rgb(0 0 0 / 85%); stroke-width: 3;
+  paint-order: stroke; font: 700 18px var(--ff-mono); }
+.depth-scan-note { position: absolute; left: 4px; right: 4px; bottom: 4px; display: flex;
+  align-items: center; gap: 5px; padding: 3px 5px; border-radius: 3px;
+  color: white; background: rgb(0 0 0 / 72%); font: 700 10px var(--ff-mono); }
+.depth-scan-overlay[data-ok="false"] .depth-scan-note { color: #ffd7d7; }
+.depth-scan-note span { min-width: 0; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.depth-scan-note button { pointer-events: auto; flex: none; padding: 2px 5px; border: 1px solid rgb(255 255 255 / 55%);
+  border-radius: 3px; color: white; background: rgb(0 0 0 / 35%); font: inherit; cursor: pointer; }
+.camretry { position: absolute; inset: 0; margin: auto; width: fit-content; height: fit-content;
+            font-size: 11px; padding: 3px 8px; }
+/* 손목 뎁스 PiP — **폭을 여기서 준다.** 글로벌 PiP 는 사람이 끌어 정한 크기를 인라인으로
+ * 들고 오는데(localStorage), 이건 크기 조절이 없어 아무도 폭을 안 준다. 안 주면 칸이
+ * 띠 한 줄만큼 옆으로 늘어나고(2026-08-07 실렌더에서 350px 로 퍼졌다) 영상은 `min-height`
+ * 44px 에 눌린다. 폭을 못 박아야 `.camhud` 의 `flex-wrap` 도 비로소 접힌다. */
+/* 폭은 인라인 style 이 준다 (`usePipSize`) — 글로벌과 같은 기본값 300x195 에서 시작한다.
+ * 접히면 `[data-open=false]` 가 `width:auto` 로 되돌린다 */
+/* 첫 장을 기다리는 동안 — **빈 검은 칸을 두지 않는다.** 검은 칸은 "카메라가 어두운 것" 과
+ * 구분이 안 된다. 기다리는 중이라고 말한다 (제1원칙의 화면판) */
+.camwait { position: absolute; inset: 0; margin: auto; width: fit-content; height: fit-content;
+           font-size: 11px; color: var(--c-fg-mute); }
+/* 우측 하단 드래그 핸들 — width/height 를 임의로 늘이고 줄인다. localStorage 에 기억한다 */
+.camresize { position: absolute; right: 0; bottom: 0; width: 16px; height: 16px; z-index: 3;
+              cursor: nwse-resize; }
+.camresize::after { content: ''; position: absolute; right: 4px; bottom: 4px;
+                    width: 6px; height: 6px;
+                    border-right: 2px solid var(--c-fg-dim);
+                    border-bottom: 2px solid var(--c-fg-dim); }
+
+.side { width: 340px; display: flex; flex-direction: column; min-height: 0;
+        border-left: 1px solid var(--c-line); }
+.panelbox { flex: 1; min-height: 0; overflow-y: auto; }
+
+/* 접히는 패널 섹션 — 규약 정본은 계획 §오른쪽 패널은 접힌다 (2026-08-10 실측: 237px 모자랐다).
+ * ⚠ **접힘은 CSS 뿐이다.** 몸통은 DOM 에 남는다 — 게이트가 섹션 안의 버튼을 59곳에서
+ * 프로그램적으로 누르기 때문이다 (`Section.jsx` 머리주석). 언마운트로 바꾸지 마라. */
+/* `.card` 는 이미 사방 테두리가 있다 — 거기에 구분선을 또 그으면 줄이 두 겹으로 보인다 */
+.foldsec:not(.card) { border-top: 1px solid var(--c-line); padding-top: var(--s-2); }
+.foldsec:not(.card):first-child { border-top: 0; padding-top: 0; }
+.foldhead { display: flex; align-items: baseline; gap: var(--s-2); }
+/* `.card h2` 와 같은 크기로 맞춘다 — 접힘 도입으로 제목 급이 바뀐 것처럼 보이면 안 된다 */
+.foldhead h3 { flex: none; font-size: 13px; margin: 0 0 2px; color: var(--c-fg-dim); }
+/* 접혀도 남는 한 줄 — 제목만 남으면 접힌 섹션이 무엇인지 말하지 못한다 */
+.foldnote { flex: 1; min-width: 0; font-size: 11px; color: var(--c-fg-mute);
+            overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* 접힘이 경고를 삼키지 않게 하는 유일한 장치 — 위험색을 쓴다 */
+.foldwarn { flex: none; font-weight: 700; font-size: 12px; color: var(--c-danger);
+            background: var(--c-danger-soft); border-radius: 50%;
+            width: 16px; height: 16px; line-height: 16px; text-align: center; }
+/* ⚠ **패널마다 `button` 을 통째로 잡는 규칙이 있다** — `.diag button { width:100% }` ·
+ * `.program button` · `.teach .row button`. 접기 버튼이 거기 걸리면 **패널 너비만큼 늘어나
+ * 가로로 넘친다** (2026-08-10 실측: `.diag` 에서 39px 넘쳐 가로 스크롤이 생기고 `.foldnote`
+ * 너비가 0 이 됐다). 그래서 `.foldhead button` 으로 급을 올려 되돌린다 — 접기 버튼은
+ * 어느 패널 안에 놓여도 같은 모양이어야 한다. */
+.foldhead button.foldtoggle { flex: none; width: auto; border: 0; background: none;
+              color: var(--c-fg-dim); font-size: 12px; line-height: 1;
+              cursor: pointer; padding: 2px 4px; }
+.foldsec[data-open="false"] .foldbody { display: none; }
+
+/* 조작대 — 어느 탭에서도 자리를 지킨다. 스크롤과 무관하게 아래에 붙어 있다 */
+.dock { border-top: 1px solid var(--c-line); background: var(--c-sunken);
+        padding: var(--s-3); max-height: 40dvh; overflow-y: auto; }
+.dock h3 { margin: 0 0 var(--s-2); font-size: 12px; color: var(--c-fg-dim); }
+.dock .hint { font-size: 11px; color: var(--c-fg-mute); margin: var(--s-1) 0 0; }
+/* TCP 숫자 밑의 좌표계 표시 — 숫자만 띄우면 베이스 기준으로 오해한다 (D87) */
+.framenote { font-size: 11px; color: var(--c-fg-mute); margin: var(--s-1) 0 0; }
+.dock .refusal { margin: var(--s-2) 0 0; padding: var(--s-2); font-size: 12px;
+                 background: var(--c-danger-soft); color: var(--c-danger);
+                 border-radius: var(--r-ctl); }
+.dock .refusal b { margin-right: 6px; }
+.dock button { border: 1px solid var(--c-line-strong); border-radius: var(--r-ctl);
+               background: var(--c-btn); color: var(--c-btn-fg); font-size: 12px;
+               cursor: pointer; padding: 6px 10px; }
+.dock button:disabled { opacity: var(--opacity-disabled); cursor: default; }
+.dock .gripper button { width: 100%; }
+/* 조그 6축을 2열로 접는다 — 한 열로 세우면 조작대가 패널 높이를 다 먹어 지점 카드가 잘린다
+ * (2026-08-06 실렌더). 순서는 j1..j6 그대로라 첫 행이 여전히 j1 이다. */
+.dock .jog { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s-1) var(--s-2); }
+.dock .jog .hint { grid-column: 1 / -1; }
+.dock .jogrow { margin-bottom: 0; }
+/* 걸음 고르기 — 두 열을 가로질러 조그 위에 선다. 누른 것이 무엇인지 보여야 한다:
+ * 0.1° 인 줄 알고 5° 를 밀면 파지 자세가 통째로 날아간다 */
+.dock .jogstep { grid-column: 1 / -1; display: flex; align-items: center; gap: 6px; }
+.dock .jogstep .mm { font-size: 11px; color: var(--c-fg-mute); }
+.dock .jogstep button[aria-pressed="true"] { border-color: var(--c-selected);
+  background: var(--c-selected); color: var(--c-selected-fg); font-weight: 700; }   /* `--c-accent` 는 없다 — 투명으로 떨어져 선택이 안 보였다 (UX 감사 2026-09-05) */
+
+/* 전역 속도 오버라이드 — 조작대 맨 위. **이 값이 0 이면 이동이 전부 거부된다**(code=172)
+ * 라서 조그보다 위에 둔다. 눌린 표시는 탭과 같은 토큰을 쓴다 (`--c-accent` 는 없다). */
+.dock .speedovr { display: flex; align-items: center; flex-wrap: wrap; gap: 4px;
+                  margin-bottom: var(--s-2); }
+.dock .speedovr button { font-size: 12px; padding: 3px 8px; }
+.dock .speedovr button[aria-pressed="true"] { background: var(--c-selected);
+                                              color: var(--c-selected-fg);
+                                              border-color: var(--c-selected); font-weight: 600; }
+.dock .speedovr [data-t="speed-ovr-src"] { flex-basis: 100%; }
+
+.live { padding: var(--s-3); display: flex; flex-direction: column; gap: var(--s-3); }
+
+/* 시작 순서 — 처음 온 사람은 「이름 → 연결 → 조종권 → ARM」 을 모른다. 회색 버튼은 순서를
+ * 안 알려준다 (감사 2026-08-06 P1). 연결 전 관절·TCP 표가 `—` 12행으로 먹던 자리다. */
+.startguide { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap;
+              gap: 4px; font-size: 11px; }
+.startguide li { padding: 3px 8px; border-radius: var(--r-ctl); border: 1px solid var(--c-line);
+                 color: var(--c-fg-mute); }
+.startguide li[data-done="true"] { color: var(--c-fg-dim); border-color: transparent;
+                                   background: var(--c-sunken); }
+.startguide li[data-at="true"] { color: var(--c-selected-fg); background: var(--c-selected);
+                                 border-color: transparent; font-weight: 700; }
+.card { background: var(--c-card); border: 1px solid var(--c-line);
+        border-radius: var(--r-card); padding: var(--s-3); }
+.card h2 { margin: 0 0 var(--s-2); font-size: 13px; color: var(--c-fg-dim); }
+
+.diag label { display: block; font-size: 12px; color: var(--c-fg-mute); margin-bottom: var(--s-2); }
+.diag select { display: block; width: 100%; margin-top: 4px; padding: 6px 8px;
+               border: 1px solid var(--c-input); border-radius: var(--r-ctl);
+               background: var(--c-sunken); color: var(--c-fg); font: inherit; }
+.diag button { width: 100%; padding: 8px; border: 1px solid var(--c-line-strong);
+               border-radius: var(--r-ctl); background: var(--c-btn); color: var(--c-btn-fg);
+               font-size: 13px; cursor: pointer; }
+.diag button.primary { background: var(--c-primary); color: var(--c-primary-fg); }
+.diag .refusal { margin: var(--s-2) 0 0; padding: var(--s-2); font-size: 12px;
+                 background: var(--c-danger-soft); color: var(--c-danger);
+                 border-radius: var(--r-ctl); }
+.diag dl { margin: var(--s-2) 0 0; font-size: 12px; display: grid;
+           grid-template-columns: auto 1fr; gap: 4px var(--s-2); }
+.diag dt { color: var(--c-fg-mute); }
+.diag dd { margin: 0; font-family: var(--ff-mono); }
+
+table.joints, table.tcp { width: 100%; border-collapse: collapse; font-size: 13px; }
+.card th { text-align: left; font-weight: 500; color: var(--c-fg-mute); padding: 3px 0; }
+.card td { text-align: right; font-family: var(--ff-mono); padding: 3px 0; }
+
+/* Teach — 지점(점)과 궤적(선). 색은 D38 그대로: 안전 상태만 색을 쓰고 나머지는 중립 흑백 */
+.teach { padding: var(--s-3);
+         display: flex; flex-direction: column; gap: var(--s-3); }
+.teach h3 { font-size: 13px; margin: 0 0 2px; color: var(--c-fg-dim); }
+.teach .scrubbox { padding: var(--s-2); border: 1px solid var(--c-line);
+                   border-radius: var(--r-card); background: var(--c-sunken); }
+.teach .scrubbox p { margin: 0 0 var(--s-1); }
+.teach input[type="range"] { width: 100%; }
+.teach .row { display: flex; gap: var(--s-1); align-items: center; margin-bottom: var(--s-2); }
+.teach .row input[type="text"], .teach .row input:not([type]), .teach .row select {
+  flex: 1; min-width: 0; padding: 6px 8px; border: 1px solid var(--c-input);
+  border-radius: var(--r-ctl); background: var(--c-sunken); color: var(--c-fg); font: inherit; }
+.teach .row button, .teach .rowbtns button {
+  padding: 6px 12px; border: 1px solid var(--c-line-strong); border-radius: var(--r-ctl);
+  background: var(--c-btn); color: var(--c-btn-fg); font-size: 12px; cursor: pointer; }
+.teach button:disabled { opacity: 0.45; cursor: default; }
+/* 지점·궤적은 카드다 — 조작대와 열을 나눠 쓰면서 표가 뭉개졌다 (2026-08-06 실렌더).
+ * 관절 6개는 한 줄에 안 들어가고, 사람이 눌러야 하는 것은 버튼이다. */
+.teach .points, .teach .trajs { list-style: none; margin: 0; padding: 0;
+                                display: flex; flex-direction: column; gap: var(--s-1); }
+.teach .pointcard { border: 1px solid var(--c-line); border-radius: var(--r-card);
+                    padding: var(--s-2); }
+.teach .pointcard[aria-selected="true"] { background: var(--c-sunken);
+                                          border-color: var(--c-line-strong); }
+/* 조건이 어긋난 측정본 — 비교에서 빠진다 (D74). 위험색이 아니라 흐리게: 안전 문제가 아니다 */
+.teach .pointcard[data-usable="false"] { opacity: 0.55; }
+.teach .cardhead { display: flex; align-items: baseline; justify-content: space-between;
+                   gap: var(--s-2); font-size: 13px; }
+.teach .pointcard p { margin: 2px 0 var(--s-2); }
+.teach .pointcard p.mono { font-family: var(--ff-mono); font-size: 11px;
+                           color: var(--c-fg-dim); word-break: break-all; }
+.teach .rowbtns { display: flex; gap: var(--s-1); }
+.teach .rowbtns button { flex: 1; padding: 7px 4px; }
+/* 삭제 확인 — 되돌리기가 없으므로 한 번 더 묻는다 (감사 P0-4). 위험색은 확정 버튼에만 쓴다 */
+.teach .askdelete p { margin: 0 0 var(--s-1); font-size: 12px; color: var(--c-fg); }
+.teach .rowbtns button.danger { background: var(--c-danger-soft); color: var(--c-danger);
+                                border-color: var(--c-danger); font-weight: 600; }
+.teach .empty, .teach .mm { font-size: 12px; color: var(--c-fg-mute); margin: var(--s-1) 0; }
+/* 못 누르는 이유는 툴팁이 아니라 문장이다 (감사 2026-08-06 P1) — Program 과 같은 무게로 읽힌다 */
+.teach .hint, .diag .hint { font-size: 12px; color: var(--c-fg-dim); margin: var(--s-1) 0 var(--s-2); }
+.teach .refusal { margin: var(--s-2) 0 0; padding: var(--s-2); font-size: 12px;
+                  background: var(--c-danger-soft); color: var(--c-danger);
+                  border-radius: var(--r-ctl); }
+.teach .refusal b { margin-right: 6px; }
+
+/* Program — 지점을 순서로 엮어 한 단계씩 (PROGRAM-CONTRACT.md).
+ * 초심자 규칙: 지금 몇 번째 칸인지 번호로, 못 누르면 회색이 아니라 이유를 적는다. */
+.program { padding: var(--s-3); display: flex; flex-direction: column; gap: var(--s-3); }
+.program h3 { font-size: 13px; margin: 0 0 2px; color: var(--c-fg-dim); }
+.program .mm, .program .empty { font-size: 12px; color: var(--c-fg-mute); margin: var(--s-1) 0; }
+.program .hint { font-size: 12px; color: var(--c-fg-dim); margin: var(--s-1) 0 var(--s-2); }
+.program .row { display: flex; gap: var(--s-1); align-items: center; margin: var(--s-2) 0; }
+.program .row input, .program .row select {
+  flex: 1; min-width: 0; padding: 6px 8px; border: 1px solid var(--c-input);
+  border-radius: var(--r-ctl); background: var(--c-sunken); color: var(--c-fg); font: inherit; }
+.program button { padding: 7px 12px; border: 1px solid var(--c-line-strong);
+                  border-radius: var(--r-ctl); background: var(--c-btn); color: var(--c-btn-fg);
+                  font-size: 12px; cursor: pointer; }
+.program button:disabled { opacity: var(--opacity-disabled); cursor: default; }
+/* 실기를 움직이는 버튼만 경고색이다 — ARM 과 같은 무게라는 뜻이다 (D38) */
+.program button.arm { width: 100%; background: var(--c-warn-soft); color: var(--c-warn);
+                      border-color: var(--c-warn); font-weight: 700; padding: 10px; }
+.program .confirm { display: flex; gap: 6px; align-items: flex-start; font-size: 12px;
+                    color: var(--c-fg-dim); margin: var(--s-2) 0; }
+/* 삭제 확인 — 지점과 같은 모양이다 (감사 2026-08-06 P0: 프로그램만 확인 없이 지워졌다).
+ * 위험색은 확정 버튼 하나에만 쓴다 */
+.program .askdelete { border: 1px solid var(--c-line-strong); border-radius: var(--r-card);
+                      padding: var(--s-2); margin-top: var(--s-2); }
+.program .askdelete p { margin: 0; font-size: 12px; color: var(--c-fg); }
+.program .askdelete .row { margin-bottom: 0; }
+.program .askdelete button { flex: 1; }
+.program button.danger { background: var(--c-danger-soft); color: var(--c-danger);
+                         border-color: var(--c-danger); font-weight: 600; }
+
+.program .slotlist { list-style: none; margin: 0; padding: 0;
+                     display: flex; flex-direction: column; gap: var(--s-1); }
+.program .slotlist button { width: 100%; display: flex; justify-content: space-between;
+                            gap: var(--s-2); text-align: left; }
+.program .slotlist button[aria-selected="true"] { background: var(--c-selected);
+                                                  color: var(--c-selected-fg); }
+.program .slotlist button[aria-selected="true"] .mm { color: inherit; opacity: 0.75; }
+
+/* 번호는 브라우저가 매긴다 — 화면과 서버가 세는 칸이 어긋나지 않는다 */
+.program .steps { margin: 0; padding-left: 1.6em; display: flex; flex-direction: column;
+                  gap: var(--s-1); font-size: 13px; }
+.program .steps li { display: flex; align-items: center; justify-content: space-between;
+                     gap: var(--s-2); padding: 4px 6px; border-radius: var(--r-ctl); }
+/* 지금 여기 — 색이 아니라 배경으로 짚는다. 안전색은 안전에만 쓴다 */
+.program .steps li[data-at="true"] { background: var(--c-sunken); font-weight: 600; }
+.program .steps li[data-at="true"]::marker { font-weight: 700; }
+.program .stepname { min-width: 0; overflow-wrap: anywhere; }
+/* 속도 고르기 — 「이동」·「n단계 실행」 바로 위. 누르기 직전에 고르는 값이라 붙여 둔다 */
+.lappick { display: flex; align-items: center; gap: 6px; font-size: 12px;
+           color: var(--c-fg-dim); flex: none; }
+.lappick input { width: 4em; flex: none; }
+.speedpick { display: flex; align-items: center; gap: 6px; font-size: 12px; }
+.speedpick select { font-size: 12px; padding: 4px 6px; }
+/* 위/아래/빼기 — 340px 열에서 「빼기」 하나만 있을 때보다 좁아지므로 화살표는 정사각으로 */
+.program .stepbtns { display: flex; gap: 4px; flex: none; }
+.program .stepbtns button[data-t="step-up"],
+.program .stepbtns button[data-t="step-down"] { padding: 4px 8px; line-height: 1; }
+.program .refusal { margin: var(--s-2) 0 0; padding: var(--s-2); font-size: 12px;
+                    background: var(--c-danger-soft); color: var(--c-danger);
+                    border-radius: var(--r-ctl); }
+.program .refusal b { margin-right: 6px; }
+
+@media (max-width: 760px) {   /* 폰 — 3D 위 / 값 아래 */
+  /* 헤더 — 「FR5 조작」·「고리」가 글자 단위로 꺾이고 이름 칸이 짓눌렸다 (UX 감사 2026-09-05 실렌더 390px) */
+  header { flex-wrap: wrap; row-gap: var(--s-1); }
+  header h1, header .hublink, header .sub { white-space: nowrap; }
+  header .who { margin-left: 0; }
+  /* 조작대가 40dvh 를 먹으면 Teach/Program 본문이 한 줄만 남는다 — 폰에선 낮춘다 */
+  .dock { max-height: 28dvh; }
+  main.workspace { flex-direction: column; }
+  .stage .twin { min-height: 40dvh; }
+  .side { width: auto; border-left: 0; border-top: 1px solid var(--c-line); }
+  /* 좁은 화면에서 데스크톱 기본값은 3D 를 절반 이상 가린다. 가로 영상이라 같은 너비여도
+   * 세로가 9/16 로 줄어 덜 가린다 — 그만큼 조금 넓게 준다 */
+  /* 자리는 무리(.campips)가 들고, 폭만 여기서 줄인다 (2026-08-07 무리로 바뀜) */
+  .campips { top: var(--s-2); right: var(--s-2); gap: 4px; }
+  .camview { width: 190px; }
+}
+
+/* 판정면 무대 — 실영상 **위**에 겹친다. `.cambody` 가 기준이고 영상과 같은 상자를 덮는다.
+   `pointer-events: none` 이 없으면 「다시 시도」 버튼이 안 눌린다 */
+.cambody { position: relative; }
+.camzones { position: absolute; inset: 0; pointer-events: none; }
+.camzones canvas { width: 100%; height: 100%; display: block; }
+
+/* 색 범례 — 개수만 적으면 파랑/주황을 거꾸로 읽는다 (2026-08-13) */
+.camzonebar { display: flex; flex-wrap: wrap; gap: 2px 8px; padding: 2px 6px;
+  font-size: 10px; color: var(--c-fg-dim); }
+.camzonebar[data-tone="warn"] { color: var(--c-warn); }
+.camzonebar .swatch { display: inline-block; width: 9px; height: 9px; margin-right: 3px;
+  border: 1px solid rgba(0, 0, 0, .35); vertical-align: baseline; }
+
+/* 추종 시뮬 스위치 — 3D 좌상단, 축 스위치 **아래**에 붙는다. 축과 같은 칸을 쓰면 둘이
+ * 서로를 밀어내고, 3D 위는 자리가 귀하다 (`.axessw` 머리주석과 같은 사정). */
+.followsw { position: absolute; left: var(--s-2); top: 76px; z-index: 2;
+            display: flex; flex-direction: column; gap: 4px; max-width: 46%; }
+.followsw button[aria-pressed="true"] { background: var(--c-selected); color: var(--c-selected-fg); }
+/* 켜져 있으면 **크게 말한다** — 조용히 도는 시뮬레이션이 제일 위험하다 (계약 §추종 조건 7) */
+.follownote { margin: 0; font-size: 11px; line-height: 1.5; color: var(--c-fg-dim);
+              background: var(--c-bg); border: 1px solid var(--c-line); border-radius: 4px;
+              padding: 3px 6px; }
+.follownote .bad { color: var(--c-danger); }
+.follownote .hint { color: var(--c-fg-mute); }
+
+/* 촬영용 트윈 상태 — 하단 설명 바로 위에 붙여 영상 프레임을 가리지 않는다.
+ * `data-moving` 하나로 실제 터틀봇 정지/주행과 가상 벨트 정지/작동을 같이 읽는다. */
+.capturehud { position: absolute; left: var(--s-3); bottom: 38px; z-index: 2;
+              display: flex; flex-direction: column; gap: 2px; pointer-events: none;
+              padding: 6px 9px; border: 1px solid var(--c-line); border-radius: 4px;
+              background: var(--c-bg); color: var(--c-fg-dim);
+              box-shadow: 0 2px 8px rgb(0 0 0 / 12%); }
+.capturehud b { color: var(--c-fg); font-size: 12px; }
+.capturehud span { font-size: 11px; }
+.capturehud small { color: var(--c-fg-mute); font-size: 10px; }
+.capturehud[data-moving="true"] { border-color: var(--c-ok); background: var(--c-ok-soft); }
+
+/* 별도 촬영 시나리오 — 완료 상태는 색만이 아니라 문장으로도 함께 읽힌다. */
+.capturesteps { display: flex; flex-wrap: wrap; gap: var(--s-1); list-style: none;
+                margin: 0 0 var(--s-2); padding: 0; }
+.capturesteps li { padding: 3px 8px; border: 1px solid var(--c-line); border-radius: var(--r-ctl);
+                   color: var(--c-fg-mute); font-size: 11px; }
+.capturesteps li[data-done="true"] { border-color: transparent; background: var(--c-ok-soft); color: var(--c-ok); }
+
+
+/* ── 「시뮬」 탭 (2026-08-31 · D162) ─────────────────────────────────────────
+ * ⛔ **새 스타일을 만들지 않는다.** `.program` 의 정의를 그대로 따른다 — 값이 아니라
+ * 선택자만 늘린다. 처음엔 `.simsteps`·`.why`·`.warn` 이라는 **없는 클래스**를 써서
+ * 스타일이 통째로 안 먹었다(조준 2026-08-31 이 잡았다). 이 탭만 다르게 생기면
+ * 사람이 「여기는 다른 화면인가」를 매번 다시 판단한다.
+ * 색·간격·반경은 전부 `Shared/tokens/tokens.css` 토큰이다 — 하드코딩 0. */
+.sim .row { display: flex; gap: var(--s-1); align-items: center; margin: var(--s-2) 0; }
+.sim .hint { font-size: 12px; color: var(--c-fg-dim); margin: var(--s-1) 0 var(--s-2); }
+.sim .mm { font-size: 12px; color: var(--c-fg-mute); margin-left: var(--s-1); }
+.sim .refusal { margin: var(--s-1) 0 0; padding: var(--s-1) var(--s-2); font-size: 12px;
+                background: var(--c-danger-soft); color: var(--c-danger);
+                border-radius: var(--r-ctl); display: inline-block; }
+/* 순서 목록 — 칸을 눌러 그 자세로 간다. 지금 칸은 **테두리로** 말한다(색만으로는
+ * 색각 이상에서 안 보인다 · `tokens.css` §상태색과 같은 태도). */
+.sim .steps { list-style: decimal; margin: var(--s-2) 0 0; padding-left: var(--s-4); }
+.sim .steps li { margin-bottom: var(--s-1); font-size: 12px; line-height: 1.6; }
+/* ⚠ **`--c-accent` 를 안 쓴다 — 정본에 없는 토큰이다** (위 §axessw 주석 · 2026-08-11 실측:
+ * 계산된 색이 `rgba(0,0,0,0)` 으로 떨어져 아무것도 안 보였다). 탭·축 스위치가 쓰는
+ * `--c-selected` 를 그대로 쓴다 — 「골라져 있다」가 화면 안에서 한 가지로 보여야 한다. */
+.sim .steps li[aria-current="step"] { outline: 2px solid var(--c-selected);
+                                      outline-offset: 2px; border-radius: var(--r-ctl); }
+.sim .steps button { font-size: 12px; padding: 2px 8px; border-radius: var(--r-ctl);
+                     border: 1px solid var(--c-line-strong); background: var(--c-btn);
+                     color: var(--c-btn-fg); }
+.sim .steps button:disabled { opacity: 0.5; cursor: not-allowed; }
+.sim input[type="range"] { width: 100%; margin: var(--s-1) 0; }
+
+/* 시뮬 탭 · 2단 조준 블록 (2026-09-07 · D192) — 좁은 패널에서 버튼 여섯이 세로로 부서지지 않게 줄바꿈 */
+.sim .aim { border: 1px solid var(--c-line, #ddd); border-radius: 6px; padding: var(--s-1) var(--s-2); margin-bottom: var(--s-2); }
+.sim .aim .row { display: flex; flex-wrap: wrap; gap: var(--s-1); align-items: center; }
+.sim .aim p { margin: var(--s-1) 0 0; font-size: 0.92em; }
+.sim .aim .ok { color: var(--c-ok, #1a7f37); }
+.sim .aim .bad { color: var(--c-bad, #c0392b); }
+.sim .steps li .go { margin-left: var(--s-1); font-size: 0.85em; padding: 1px 6px; }
+.sim .runlog summary { cursor: pointer; font-size: 0.92em; margin-top: var(--s-2); }
+.sim .runlog .row { display: flex; flex-wrap: wrap; gap: var(--s-1); align-items: center; margin: var(--s-1) 0; }
+.sim .loglines { padding-left: 1.2em; font-size: 0.9em; margin: var(--s-1) 0; }
+.sim .loglines button { text-align: left; }
+
+/* 4단 마법사 (D194) — 질문 하나 · 큰 버튼 하나 · 결과 한 문장 */
+.sim .wizard { display: flex; gap: var(--s-1); flex-wrap: wrap; margin-bottom: var(--s-2); }
+.sim .wizard button { font-size: 12px; padding: 4px 10px; border-radius: 999px; border: 1px solid var(--c-line, #ccc); background: var(--c-sunken, #f4f4f4); }
+.sim .wizard button[aria-current="step"] { background: var(--c-primary, #2f6fd0); color: var(--c-primary-fg, #fff); border-color: transparent; font-weight: 700; }
+.sim .wizard button:disabled { opacity: 0.45; cursor: not-allowed; }
+.sim h4 { margin: var(--s-2) 0 var(--s-1); font-size: 15px; }
+.sim button.big { font-size: 15px; padding: 10px 18px; border-radius: 8px; background: var(--c-primary, #2f6fd0); color: var(--c-primary-fg, #fff); border: 0; font-weight: 700; }
+.sim button.big:disabled { opacity: 0.45; cursor: not-allowed; }
+.sim button.stopbtn { font-size: 15px; padding: 10px 16px; border-radius: 8px; background: #c0392b; color: #fff; border: 0; font-weight: 700; }
+.sim .sentence { font-size: 14px; margin: var(--s-1) 0 var(--s-2); }
+.sim .sentence.ok { color: var(--c-ok, #1a7f37); }
+.sim .sentence.bad { color: var(--c-bad, #c0392b); }
+.sim .lights { list-style: none; padding: 0; margin: var(--s-1) 0 var(--s-2); }
+.sim .lights li { font-size: 14px; margin: 4px 0; }
+.sim .lights .lamp { display: inline-block; width: 12px; height: 12px; border-radius: 50%; background: #bbb; vertical-align: -1px; margin-right: 4px; }
+.sim .lights li[data-ok="true"] .lamp { background: var(--c-ok, #1a7f37); }
+.sim .lights li[data-ok="false"] .lamp { background: var(--c-bad, #c0392b); }
+.sim details > summary { cursor: pointer; font-size: 12px; color: var(--c-fg-dim, #666); margin: var(--s-1) 0; }
+.sim .steps li[aria-current="true"] { background: var(--c-sunken, #f4f4f4); }
+.sim .ready { font-size: 12px; margin: 0 0 var(--s-1); }
+.sim .ready span[data-ok="false"] { color: var(--c-bad, #c0392b); font-weight: 600; }
+.sim .ready span[data-ok="true"] { color: var(--c-ok, #1a7f37); }
+.sim .ready button { margin-left: var(--s-1); font-size: 12px; padding: 2px 8px; }

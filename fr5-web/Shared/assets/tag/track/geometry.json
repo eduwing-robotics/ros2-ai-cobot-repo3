@@ -1,0 +1,39 @@
+{
+ "_무엇": "폰 WebXR 이미지 추적 킬-실험용 기하 — calib-shots/tag-layout.json + robot-base-in-tag.json 사본. 정본은 그 둘이다 (scripts/map/make-tags.py 와 무관 · 2026-09-07)",
+ "_단위": "밀리미터 · 도 · 원점 id0 태그 중심 · z=0 상판 태그면",
+ "tagSizeMm": 145.0,
+ "tags": {
+  "0": {
+   "xMm": 0.0,
+   "yMm": 0.0,
+   "zMm": 0,
+   "yawDeg": 0.0
+  },
+  "1": {
+   "xMm": -1.1,
+   "yMm": -307.8,
+   "zMm": 0,
+   "yawDeg": 0.19
+  },
+  "2": {
+   "xMm": 601.4,
+   "yMm": -4.6,
+   "zMm": 0,
+   "yawDeg": -0.37
+  },
+  "4": {
+   "xMm": 600.5,
+   "yMm": -310.8,
+   "zMm": 0,
+   "yawDeg": -0.62
+  }
+ },
+ "base": {
+  "xMm": 285.9,
+  "yMm": -160.2,
+  "zMm": 1.5,
+  "yawDeg": 178.52
+ },
+ "baseSource": "docs/evidence/2026-08-19/global-cam-recalib-drift.md §⑩",
+ "layoutMethod": "2026-08-08 재측정 — 카트를 돌리고 작업대를 놓으며 태그 종이가 최대 20.9mm 움직였다(옛 배치도로 풀면 RMS 2.9px 로 상한"
+}

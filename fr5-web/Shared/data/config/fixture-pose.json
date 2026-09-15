@@ -1,0 +1,16 @@
+{
+ "_": "FR5/bridge/fixture.py 추적 산출물 — 직접 고치지 마라",
+ "_프레임": "user1 (config.yaml workspace.boxes 와 같은 프레임)",
+ "centerMm": [
+  57.3,
+  -601.8,
+  -12.0
+ ],
+ "halfMm": 95.0,
+ "heightMm": 86.5,
+ "seenAt": 1786620175.756446,
+ "checkedAt": 1786645352.2339158,
+ "basis": "tags-20260813-remount11.jpg",
+ "jumpMm": 0.1,
+ "staleReason": "태그를 못 본다 — noFrame (<urlopen error timed out>)"
+}

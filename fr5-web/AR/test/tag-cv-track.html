@@ -1,0 +1,503 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>AprilTag 4장 직접 검출·폰 이동 고스트</title>
+<style>
+  html { background: #0b0f14; color: #e6edf3; font: 15px/1.45 -apple-system, system-ui, sans-serif; }
+  body { margin: 0; }
+  main { box-sizing: border-box; max-width: 760px; min-height: 100vh; margin: 0 auto; padding: 16px; }
+  h1 { margin: 0 0 8px; font-size: 20px; }
+  p { margin: 6px 0 12px; color: #b6c2cf; }
+  button { margin: 0 6px 10px 0; padding: 12px 18px; border: 0; border-radius: 10px; background: #2f6fd0; color: #fff; font: inherit; }
+  button[disabled] { background: #3a4552; color: #9aa7b4; }
+  #calibration[hidden] { display: none; }
+  #calibration { margin: 10px 0; padding: 10px; border: 1px solid #34465a; border-radius: 10px; }
+  #calibration p { margin: 0 0 8px; }
+  #stage { position: relative; width: 100%; overflow: hidden; border-radius: 12px; background: #000; }
+  #stage[hidden] { display: none; }
+  video, #overlay { display: block; width: 100%; height: 100%; }
+  #overlay { position: absolute; inset: 0; pointer-events: none; }
+  #hud { margin-top: 10px; padding: 10px; border-radius: 10px; background: #151d27; white-space: pre-wrap; font: 13px/1.55 ui-monospace, monospace; }
+  #hud[data-hit="1"] { outline: 2px solid #39d98a; }
+  #log { margin-top: 10px; color: #9fb3c8; white-space: pre-wrap; font: 12px/1.5 ui-monospace, monospace; }
+  #scan { display: none; }
+</style>
+</head>
+<body>
+<main>
+  <h1>기존 AprilTag 4장 직접 검출</h1>
+  <p>카트에 붙은 ID 0·1·2·4를 비추세요. WebXR 이미지 추적 대신 일반 카메라 프레임을
+     AprilTag 전용 검출기로 읽습니다. 이 화면은 검출만 하며 로봇 명령을 보내지 않습니다.</p>
+  <button id="start" type="button">카메라 시작</button>
+  <button id="stop" type="button" disabled>중지</button>
+  <button id="copy" type="button">기록 복사</button>
+  <button id="clear-path" type="button" hidden>경로 지우기</button>
+  <section id="calibration" hidden>
+    <p id="cal-guide">보정 준비 중</p>
+    <button id="capture" type="button" disabled>보정 샷 담기</button>
+    <button id="download" type="button" disabled>보정 JSON 저장</button>
+  </section>
+  <div id="stage" hidden>
+    <video id="video" playsinline muted></video>
+    <canvas id="overlay"></canvas>
+  </div>
+  <div id="hud">대기 중 · 실폰 합격선: 1~1.3m에서 30회 검사 중 같은 ID가 20회 이상</div>
+  <div id="log"></div>
+  <canvas id="scan"></canvas>
+</main>
+<script vite-ignore src="../vendor/js-aruco2/cv.js"></script>
+<script vite-ignore src="../vendor/js-aruco2/aruco.js"></script>
+<script vite-ignore src="../vendor/js-aruco2/apriltag_36h11.js"></script>
+<script type="module">
+import { poseFromMarkers, projectWorld, smoothPose, tagCornersMm } from '../src/features/marker/phone-pose.js';
+
+const { AR } = window;
+const WANTED = [0, 1, 2, 4];
+const QUERY = new URLSearchParams(location.search);
+const CALIBRATE = QUERY.has('calibrate');
+const POSE = QUERY.has('pose') && !CALIBRATE;
+const TESTING = !CALIBRATE && !POSE;
+const CALIBRATION_TARGET = 12;
+const CALIBRATION_MAX = 20;
+const CALIBRATION_GUIDES = [
+  '정면 멀리', '정면 가까이', '태그 묶음을 화면 맨 위에', '태그 묶음을 화면 맨 아래에',
+  '태그 묶음을 화면 왼쪽에', '태그 묶음을 화면 오른쪽에', '맨 위에서 폰을 앞으로 기울여',
+  '맨 아래에서 폰을 뒤로 기울여', '왼쪽에서 기울여', '오른쪽에서 기울여',
+  '정면 중간 거리', '마지막 다른 위치·각도',
+];
+const detector = new AR.Detector({ dictionaryName: 'APRILTAG_36h11', maxHammingDistance: 5 });
+const $ = (id) => document.getElementById(id);
+const scan = $('scan');
+const scan2d = scan.getContext('2d', { willReadFrequently: true });
+const overlay = $('overlay');
+const overlay2d = overlay.getContext('2d');
+const hits = Object.fromEntries(WANTED.map((id) => [id, 0]));
+const logLines = [];
+let stream = null;
+let timer = null;
+let processed = 0;
+let trialStarted = false;
+let scans = 0;
+let scansWithTag = 0;
+let latestMarkers = [];
+let geometry = null;
+let intrinsics = null;
+let currentPose = null;
+const calibrationShots = [];
+const posePath = [];
+
+const state = window.__tagCv = {
+  family: 'APRILTAG_36h11', wanted: WANTED, maxHammingDistance: 5,
+  scans: 0, scansWithTag: 0, hits, current: [], fixture: { done: false, found: [] },
+  calibration: {
+    enabled: CALIBRATE, target: CALIBRATION_TARGET, shots: calibrationShots, layoutReady: false,
+    requiredCoverage: { x: 0.5, y: 0.4 },
+  },
+  pose: {
+    enabled: POSE, ready: false, tracked: false, accepted: 0, rejected: 0,
+    minTags: 3, maxRmsPx: 3, pathStepMm: 40, path: posePath,
+  },
+};
+
+const say = (message) => {
+  logLines.push(`${new Date().toISOString().slice(11, 19)} ${message}`);
+  $('log').textContent = logLines.slice(-8).reverse().join('\n');
+};
+
+const meanSidePx = (corners) => corners.reduce((sum, corner, index) => {
+  const next = corners[(index + 1) % corners.length];
+  return sum + Math.hypot(next.x - corner.x, next.y - corner.y);
+}, 0) / corners.length;
+
+// js-aruco2 36h11의 정규 방향은 OpenCV 좌상·우상·우하·좌하보다 두 칸 돌아가 있다.
+// 배치도 `corners_3d()`와 짝이 되는 순서로 저장해야 태그마다 모서리가 뒤바뀌지 않는다.
+const opencvCornerOrder = (corners) => [...corners.slice(2), ...corners.slice(0, 2)];
+
+const calibrationDocument = () => ({
+  version: 1,
+  kind: 'phone-tag-intrinsics',
+  image: { widthPx: scan.width, heightPx: scan.height },
+  tagIds: WANTED,
+  tagSizeMm: geometry?.tagSizeMm,
+  layout: '/tag/track/geometry.json',
+  shots: calibrationShots,
+});
+
+const calibrationCoverage = () => {
+  const corners = calibrationShots.flatMap((shot) => shot.markers.flatMap((marker) => marker.corners));
+  if (!corners.length || !scan.width || !scan.height) return { x: 0, y: 0 };
+  const xs = corners.map((corner) => corner[0]);
+  const ys = corners.map((corner) => corner[1]);
+  return {
+    x: (Math.max(...xs) - Math.min(...xs)) / scan.width,
+    y: (Math.max(...ys) - Math.min(...ys)) / scan.height,
+  };
+};
+
+const updateCalibrationControls = () => {
+  if (!CALIBRATE) return;
+  const count = calibrationShots.length;
+  const coverage = calibrationCoverage();
+  const distributed = coverage.x >= 0.5 && coverage.y >= 0.4;
+  const enoughTags = new Set(latestMarkers.map((marker) => marker.id)).size >= 3;
+  $('capture').disabled = !stream || !geometry || !enoughTags || count >= CALIBRATION_MAX;
+  $('download').disabled = count < CALIBRATION_TARGET || !distributed;
+  const spread = `분포 가로 ${Math.round(coverage.x * 100)}% · 세로 ${Math.round(coverage.y * 100)}% (가로 50% · 세로 40% 필요)`;
+  if (count < CALIBRATION_TARGET) {
+    $('cal-guide').textContent = `${count}/${CALIBRATION_TARGET} · 다음: ${CALIBRATION_GUIDES[count]}\n${spread}`;
+  } else if (!distributed && count < CALIBRATION_MAX) {
+    const axis = coverage.y < 0.4 ? '태그 묶음 전체를 화면 맨 위·맨 아래로 옮겨' : '태그 묶음 전체를 화면 좌우 끝으로 옮겨';
+    $('cal-guide').textContent = `${count}장 · ${spread}\n${axis} 추가 촬영하세요 (최대 ${CALIBRATION_MAX}장)`;
+  } else if (!distributed) {
+    $('cal-guide').textContent = `${count}장 · ${spread}\n분포 부족 · 페이지를 새로 열어 다시 촬영하세요`;
+  } else {
+    $('cal-guide').textContent = `${count}장 완료 · ${spread}\n보정 JSON을 저장하세요`;
+  }
+  Object.assign(state.calibration, { count, coverage, ready: count >= CALIBRATION_TARGET && distributed });
+};
+
+const addCalibrationShot = (markers, capturedAt = new Date().toISOString()) => {
+  const unique = [...new Map(markers.filter((marker) => WANTED.includes(marker.id))
+    .map((marker) => [marker.id, marker])).values()];
+  if (!geometry) throw new Error('태그 배치 정보를 아직 읽지 못했습니다');
+  if (!scan.width || !scan.height) throw new Error('검사 화면 크기가 없습니다');
+  if (unique.length < 3) throw new Error('서로 다른 태그가 최소 3장 보여야 합니다');
+  if (calibrationShots.length >= CALIBRATION_MAX) throw new Error(`보정 샷 ${CALIBRATION_MAX}장이 이미 찼습니다`);
+  calibrationShots.push({
+    capturedAt,
+    markers: unique.map((marker) => ({
+      id: marker.id,
+      corners: opencvCornerOrder(marker.corners).map((corner) => [Number(corner.x), Number(corner.y)]),
+      hammingDistance: Number.isFinite(marker.hammingDistance) ? marker.hammingDistance : null,
+    })),
+  });
+  $('download').textContent = '보정 JSON 저장';
+  updateCalibrationControls();
+  return calibrationShots.length;
+};
+
+Object.assign(state, { addCalibrationShot, calibrationDocument });
+
+const drawPoseTrail = () => {
+  if (!POSE || !state.pose.tracked || !currentPose || !intrinsics) return;
+  const projected = posePath.map((point) => projectWorld({ x: point.x, y: point.y, z: 0 }, currentPose, intrinsics));
+  overlay2d.save();
+  overlay2d.lineWidth = Math.max(4, overlay.width / 180);
+  overlay2d.strokeStyle = 'rgba(70, 180, 255, .85)';
+  overlay2d.setLineDash([14, 10]);
+  overlay2d.beginPath();
+  let started = false;
+  for (const point of projected) {
+    if (!point || point.x < -100 || point.y < -100 || point.x > overlay.width + 100 || point.y > overlay.height + 100) {
+      started = false; continue;
+    }
+    if (started) overlay2d.lineTo(point.x, point.y);
+    else { overlay2d.moveTo(point.x, point.y); started = true; }
+  }
+  overlay2d.stroke();
+  overlay2d.setLineDash([]);
+  projected.forEach((point, index) => {
+    if (!point || point.x < 0 || point.y < 0 || point.x > overlay.width || point.y > overlay.height) return;
+    const age = (index + 1) / Math.max(1, projected.length);
+    overlay2d.fillStyle = `rgba(70, 180, 255, ${0.25 + age * 0.7})`;
+    overlay2d.beginPath(); overlay2d.arc(point.x, point.y, Math.max(5, overlay.width / 90), 0, Math.PI * 2); overlay2d.fill();
+  });
+
+  // 경로가 시야 밖으로 나가도 기록 여부를 읽을 수 있는 작은 태그면 평면도다.
+  const anchors = Object.values(geometry.tags).map((tag) => ({ x: Number(tag.xMm), y: Number(tag.yMm) }));
+  const all = [...anchors, ...posePath];
+  const minX = Math.min(...all.map((p) => p.x)); const maxX = Math.max(...all.map((p) => p.x));
+  const minY = Math.min(...all.map((p) => p.y)); const maxY = Math.max(...all.map((p) => p.y));
+  const mapW = Math.min(220, overlay.width * 0.36); const mapH = mapW * 0.7;
+  const mapX = overlay.width - mapW - 14; const mapY = 14; const pad = 14;
+  const mapScale = Math.min((mapW - pad * 2) / Math.max(1, maxX - minX), (mapH - pad * 2) / Math.max(1, maxY - minY));
+  const mapPoint = (p) => ({ x: mapX + pad + (p.x - minX) * mapScale,
+    y: mapY + mapH - pad - (p.y - minY) * mapScale });
+  overlay2d.fillStyle = 'rgba(5, 12, 20, .72)'; overlay2d.fillRect(mapX, mapY, mapW, mapH);
+  overlay2d.strokeStyle = 'rgba(255,255,255,.5)'; overlay2d.strokeRect(mapX, mapY, mapW, mapH);
+  overlay2d.fillStyle = '#fff'; overlay2d.font = `bold ${Math.max(12, overlay.width / 60)}px system-ui`;
+  overlay2d.fillText('이동 고스트', mapX + 9, mapY + 18);
+  overlay2d.strokeStyle = '#46b4ff'; overlay2d.lineWidth = 3; overlay2d.beginPath();
+  posePath.forEach((point, index) => { const p = mapPoint(point); index ? overlay2d.lineTo(p.x, p.y) : overlay2d.moveTo(p.x, p.y); });
+  overlay2d.stroke();
+  overlay2d.fillStyle = '#39d98a'; anchors.forEach((point) => { const p = mapPoint(point); overlay2d.fillRect(p.x - 3, p.y - 3, 6, 6); });
+  if (posePath.length) { const p = mapPoint(posePath.at(-1)); overlay2d.fillStyle = '#fff'; overlay2d.beginPath(); overlay2d.arc(p.x, p.y, 5, 0, Math.PI * 2); overlay2d.fill(); }
+  overlay2d.restore();
+};
+
+const draw = (markers) => {
+  overlay2d.clearRect(0, 0, overlay.width, overlay.height);
+  overlay2d.lineWidth = Math.max(3, overlay.width / 320);
+  overlay2d.font = `bold ${Math.max(18, overlay.width / 28)}px ui-monospace, monospace`;
+  for (const marker of markers) {
+    const wanted = WANTED.includes(marker.id);
+    overlay2d.strokeStyle = wanted ? '#39d98a' : '#ff8a80';
+    overlay2d.fillStyle = overlay2d.strokeStyle;
+    overlay2d.beginPath();
+    marker.corners.forEach((corner, index) => index ? overlay2d.lineTo(corner.x, corner.y) : overlay2d.moveTo(corner.x, corner.y));
+    overlay2d.closePath();
+    overlay2d.stroke();
+    overlay2d.fillText(`id${marker.id}`, marker.corners[0].x, Math.max(24, marker.corners[0].y - 8));
+  }
+  drawPoseTrail();
+};
+
+const updatePhonePose = (markers) => {
+  if (!POSE) return;
+  state.pose.tracked = false;
+  try {
+    if (!geometry || !intrinsics) throw new Error('배치·폰 보정값을 읽는 중입니다');
+    if (scan.width !== intrinsics.widthPx || scan.height !== intrinsics.heightPx) {
+      throw new Error(`검사 ${scan.width}×${scan.height} ≠ 보정 ${intrinsics.widthPx}×${intrinsics.heightPx}`);
+    }
+    const ordered = markers.map((marker) => ({ ...marker, corners: opencvCornerOrder(marker.corners) }));
+    const raw = poseFromMarkers(ordered, geometry, intrinsics);
+    if (raw.rmsPx > state.pose.maxRmsPx) throw new Error(`RMS ${raw.rmsPx.toFixed(2)}px > 3px`);
+    if (raw.cameraMm.z < 100 || raw.cameraMm.z > 3000) throw new Error(`태그면 높이 ${raw.cameraMm.z.toFixed(0)}mm 범위 밖`);
+    currentPose = smoothPose(currentPose, raw, 0.3);
+    const last = posePath.at(-1);
+    if (!last || Math.hypot(currentPose.cameraMm.x - last.x, currentPose.cameraMm.y - last.y,
+      currentPose.cameraMm.z - last.z) >= state.pose.pathStepMm) {
+      posePath.push({ ...currentPose.cameraMm });
+      if (posePath.length > 80) posePath.shift();
+    }
+    Object.assign(state.pose, { tracked: true, error: null, current: currentPose,
+      accepted: state.pose.accepted + 1 });
+  } catch (error) {
+    Object.assign(state.pose, { tracked: false, error: error.message, rejected: state.pose.rejected + 1 });
+  }
+};
+
+const updateHud = (markers, detectMs) => {
+  const wanted = markers.filter((marker) => WANTED.includes(marker.id));
+  latestMarkers = wanted.map((marker) => ({
+    id: marker.id,
+    hammingDistance: marker.hammingDistance,
+    corners: marker.corners.map((corner) => ({ x: corner.x, y: corner.y })),
+  }));
+  const current = wanted.map((marker) => ({ id: marker.id, sidePx: Math.round(meanSidePx(marker.corners)) }));
+  const source = `${$('video').videoWidth}×${$('video').videoHeight}`;
+  const hitText = current.length ? current.map((marker) => `id${marker.id} ${marker.sidePx}px`).join(' · ') : '없음';
+  $('hud').dataset.hit = current.length ? '1' : '0';
+  const poseText = POSE && state.pose.tracked ? [
+    `자세 PASS · 태그 ${currentPose.tags}장 · RMS ${currentPose.rmsPx.toFixed(2)}px`,
+    `폰 위치 x ${currentPose.cameraMm.x.toFixed(0)} · y ${currentPose.cameraMm.y.toFixed(0)} · 높이 ${currentPose.cameraMm.z.toFixed(0)}mm · 고스트 ${posePath.length}점`,
+  ] : POSE ? [`자세 대기 · ${state.pose.error ?? '태그 3장 이상을 비추세요'}`, `고스트 ${posePath.length}점 · 태그를 놓치면 숨김`] : [];
+  $('hud').textContent = [
+    `카메라 ${source} → 검사 ${scan.width}×${scan.height} · ${detectMs.toFixed(0)}ms`,
+    `현재 ${hitText}`,
+    ...poseText,
+    CALIBRATE
+      ? `보정 ${calibrationShots.length}/${CALIBRATION_TARGET} · 현재 태그 ${new Set(wanted.map((marker) => marker.id)).size}장`
+      : POSE ? '파랑 = 태그면에 내린 카메라 이동 발자국 · 흰 점 = 현재'
+      : trialStarted
+      ? `판정 ${scans}/30 · 태그 있음 ${scansWithTag}회 · ${WANTED.map((id) => `id${id} ${hits[id]}`).join(' · ')}`
+      : '태그를 한 번 찾으면 30회 판정을 자동으로 시작합니다',
+    CALIBRATE ? '캡처 조건: 서로 다른 태그 3장 이상'
+      : POSE ? '로봇 명령 0 · 경로는 새로고침하면 지워집니다'
+      : scans < 30 ? '합격선: 1~1.3m · 같은 ID 20/30회 이상'
+      : `${Math.max(...Object.values(hits)) >= 20 ? 'PASS' : 'FAIL'} · 같은 ID 최다 ${Math.max(...Object.values(hits))}/30회`,
+  ].join('\n');
+  Object.assign(state, { processed, trialStarted, scans, scansWithTag, current, detectMs });
+  updateCalibrationControls();
+};
+
+const detectFrame = () => {
+  if (!stream) return;
+  const started = performance.now();
+  scan2d.drawImage($('video'), 0, 0, scan.width, scan.height);
+  const markers = detector.detect(scan2d.getImageData(0, 0, scan.width, scan.height));
+  const wanted = markers.filter((marker) => WANTED.includes(marker.id));
+  processed += 1;
+  if (TESTING && !trialStarted && wanted.length) trialStarted = true;
+  if (TESTING && trialStarted && scans < 30) {
+    scans += 1;
+    if (wanted.length) scansWithTag += 1;
+    for (const id of new Set(wanted.map((marker) => marker.id))) hits[id] += 1;
+  }
+  updatePhonePose(wanted);
+  draw(markers);
+  updateHud(markers, performance.now() - started);
+  if (TESTING && scans === 30) {
+    say(`판정 ${Math.max(...Object.values(hits)) >= 20 ? 'PASS' : 'FAIL'} · 같은 ID 최다 ${Math.max(...Object.values(hits))}/30회`);
+    stop();
+    return;
+  }
+  timer = setTimeout(detectFrame, 400);
+};
+
+const stop = () => {
+  clearTimeout(timer);
+  timer = null;
+  stream?.getTracks().forEach((track) => track.stop());
+  stream = null;
+  $('video').srcObject = null;
+  $('start').disabled = false;
+  $('stop').disabled = true;
+  latestMarkers = [];
+  updateCalibrationControls();
+  say(POSE ? `중지 · 자세 ${state.pose.accepted}회 · 고스트 ${posePath.length}점`
+    : `중지 · ${scansWithTag}/${scans}회에서 태그 검출`);
+};
+
+$('start').onclick = async () => {
+  // 권한·카메라 준비 중 두 번 누르면 getUserMedia/play가 겹쳐 AbortError가 난다.
+  $('start').disabled = true;
+  try {
+    processed = 0; trialStarted = false; scans = 0; scansWithTag = 0;
+    for (const id of WANTED) hits[id] = 0;
+    if (POSE) {
+      currentPose = null; posePath.splice(0);
+      Object.assign(state.pose, { tracked: false, accepted: 0, rejected: 0, error: null });
+    }
+    stream = await navigator.mediaDevices.getUserMedia({
+      audio: false,
+      video: { facingMode: { ideal: 'environment' }, width: { ideal: 2560 }, height: { ideal: 1440 } },
+    });
+    const video = $('video');
+    video.srcObject = stream;
+    await video.play();
+    const scale = Math.min(1, 1280 / Math.max(video.videoWidth, video.videoHeight));
+    scan.width = overlay.width = Math.round(video.videoWidth * scale);
+    scan.height = overlay.height = Math.round(video.videoHeight * scale);
+    $('stage').style.aspectRatio = `${scan.width} / ${scan.height}`;
+    $('stage').hidden = false;
+    $('start').disabled = true;
+    $('stop').disabled = false;
+    say(`시작 · ${video.videoWidth}×${video.videoHeight} → ${scan.width}×${scan.height}`);
+    detectFrame();
+  } catch (error) {
+    stop();
+    $('hud').textContent = `카메라 시작 실패 [${error?.name ?? '?'}] ${error?.message ?? error}\nHTTPS 또는 localhost와 카메라 권한을 확인하세요.`;
+  }
+};
+
+$('stop').onclick = stop;
+$('clear-path').onclick = () => { posePath.splice(0); say('이동경로를 지웠습니다'); };
+$('capture').onclick = () => {
+  try { say(`보정 샷 ${addCalibrationShot(latestMarkers)}/${CALIBRATION_TARGET} 저장`); }
+  catch (error) { say(`보정 샷 실패 · ${error.message}`); }
+};
+$('download').onclick = () => {
+  const blob = new Blob([JSON.stringify(calibrationDocument(), null, 2)], { type: 'application/json' });
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = `phone-tags-${new Date().toISOString().replace(/[:.]/g, '-')}.json`;
+  link.click();
+  setTimeout(() => URL.revokeObjectURL(link.href), 0);
+  $('download').textContent = '저장 완료 ✓';
+  $('cal-guide').textContent = `저장 완료 ✓ · 휴대폰 다운로드 폴더를 확인하세요\n${calibrationShots.length}장 JSON`;
+  say(`보정 JSON 저장 · ${calibrationShots.length}장`);
+};
+$('copy').onclick = async () => {
+  const report = `${$('hud').textContent}\n${logLines.join('\n')}`;
+  try { await navigator.clipboard.writeText(report); say('기록을 복사했습니다'); }
+  catch { say('복사 실패 · 화면을 캡처하세요'); }
+};
+addEventListener('pagehide', stop);
+// Chrome은 탭만 바꾸면 pagehide를 안 보내므로 숨은 보정 탭이 후면 카메라를 계속 잡을 수 있다.
+// 다른 탭에서 같은 실험을 열 수 있게 화면을 떠나는 즉시 카메라를 놓는다.
+addEventListener('visibilitychange', () => { if (document.hidden && stream) stop(); });
+
+const fixture = async () => {
+  const found = [];
+  const details = [];
+  for (const expected of WANTED) {
+    const image = await createImageBitmap(await fetch(`/tag/track/id${expected}.png`).then((response) => response.blob()));
+    scan.width = scan.height = 720;
+    scan2d.fillStyle = '#fff';
+    scan2d.fillRect(0, 0, 720, 720);
+    scan2d.drawImage(image, 90, 90, 540, 540);
+    const markers = detector.detect(scan2d.getImageData(0, 0, 720, 720));
+    const ids = markers.map((marker) => marker.id);
+    if (ids.includes(expected)) found.push(expected);
+    details.push({ expected, ids, corners: markers.find((marker) => marker.id === expected)?.corners ?? [] });
+    image.close();
+  }
+  let poseFixture = null;
+  if (POSE) {
+    await resourceReady;
+    const expectedCamera = { x: 300, y: -155, z: 1000 };
+    const rotation = [[1, 0, 0], [0, -1, 0], [0, 0, -1]];
+    const translation = [-expectedCamera.x, expectedCamera.y, expectedCamera.z];
+    const markers = WANTED.map((id) => ({ id, corners: tagCornersMm(geometry.tags[id], geometry.tagSizeMm)
+      .map((point) => projectWorld(point, { rotation, translation }, intrinsics)) }));
+    const solved = poseFromMarkers(markers, geometry, intrinsics);
+    const noise = [-1.2, 0.7, 0.3, -0.8, 1.1, -0.4, 0.6, -1.0];
+    let noiseIndex = 0;
+    const noisy = poseFromMarkers(markers.map((marker) => ({ ...marker, corners: marker.corners.map((corner) => ({
+      x: corner.x + noise[noiseIndex++ % noise.length], y: corner.y + noise[noiseIndex++ % noise.length],
+    })) })), geometry, intrinsics);
+    let twoTagGuard = null;
+    try { poseFromMarkers(markers.slice(0, 2), geometry, intrinsics); } catch (error) { twoTagGuard = error.message; }
+    poseFixture = { expectedCamera, solvedCamera: solved.cameraMm, rmsPx: solved.rmsPx,
+      errorMm: Math.hypot(solved.cameraMm.x - expectedCamera.x, solved.cameraMm.y - expectedCamera.y,
+        solved.cameraMm.z - expectedCamera.z), tags: solved.tags, noisyRmsPx: noisy.rmsPx,
+      noisyErrorMm: Math.hypot(noisy.cameraMm.x - expectedCamera.x, noisy.cameraMm.y - expectedCamera.y,
+        noisy.cameraMm.z - expectedCamera.z), twoTagGuard };
+    overlay.width = 720; overlay.height = 1280;
+    $('stage').style.aspectRatio = '720 / 1280'; $('stage').hidden = false;
+    currentPose = solved;
+    posePath.splice(0, posePath.length,
+      { x: 100, y: -155, z: 1000 }, { x: 160, y: -155, z: 1000 },
+      { x: 220, y: -155, z: 1000 }, { x: 300, y: -155, z: 1000 });
+    Object.assign(state.pose, { tracked: true, current: solved });
+    draw([]);
+  }
+  state.fixture = { done: true, found, details, pose: poseFixture };
+  $('hud').dataset.hit = found.length === WANTED.length ? '1' : '0';
+  $('hud').textContent = POSE
+    ? `합성 폰 자세 PASS · 태그 ${poseFixture.tags}장 · RMS ${poseFixture.rmsPx.toFixed(3)}px\n이동 고스트 ${posePath.length}점 · 실폰 판정은 별도`
+    : `저장 이미지 자동 확인 ${found.length}/${WANTED.length}\n찾음 ${found.map((id) => `id${id}`).join(' · ')}\n실폰 거리·반복 검출은 아직 별도 판정`;
+};
+
+const readJson = async (url) => {
+  const response = await fetch(url, { cache: 'no-store' });
+  if (!response.ok) throw new Error(`${url} HTTP ${response.status}`);
+  return response.json();
+};
+const resourceReady = (CALIBRATE || POSE) ? Promise.all([
+  readJson('/tag/track/geometry.json'),
+  POSE ? readJson('/config/phone-cam.json') : Promise.resolve(null),
+]).then(([layout, camera]) => {
+  if (!Number.isFinite(layout.tagSizeMm) || !WANTED.every((id) => layout.tags?.[id])) throw new Error('태그 배치 형식 오류');
+  geometry = layout;
+  state.calibration.layoutReady = true;
+  if (POSE) {
+    const value = camera?.intrinsics;
+    if (!value || !['widthPx', 'heightPx', 'fx', 'fy', 'cx', 'cy'].every((key) => Number.isFinite(value[key]))) {
+      throw new Error('phone-cam.json 내부 파라미터 형식 오류');
+    }
+    intrinsics = value;
+    state.pose.ready = true;
+  }
+  updateCalibrationControls();
+}) : Promise.resolve();
+
+if (CALIBRATE) {
+  $('calibration').hidden = false;
+  $('hud').textContent = '보정 모드 · 카메라를 시작하고 기존 태그 3장 이상을 비추세요';
+  resourceReady.catch((error) => {
+    state.calibration.error = error.message;
+    say(`태그 배치 읽기 실패 · ${error.message}`);
+  });
+  updateCalibrationControls();
+}
+
+if (POSE) {
+  document.querySelector('h1').textContent = '기존 AprilTag 4장 · 폰 이동경로 고스트';
+  document.querySelector('main > p').textContent = 'ID 0·1·2·4 중 3장 이상을 비추고 폰을 천천히 움직이세요. 파랑 발자국은 태그면 기준 카메라 이동경로이며, 이 화면은 로봇 명령을 보내지 않습니다.';
+  $('clear-path').hidden = false;
+  $('hud').textContent = '자세 모드 준비 중 · 태그 배치와 폰 보정값을 읽습니다';
+  resourceReady.then(() => { $('hud').textContent = '준비 완료 · 카메라를 시작하고 기존 태그 3장 이상을 비추세요'; })
+    .catch((error) => { state.pose.error = error.message; $('hud').textContent = `자세 준비 실패 · ${error.message}`; });
+}
+
+if (QUERY.has('fixture')) fixture().catch((error) => {
+  state.fixture = { done: true, found: [], error: error.message };
+});
+</script>
+</body>
+</html>

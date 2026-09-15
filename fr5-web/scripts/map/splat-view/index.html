@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>랩 스플랫 뷰어</title>
+<style>
+  html,body{margin:0;height:100%;background:#0b0b0c;overflow:hidden;font-family:ui-monospace,Menlo,monospace}
+  #hud{position:fixed;left:10px;top:10px;z-index:9;color:#d8d5d0;font-size:13px;line-height:1.6;
+       background:rgba(0,0,0,.55);padding:8px 11px;border-radius:6px;pointer-events:none}
+  #hud b{color:#8fd88f}
+  #err{color:#ff8a8a}
+</style>
+</head>
+<body>
+<div id="hud">불러오는 중…</div>
+<script type="importmap">
+{"imports":{
+  "three":"./lib/three.module.js",
+  "three/addons/controls/OrbitControls.js":"./lib/OrbitControls.js",
+  "three/addons/postprocessing/Pass.js":"./lib/Pass.js",
+  "@sparkjsdev/spark":"./lib/spark.module.js"
+}}
+</script>
+<script type="module">
+// 랩 스플랫 뷰어 — 라이브러리를 전부 로컬 `lib/` 로 벤더링했다(인터넷 없이 돈다).
+// npm·node_modules 를 로봇 호스트에 안 얹기 위해서다.
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { SparkRenderer, SplatMesh } from '@sparkjsdev/spark';
+
+const PLY = new URLSearchParams(location.search).get('ply') || 'lab_30000.ply';
+// 시작 자세는 **실제 촬영 카메라 한 대**를 그대로 쓴다 — `splat-build.sh` 가
+// `start-pose.json` 으로 뽑아 둔다. 합성한 궤도를 넣으면 SfM 단위가 임의라 피사체
+// **안에서** 시작한다(첫 시도에서 로봇 팔 속이었다).
+//
+// COLMAP 세계는 **Y 가 아래**다. 그래서 스플랫을 Z축으로 180° 돌려 세우고
+// — (x,y,z)→(−x,−y,z) — 카메라 좌표에도 같은 변환을 먹인다. 변환은 build 쪽에서 끝냈다.
+const POSE = await fetch('start-pose.json').then((r) => r.json())
+  .catch(() => ({ start: [-2.763, 0.352, 1.505], target: [0.045, -0.671, 1.762] }));
+const CENTER = new THREE.Vector3(...POSE.target);
+const START = new THREE.Vector3(...POSE.start);
+const RADIUS = START.distanceTo(CENTER);
+
+const hud = document.getElementById('hud');
+const renderer = new THREE.WebGLRenderer({ antialias: false, preserveDrawingBuffer: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setSize(innerWidth, innerHeight);
+document.body.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(55, innerWidth / innerHeight, 0.05, 500);
+camera.position.copy(START);
+
+// **SparkRenderer 를 씬에 넣어야 그려진다.** 빼면 에러 한 줄 없이 검은 화면이다.
+scene.add(new SparkRenderer({ renderer }));
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.target.copy(CENTER);
+controls.enableDamping = true;
+controls.zoomSpeed = 0.8;
+
+const splats = new SplatMesh({ url: PLY });
+splats.rotation.z = Math.PI;   // Y-down → Y-up. 위 주석 참조
+scene.add(splats);
+splats.initialized
+  .then(() => { hud.innerHTML = `<b>${PLY}</b> · 가우시안 ${splats.numSplats.toLocaleString()}개<br>
+    끌기=회전 · 휠=확대 · 우클릭끌기=이동<br>F=뒤집기 · R=처음 위치`; })
+  .catch((e) => { hud.innerHTML = `<span id="err">불러오기 실패 — ${e.message}</span>`; });
+
+// 3DGS 는 위아래 축 규약이 도구마다 달라 뒤집혀 보일 수 있다. 눈으로 보고 F 로 맞춘다.
+let flipped = true;
+addEventListener('keydown', (e) => {
+  const k = e.key.toLowerCase();
+  if (k === 'f') { flipped = !flipped; splats.rotation.z = flipped ? Math.PI : 0; }
+  if (k === 'r') { camera.position.copy(START); controls.target.copy(CENTER); }
+});
+addEventListener('resize', () => {
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+});
+
+renderer.setAnimationLoop(() => { controls.update(); renderer.render(scene, camera); });
+
+// 실렌더 검증용 훅 — 자동화 브라우저 탭은 포그라운드가 아니라 rAF 가 스로틀돼 위 루프가
+// 아예 안 돈다(검은 화면 + 타임아웃). 그래서 한 프레임을 바깥에서 강제로 그릴 길을 둔다.
+window.__draw = (deg = null, dist = RADIUS, y = null) => {
+  if (deg !== null) {
+    const a = deg * Math.PI / 180;
+    camera.position.set(CENTER.x + dist * Math.sin(a), y === null ? START.y : CENTER.y + y, CENTER.z + dist * Math.cos(a));
+    camera.lookAt(CENTER);
+  }
+  renderer.render(scene, camera);
+  return { ready: !!splats.numSplats, n: splats.numSplats };
+};
+</script>
+</body>
+</html>

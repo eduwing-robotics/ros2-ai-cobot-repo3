@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>글로벌 카메라 — 배치안 겹쳐 보기</title>
+  <link rel="stylesheet" href="/src/screens/cam.css">
+</head>
+<body>
+  <!-- 카메라 영상 자리. `?feed=<MJPEG URL>` 로 라이브 스트림을 꽂는다 (없으면 합성 고정물). -->
+  <div id="stage">
+    <!-- `crossOrigin` 은 **감시용**이다 — 없으면 캔버스가 오염돼 프레임이 멎었는지 못 잰다.
+         속성으로 둔다: `src` 를 넣은 **뒤에** 켜면 안 먹는다. IP Webcam 은 `ACAO: *` 를 준다 -->
+    <img id="feed" alt="글로벌 카메라 영상" crossorigin="anonymous">
+    <div id="host"></div>
+  </div>
+
+  <div id="hud">
+    <!-- 카메라 상태 — 판정은 `Shared/data/camera/state.js` 가 한다. **FR5 PiP 와 같은 함수**라
+         두 화면의 "괜찮다"가 갈라지지 않는다. 여기는 그리기만 한다 -->
+    <span id="camhud"></span>
+    <!-- `#status` 는 **실패 메시지 전용**이다. 카메라 상태는 위가 맡는다 -->
+    <span id="status">불러오는 중…</span>
+    <!-- **배율을 늘 보이게 둔다.** 줄인 화면에서 도달 범위를 실물로 읽으면 안 된다 -->
+    <span id="scale"></span>
+    <!-- 판정면(게이트가 막는 경계) 상태. **비어 있으면 안 그린 것**이고 그 사유가 여기 뜬다 —
+         "안 보인다"를 "없다"로 읽지 않게 한다 (`GOAL-cam-zone-overlay`) -->
+    <span id="zones"></span>
+    <span id="ghost" class="dim">공동 고스트 대기</span>
+    <span id="sceneName" class="dim"></span>
+    <label class="btn" for="file">배치안 열기</label>
+    <input id="file" type="file" accept="application/json,.json" hidden>
+    <button id="toggle" type="button">겹치기 끄기</button>
+  </div>
+
+  <script type="module" src="/src/screens/cam.js"></script>
+</body>
+</html>

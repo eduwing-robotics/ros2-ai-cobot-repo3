@@ -1,0 +1,12 @@
+# 공통 — 폴더별 규칙은 각 폴더의 .gitignore (fr5-web/.gitignore 등)
+node_modules/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+.env
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp

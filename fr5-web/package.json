@@ -1,0 +1,23 @@
+{
+  "name": "fr5ar",
+  "private": true,
+  "version": "0.1.0",
+  "description": "과학실험실에서 로봇팔과 AMR 배치별 생산성을 비교하는 웹 작업대 — 시각화(AR · 관제화면)",
+  "workspaces": [
+    "Shared",
+    "AR",
+    "Dashboard",
+    "FR5",
+    "Sim"
+  ],
+  "scripts": {
+    "dev:ar": "npm run dev -w @fr5/ar",
+    "build:ar": "npm run build -w @fr5/ar",
+    "config": "node scripts/build/config.mjs",
+    "check": "bash scripts/check/all.sh",
+    "dev:dash": "npm run dev -w @fr5/dashboard",
+    "build:dash": "npm run build -w @fr5/dashboard",
+    "dev:fr5": "npm run dev -w @fr5/fr5",
+    "build:fr5": "npm run build -w @fr5/fr5"
+  }
+}

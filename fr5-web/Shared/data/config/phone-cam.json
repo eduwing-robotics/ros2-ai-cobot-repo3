@@ -1,0 +1,40 @@
+{
+ "_생성됨": "python3 scripts/map/phone_intrinsics.py <브라우저에서 저장한 JSON>",
+ "_단위": "pixel",
+ "intrinsics": {
+  "widthPx": 720,
+  "heightPx": 1280,
+  "fx": 674.4034824008318,
+  "fy": 674.4034824008318,
+  "cx": 360.0,
+  "cy": 640.0,
+  "dist": [
+   0.0,
+   0.0,
+   0.0,
+   0.0,
+   0.0
+  ],
+  "rmsPx": 1.3212229757245062,
+  "shots": 18
+ },
+ "source": {
+  "kind": "tag-layout-corners",
+  "tagIds": [
+   0,
+   1,
+   2,
+   4
+  ],
+  "model": "centered-square-zero-distortion",
+  "capturedAt": [
+   "2026-09-11T05:27:55.400Z",
+   "2026-09-11T05:41:34.128Z"
+  ],
+  "layout": "calib-shots/tag-layout.json",
+  "coverageX": 0.9930555555555556,
+  "coverageY": 0.409375,
+  "focalSubsetSpread": 0.0027510805100837954,
+  "subsetRmsMax": 1.582483801517382
+ }
+}

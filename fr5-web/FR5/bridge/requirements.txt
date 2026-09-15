@@ -1,0 +1,4 @@
+# FR5 브리지 — scripts/dev/fr5-dev.sh 는 uv run --with 로 같은 셋을 받는다
+fastapi
+uvicorn[standard]
+pyyaml

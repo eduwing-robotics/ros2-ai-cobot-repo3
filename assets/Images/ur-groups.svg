@@ -1,0 +1,110 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 542" width="1280" height="542" font-family="'Pretendard','Apple SD Gothic Neo',system-ui,sans-serif">
+<rect width="1280" height="542" fill="#faf9f7"/>
+<!-- fr5:verified=2026-08-12 fr5:sources=docs/ref/product/USER-REQUIREMENTS.md -->
+<text x="34" y="46" font-size="27" font-weight="700" fill="#1a1c1b">사용자 요구사항 25 — 7묶음</text>
+<rect x="1161" y="26" width="75" height="26" rx="2" fill="#c6c6c6" opacity="0.14"/>
+<rect x="1161" y="26" width="4" height="26" fill="#c6c6c6"/>
+<text x="1173" y="44" font-size="14" fill="#1a1c1b">미착수 3</text>
+<rect x="1087" y="26" width="64" height="26" rx="2" fill="#b06d00" opacity="0.14"/>
+<rect x="1087" y="26" width="4" height="26" fill="#b06d00"/>
+<text x="1099" y="44" font-size="14" fill="#1a1c1b">부분 5</text>
+<rect x="1013" y="26" width="64" height="26" rx="2" fill="#2f7d32" opacity="0.14"/>
+<rect x="1013" y="26" width="4" height="26" fill="#2f7d32"/>
+<text x="1025" y="44" font-size="14" fill="#1a1c1b">됨 17</text>
+<rect x="34.0" y="96" width="292.5" height="204" rx="2" fill="#ffffff" stroke="#e4e2df"/>
+<text x="48.0" y="123" font-size="17" font-weight="700" fill="#1a1c1b">보기</text>
+<text x="48.0" y="143" font-size="12" fill="#6b6b6b">설치 없이 보고, 로봇 없이 시험</text>
+<rect x="46.0" y="156" width="268.5" height="30" rx="2" fill="#2f7d32" opacity="0.10"/>
+<rect x="46.0" y="156" width="3.5" height="30" fill="#2f7d32"/>
+<text x="58.0" y="176" font-size="13.5" fill="#1a1c1b">01 브라우저 접속</text>
+<rect x="46.0" y="192" width="268.5" height="30" rx="2" fill="#2f7d32" opacity="0.10"/>
+<rect x="46.0" y="192" width="3.5" height="30" fill="#2f7d32"/>
+<text x="58.0" y="212" font-size="13.5" fill="#1a1c1b">02 상태 실시간</text>
+<rect x="46.0" y="228" width="268.5" height="30" rx="2" fill="#2f7d32" opacity="0.10"/>
+<rect x="46.0" y="228" width="3.5" height="30" fill="#2f7d32"/>
+<text x="58.0" y="248" font-size="13.5" fill="#1a1c1b">09 3D 실물 자세</text>
+<rect x="46.0" y="264" width="268.5" height="30" rx="2" fill="#2f7d32" opacity="0.10"/>
+<rect x="46.0" y="264" width="3.5" height="30" fill="#2f7d32"/>
+<text x="58.0" y="284" font-size="13.5" fill="#1a1c1b">16 로봇 없이 시험</text>
+<rect x="340.5" y="96" width="292.5" height="276" rx="2" fill="#ffffff" stroke="#e4e2df"/>
+<text x="354.5" y="123" font-size="17" font-weight="700" fill="#1a1c1b">조작</text>
+<text x="354.5" y="143" font-size="12" fill="#6b6b6b">움직이고, 자세를 남기고, 이어 돌린다</text>
+<rect x="352.5" y="156" width="268.5" height="30" rx="2" fill="#2f7d32" opacity="0.10"/>
+<rect x="352.5" y="156" width="3.5" height="30" fill="#2f7d32"/>
+<text x="364.5" y="176" font-size="13.5" fill="#1a1c1b">03 관절 이동</text>
+<rect x="352.5" y="192" width="268.5" height="30" rx="2" fill="#2f7d32" opacity="0.10"/>
+<rect x="352.5" y="192" width="3.5" height="30" fill="#2f7d32"/>
+<text x="364.5" y="212" font-size="13.5" fill="#1a1c1b">04 손끝 이동</text>
+<rect x="352.5" y="228" width="268.5" height="30" rx="2" fill="#2f7d32" opacity="0.10"/>
+<rect x="352.5" y="228" width="3.5" height="30" fill="#2f7d32"/>
+<text x="364.5" y="248" font-size="13.5" fill="#1a1c1b">05 자세 저장</text>
+<rect x="352.5" y="264" width="268.5" height="30" rx="2" fill="#2f7d32" opacity="0.10"/>
+<rect x="352.5" y="264" width="3.5" height="30" fill="#2f7d32"/>
+<text x="364.5" y="284" font-size="13.5" fill="#1a1c1b">06 자세 재생</text>
+<rect x="352.5" y="300" width="268.5" height="30" rx="2" fill="#2f7d32" opacity="0.10"/>
+<rect x="352.5" y="300" width="3.5" height="30" fill="#2f7d32"/>
+<text x="364.5" y="320" font-size="13.5" fill="#1a1c1b">07 이어 반복</text>
+<rect x="352.5" y="336" width="268.5" height="30" rx="2" fill="#2f7d32" opacity="0.10"/>
+<rect x="352.5" y="336" width="3.5" height="30" fill="#2f7d32"/>
+<text x="364.5" y="356" font-size="13.5" fill="#1a1c1b">08 그리퍼 개폐</text>
+<rect x="647.0" y="96" width="292.5" height="168" rx="2" fill="#ffffff" stroke="#e4e2df"/>
+<text x="661.0" y="123" font-size="17" font-weight="700" fill="#1a1c1b">안전</text>
+<text x="661.0" y="143" font-size="12" fill="#6b6b6b">지나갈 길과 멈추는 손</text>
+<rect x="659.0" y="156" width="268.5" height="30" rx="2" fill="#b06d00" opacity="0.10"/>
+<rect x="659.0" y="156" width="3.5" height="30" fill="#b06d00"/>
+<text x="671.0" y="176" font-size="13.5" fill="#1a1c1b">10 경로 미리 보기</text>
+<rect x="659.0" y="192" width="268.5" height="30" rx="2" fill="#2f7d32" opacity="0.10"/>
+<rect x="659.0" y="192" width="3.5" height="30" fill="#2f7d32"/>
+<text x="671.0" y="212" font-size="13.5" fill="#1a1c1b">11 즉시 정지</text>
+<rect x="659.0" y="228" width="268.5" height="30" rx="2" fill="#2f7d32" opacity="0.10"/>
+<rect x="659.0" y="228" width="3.5" height="30" fill="#2f7d32"/>
+<text x="671.0" y="248" font-size="13.5" fill="#1a1c1b">12 사람 확인</text>
+<rect x="953.5" y="96" width="292.5" height="132" rx="2" fill="#ffffff" stroke="#e4e2df"/>
+<text x="967.5" y="123" font-size="17" font-weight="700" fill="#1a1c1b">함께 쓰기</text>
+<text x="967.5" y="143" font-size="12" fill="#6b6b6b">한 번에 한 사람만 움직인다</text>
+<rect x="965.5" y="156" width="268.5" height="30" rx="2" fill="#2f7d32" opacity="0.10"/>
+<rect x="965.5" y="156" width="3.5" height="30" fill="#2f7d32"/>
+<text x="977.5" y="176" font-size="13.5" fill="#1a1c1b">13 누가 조종 중</text>
+<rect x="965.5" y="192" width="268.5" height="30" rx="2" fill="#2f7d32" opacity="0.10"/>
+<rect x="965.5" y="192" width="3.5" height="30" fill="#2f7d32"/>
+<text x="977.5" y="212" font-size="13.5" fill="#1a1c1b">14 없으면 잠김</text>
+<rect x="953.5" y="242" width="292.5" height="132" rx="2" fill="#ffffff" stroke="#e4e2df"/>
+<text x="967.5" y="269" font-size="17" font-weight="700" fill="#1a1c1b">실물 배치</text>
+<text x="967.5" y="289" font-size="12" fill="#6b6b6b">폰이 실물 바닥에 얹는다</text>
+<rect x="965.5" y="302" width="268.5" height="30" rx="2" fill="#b06d00" opacity="0.10"/>
+<rect x="965.5" y="302" width="3.5" height="30" fill="#b06d00"/>
+<text x="977.5" y="322" font-size="13.5" fill="#1a1c1b">15 안전 범위·경로</text>
+<rect x="965.5" y="338" width="268.5" height="30" rx="2" fill="#b06d00" opacity="0.10"/>
+<rect x="965.5" y="338" width="3.5" height="30" fill="#b06d00"/>
+<text x="977.5" y="358" font-size="13.5" fill="#1a1c1b">25 맵을 바닥에</text>
+<rect x="647.0" y="278" width="292.5" height="204" rx="2" fill="#ffffff" stroke="#e4e2df"/>
+<text x="661.0" y="305" font-size="17" font-weight="700" fill="#1a1c1b">기록</text>
+<text x="661.0" y="325" font-size="12" fill="#6b6b6b">무엇이 왜, 그리고 지난 것</text>
+<rect x="659.0" y="338" width="268.5" height="30" rx="2" fill="#b06d00" opacity="0.10"/>
+<rect x="659.0" y="338" width="3.5" height="30" fill="#b06d00"/>
+<text x="671.0" y="358" font-size="13.5" fill="#1a1c1b">17 막힌 사유</text>
+<rect x="659.0" y="374" width="268.5" height="30" rx="2" fill="#b06d00" opacity="0.10"/>
+<rect x="659.0" y="374" width="3.5" height="30" fill="#b06d00"/>
+<text x="671.0" y="394" font-size="13.5" fill="#1a1c1b">18 명령·상태 기록</text>
+<rect x="659.0" y="410" width="268.5" height="30" rx="2" fill="#c6c6c6" opacity="0.10"/>
+<rect x="659.0" y="410" width="3.5" height="30" fill="#c6c6c6"/>
+<text x="671.0" y="430" font-size="13.5" fill="#1a1c1b">19 시간순 되돌리기</text>
+<rect x="659.0" y="446" width="268.5" height="30" rx="2" fill="#c6c6c6" opacity="0.10"/>
+<rect x="659.0" y="446" width="3.5" height="30" fill="#c6c6c6"/>
+<text x="671.0" y="466" font-size="13.5" fill="#1a1c1b">20 실제로 잡았나</text>
+<rect x="34.0" y="314" width="292.5" height="204" rx="2" fill="#ffffff" stroke="#e4e2df"/>
+<text x="48.0" y="341" font-size="17" font-weight="700" fill="#1a1c1b">맵</text>
+<text x="48.0" y="361" font-size="12" fill="#6b6b6b">옮겨 만들고 견줘 고른다</text>
+<rect x="46.0" y="374" width="268.5" height="30" rx="2" fill="#2f7d32" opacity="0.10"/>
+<rect x="46.0" y="374" width="3.5" height="30" fill="#2f7d32"/>
+<text x="58.0" y="394" font-size="13.5" fill="#1a1c1b">21 평면도 배치</text>
+<rect x="46.0" y="410" width="268.5" height="30" rx="2" fill="#2f7d32" opacity="0.10"/>
+<rect x="46.0" y="410" width="3.5" height="30" fill="#2f7d32"/>
+<text x="58.0" y="430" font-size="13.5" fill="#1a1c1b">22 여러 개 저장</text>
+<rect x="46.0" y="446" width="268.5" height="30" rx="2" fill="#2f7d32" opacity="0.10"/>
+<rect x="46.0" y="446" width="3.5" height="30" fill="#2f7d32"/>
+<text x="58.0" y="466" font-size="13.5" fill="#1a1c1b">24 도달 밖 경고</text>
+<rect x="46.0" y="482" width="268.5" height="30" rx="2" fill="#c6c6c6" opacity="0.10"/>
+<rect x="46.0" y="482" width="3.5" height="30" fill="#c6c6c6"/>
+<text x="58.0" y="502" font-size="13.5" fill="#1a1c1b">23 A·B 몇 % 비교</text>
+</svg>

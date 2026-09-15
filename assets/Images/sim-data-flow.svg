@@ -1,0 +1,96 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1360 760" width="1360" height="760" font-family="'Pretendard','Apple SD Gothic Neo',system-ui,sans-serif">
+<!-- fr5:verified=2026-09-06 fr5:sources=FR5/src/features/sim|Shared/data/sim|FR5/bridge/main.py|docs/ref/contract/SIM-CONTRACT.md -->
+<rect width="1360" height="760" fill="#faf9f7"/>
+<defs><marker id="mREST" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#ba1a1a"/></marker><marker id="mWS" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#1c71d8"/></marker><marker id="mTCP" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#b06d00"/></marker><marker id="mUSB" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#2f7d32"/></marker><marker id="mFILE" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#9141ac"/></marker><marker id="mLAN" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#1a7f7a"/></marker></defs>
+<text x="34" y="46" font-size="25" font-weight="700" fill="#1a1c1b">시뮬 탭 — 데이터 흐름 (입력 한 줄 → 세 층 답 → 사이클 → 트윈)</text>
+<rect x="1110" y="66" width="230" height="116" rx="8" fill="#f4f3f1" stroke="#c6c6c6"/>
+<path d="M1128,100 L1188,100" stroke="#ba1a1a" stroke-width="2.6" marker-end="url(#mREST)"/>
+<text x="1202" y="105" font-size="13" font-weight="600" fill="#1a1c1b">브리지에 묻는다</text>
+<path d="M1128,130 L1188,130" stroke="#9141ac" stroke-width="2.6" marker-end="url(#mFILE)"/>
+<text x="1202" y="135" font-size="13" font-weight="600" fill="#1a1c1b">정적 파일</text>
+<path d="M1128,160 L1188,160" stroke="#1c71d8" stroke-width="2.6" marker-end="url(#mWS)"/>
+<text x="1202" y="165" font-size="13" font-weight="600" fill="#1a1c1b">화면 안 호출</text>
+<rect x="40" y="86" width="300" height="190" rx="10" stroke="#c6c6c6" stroke-width="1.6" fill="#ffffff"/>
+<text x="56" y="112" font-size="15.5" font-weight="700" fill="#1a1c1b">입력 한 줄</text>
+<text x="56" y="130" font-size="11.5" fill="#6b6b6b">우선순위 — 실측 &gt; 가정 &gt; 파지 자세</text>
+<rect x="64" y="136" width="252" height="36" rx="6" fill="#ffffff" stroke="#c6c6c6"/>
+<text x="190.0" y="150.0" font-size="13" font-weight="600" text-anchor="middle" fill="#1a1c1b">실측 표적</text>
+<text x="190.0" y="168.0" font-size="11" text-anchor="middle" fill="#6b6b6b">색 검출 · follow.target</text>
+<rect x="64" y="180" width="252" height="36" rx="6" fill="#ffffff" stroke="#c6c6c6"/>
+<text x="190.0" y="194.0" font-size="13" font-weight="600" text-anchor="middle" fill="#1a1c1b">판 위 클릭 (가정)</text>
+<text x="190.0" y="212.0" font-size="11" text-anchor="middle" fill="#6b6b6b">RobotTwin 레이캐스트 → user1</text>
+<rect x="64" y="224" width="252" height="36" rx="6" fill="#ffffff" stroke="#c6c6c6"/>
+<text x="190.0" y="238.0" font-size="13" font-weight="600" text-anchor="middle" fill="#1a1c1b">08-31 파지 자세</text>
+<text x="190.0" y="256.0" font-size="11" text-anchor="middle" fill="#6b6b6b">props.CARRIER_GRASP_TRUTH</text>
+<rect x="400" y="86" width="300" height="190" rx="10" stroke="#1f5f9e" stroke-width="1.6" fill="#ffffff"/>
+<text x="416" y="112" font-size="15.5" font-weight="700" fill="#1a1c1b">9칸 정본</text>
+<text x="416" y="130" font-size="11.5" fill="#6b6b6b">Shared/data/sim/load-steps.js</text>
+<rect x="424" y="136" width="252" height="50" rx="6" fill="#ffffff" stroke="#c6c6c6"/>
+<text x="550.0" y="157.0" font-size="13" font-weight="600" text-anchor="middle" fill="#1a1c1b">makeLoadSteps(stop, graspXy)</text>
+<text x="550.0" y="175.0" font-size="11" text-anchor="middle" fill="#6b6b6b">접근·문·들기·옮기기·넣기·놓기·빠지기</text>
+<rect x="424" y="200" width="252" height="50" rx="6" fill="#ffffff" stroke="#c6c6c6"/>
+<text x="550.0" y="221.0" font-size="13" font-weight="600" text-anchor="middle" fill="#1a1c1b">정차 후보 7</text>
+<text x="550.0" y="239.0" font-size="11" text-anchor="middle" fill="#6b6b6b">workcell.AMR_DROP(_CANDIDATES)</text>
+<rect x="760" y="86" width="320" height="190" rx="10" stroke="#c6c6c6" stroke-width="1.6" fill="#ffffff"/>
+<text x="776" y="112" font-size="15.5" font-weight="700" fill="#1a1c1b">세 층 답</text>
+<text x="776" y="130" font-size="11.5" fill="#6b6b6b">칸마다 · 못 재면 사유 (결측=차단)</text>
+<rect x="784" y="136" width="272" height="36" rx="6" fill="#ffffff" stroke="#c6c6c6"/>
+<text x="920.0" y="150.0" font-size="13" font-weight="600" text-anchor="middle" fill="#1a1c1b">① 닿나</text>
+<text x="920.0" y="168.0" font-size="11" text-anchor="middle" fill="#6b6b6b">POST /ik · 참조 = 직전 칸의 해</text>
+<rect x="784" y="180" width="272" height="36" rx="6" fill="#ffffff" stroke="#c6c6c6"/>
+<text x="920.0" y="194.0" font-size="13" font-weight="600" text-anchor="middle" fill="#1a1c1b">② 게이트</text>
+<text x="920.0" y="212.0" font-size="11" text-anchor="middle" fill="#6b6b6b">실기와 같은 함수 dry_run</text>
+<rect x="784" y="224" width="272" height="36" rx="6" fill="#ffffff" stroke="#c6c6c6"/>
+<text x="920.0" y="238.0" font-size="13" font-weight="600" text-anchor="middle" fill="#1a1c1b">③ 부딪히나</text>
+<text x="920.0" y="256.0" font-size="11" text-anchor="middle" fill="#6b6b6b">브라우저 무조코 · 길 5° 표본 · 3mm</text>
+<rect x="760" y="330" width="320" height="150" rx="10" stroke="#c6c6c6" stroke-width="1.6" fill="#ffffff"/>
+<text x="776" y="356" font-size="15.5" font-weight="700" fill="#1a1c1b">FR5 브리지 :5055</text>
+<text x="776" y="374" font-size="11.5" fill="#6b6b6b">컨트롤러 또는 mock(URDF FK·수치 IK)</text>
+<rect x="784" y="380" width="272" height="40" rx="6" fill="#ffffff" stroke="#c6c6c6"/>
+<text x="920.0" y="396.0" font-size="13" font-weight="600" text-anchor="middle" fill="#1a1c1b">/ik { tcpMmDeg, refJointsDeg? }</text>
+<text x="920.0" y="414.0" font-size="11" text-anchor="middle" fill="#6b6b6b">jointsDeg · reachable · gate</text>
+<rect x="784" y="428" width="272" height="40" rx="6" fill="#ffffff" stroke="#c6c6c6"/>
+<text x="920.0" y="444.0" font-size="13" font-weight="600" text-anchor="middle" fill="#1a1c1b">/sim/scene/&lt;id&gt;.xml</text>
+<text x="920.0" y="462.0" font-size="11" text-anchor="middle" fill="#6b6b6b">구운 MJCF (Sim/out/scene)</text>
+<rect x="400" y="330" width="300" height="150" rx="10" stroke="#c6c6c6" stroke-width="1.6" fill="#ffffff"/>
+<text x="416" y="356" font-size="15.5" font-weight="700" fill="#1a1c1b">접촉 층</text>
+<text x="416" y="374" font-size="11.5" fill="#6b6b6b">scene-compose + contact-check</text>
+<rect x="424" y="380" width="252" height="40" rx="6" fill="#ffffff" stroke="#c6c6c6"/>
+<text x="550.0" y="396.0" font-size="13" font-weight="600" text-anchor="middle" fill="#1a1c1b">장면 합성</text>
+<text x="550.0" y="414.0" font-size="11" text-anchor="middle" fill="#6b6b6b">mocap 터틀봇 · 손에 든 거치대</text>
+<rect x="424" y="428" width="252" height="40" rx="6" fill="#ffffff" stroke="#c6c6c6"/>
+<text x="550.0" y="444.0" font-size="13" font-weight="600" text-anchor="middle" fill="#1a1c1b">길 표본 · 관통 3mm</text>
+<text x="550.0" y="462.0" font-size="11" text-anchor="middle" fill="#6b6b6b">MINE ↔ OBSTACLE 쌍만</text>
+<rect x="40" y="330" width="300" height="150" rx="10" stroke="#1f5f9e" stroke-width="1.6" fill="#ffffff"/>
+<text x="56" y="356" font-size="15.5" font-weight="700" fill="#1a1c1b">사이클</text>
+<text x="56" y="374" font-size="11.5" fill="#6b6b6b">Shared/data/sim/cycle.js</text>
+<rect x="64" y="380" width="252" height="40" rx="6" fill="#ffffff" stroke="#c6c6c6"/>
+<text x="190.0" y="396.0" font-size="13" font-weight="600" text-anchor="middle" fill="#1a1c1b">buildCycle(load, solved, stop…)</text>
+<text x="190.0" y="414.0" font-size="11" text-anchor="middle" fill="#6b6b6b">26구간 · 실시간 축 · 배속</text>
+<rect x="64" y="428" width="252" height="40" rx="6" fill="#ffffff" stroke="#c6c6c6"/>
+<text x="190.0" y="444.0" font-size="13" font-weight="600" text-anchor="middle" fill="#1a1c1b">observedStop(in · back)</text>
+<text x="190.0" y="462.0" font-size="11" text-anchor="middle" fill="#6b6b6b">⓪·⑩ 관측 → 싣기·내리기 재풀기</text>
+<rect x="40" y="540" width="1040" height="150" rx="10" stroke="#c6c6c6" stroke-width="1.6" fill="#ffffff"/>
+<text x="56" y="566" font-size="15.5" font-weight="700" fill="#1a1c1b">3D 트윈 — RobotTwin.jsx</text>
+<text x="56" y="584" font-size="11.5" fill="#6b6b6b">고스트 주인은 하나(사이클) · 실물은 안 움직인다</text>
+<rect x="64" y="590" width="240" height="40" rx="6" fill="#ffffff" stroke="#c6c6c6"/>
+<text x="184.0" y="606.0" font-size="13" font-weight="600" text-anchor="middle" fill="#1a1c1b">고스트 팔 · 그리퍼</text>
+<text x="184.0" y="624.0" font-size="11" text-anchor="middle" fill="#6b6b6b">관절 보간</text>
+<rect x="320" y="590" width="240" height="40" rx="6" fill="#ffffff" stroke="#c6c6c6"/>
+<text x="440.0" y="606.0" font-size="13" font-weight="600" text-anchor="middle" fill="#1a1c1b">거치대</text>
+<text x="440.0" y="624.0" font-size="11" text-anchor="middle" fill="#6b6b6b">손 안 = 고스트 손끝 노드 · 판/바구니 = 숫자</text>
+<rect x="576" y="590" width="240" height="40" rx="6" fill="#ffffff" stroke="#c6c6c6"/>
+<text x="696.0" y="606.0" font-size="13" font-weight="600" text-anchor="middle" fill="#1a1c1b">터틀봇 · 바퀴</text>
+<text x="696.0" y="624.0" font-size="11" text-anchor="middle" fill="#6b6b6b">실물 메시 = 실제 자리 · 상자 = 명령 자리</text>
+<rect x="832" y="590" width="224" height="40" rx="6" fill="#ffffff" stroke="#c6c6c6"/>
+<text x="944.0" y="606.0" font-size="13" font-weight="600" text-anchor="middle" fill="#1a1c1b">손목 뎁스 발자국</text>
+<text x="944.0" y="624.0" font-size="11" text-anchor="middle" fill="#6b6b6b">깊이 195~1000 · 보이나</text>
+<path d="M340,180 L400,180" fill="none" stroke="#1c71d8" stroke-width="2.4" marker-end="url(#mWS)"/>
+<path d="M700,160 L760,160" fill="none" stroke="#1c71d8" stroke-width="2.4" marker-end="url(#mWS)"/>
+<path d="M920,276 L920,330" fill="none" stroke="#ba1a1a" stroke-width="2.4" marker-end="url(#mREST)" marker-start="url(#mREST)"/>
+<path d="M760,448 L700,448" fill="none" stroke="#9141ac" stroke-width="2.4" marker-end="url(#mFILE)"/>
+<path d="M400,400 L340,400" fill="none" stroke="#1c71d8" stroke-width="2.4" marker-end="url(#mWS)"/>
+<path d="M190,480 L190,540" fill="none" stroke="#1c71d8" stroke-width="2.4" marker-end="url(#mWS)"/>
+<path d="M550,276 L550,330" fill="none" stroke="#1c71d8" stroke-width="1.8" marker-end="url(#mWS)"/>
+<text x="40" y="720" font-size="12" fill="#6b6b6b">정차 자리는 사이클이 고른다(후보 7 전부 평가 · 우선순위) · 시뮬 결과는 그림이지 실기 근거가 아니다 (SIM-CONTRACT §화면)</text>
+</svg>

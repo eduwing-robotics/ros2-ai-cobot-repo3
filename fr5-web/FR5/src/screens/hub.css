@@ -1,0 +1,27 @@
+/* 허브 — 고리 일곱을 칸으로. 색은 상태색 셋뿐이다 (ISA-101 · ARCHITECTURE §UI 통일). */
+@import '@fr5/shared/tokens/tokens.css';
+
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--c-bg); color: var(--c-fg); font: var(--f-body); }
+header { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--s-3);
+         padding: var(--s-3) var(--s-4); border-bottom: 1px solid var(--c-line); }
+header h1 { margin: 0; font-size: 16px; }
+header .sub { color: var(--c-fg-mute); font-size: 12px; }
+.links { margin-left: auto; display: flex; gap: var(--s-2); }
+.links a { padding: 5px 10px; border: 1px solid var(--c-line-strong); border-radius: var(--r-ctl);
+           color: var(--c-fg); text-decoration: none; font-size: 13px; background: var(--c-btn); }
+
+#cells { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: var(--s-3);
+         padding: var(--s-4); }
+.cell { border: 1px solid var(--c-line); border-radius: var(--r-box); background: var(--c-card);
+        padding: var(--s-3); display: flex; flex-direction: column; gap: var(--s-1); min-height: 92px; }
+.cell h2 { margin: 0; font-size: 13px; display: flex; align-items: center; gap: var(--s-2); }
+.cell .mark { width: 10px; height: 10px; border-radius: 50%; background: var(--c-line-strong); flex: none; }
+.cell[data-tone="ok"]   .mark { background: var(--c-ok); }
+.cell[data-tone="warn"] .mark { background: var(--c-warn); }
+.cell[data-tone="bad"]  .mark { background: var(--c-danger); }
+.cell[data-tone="bad"]  { border-color: var(--c-danger); }
+.cell .detail { font: var(--f-mono); color: var(--c-fg-dim); font-variant-numeric: tabular-nums; }
+.cell .fix { font-size: 12px; color: var(--c-danger); margin: 0; }
+.cell[data-tone="warn"] .fix { color: var(--c-warn); }
+.foot { padding: 0 var(--s-4) var(--s-4); color: var(--c-fg-mute); font-size: 12px; }

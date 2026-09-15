@@ -1,0 +1,12 @@
+fastapi
+# [standard] 가 필수다 (2026-08-06 tb-bridge 실기) — 없으면 uvicorn 이 **뜨긴 뜨고**
+# 일부 경로만 조용히 죽는다. 같은 값을 두 번 물지 않는다.
+uvicorn[standard]
+pyyaml
+# 깊이 프레임은 848x480 = 40만 픽셀이다 — 순수 파이썬으로 세면 프레임률을 못 따라간다
+numpy
+# 미리보기 JPEG 인코딩만 쓴다. cv2 는 이 일에 200MB 짜리 대포다
+pillow
+# x86_64 · cp312 휠 확인됨 (2026-08-07 · PyPI 2.58.3.10794 manylinux1_x86_64).
+# aarch64 휠도 있어서 파이로 옮겨도 소스 빌드는 아니다
+pyrealsense2

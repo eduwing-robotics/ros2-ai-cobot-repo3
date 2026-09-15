@@ -1,0 +1,92 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1360 800" width="1360" height="800" font-family="'Pretendard','Apple SD Gothic Neo',system-ui,sans-serif">
+<!-- fr5:verified=2026-09-06 fr5:sources=FR5/src|Dashboard/src|AR/src|FR5/bridge|Vision/bridge|TurtleBot/bridge|Database -->
+<rect width="1360" height="800" fill="#faf9f7"/>
+<defs><marker id="mREST" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#ba1a1a"/></marker><marker id="mWS" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#1c71d8"/></marker><marker id="mTCP" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#b06d00"/></marker><marker id="mUSB" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#2f7d32"/></marker><marker id="mFILE" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#9141ac"/></marker><marker id="mLAN" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#1a7f7a"/></marker></defs>
+<text x="34" y="46" font-size="25" font-weight="700" fill="#1a1c1b">소프트웨어 아키텍처</text>
+<rect x="1110" y="66" width="230" height="206" rx="8" fill="#f4f3f1" stroke="#c6c6c6"/>
+<path d="M1128,100 L1188,100" stroke="#ba1a1a" stroke-width="2.6" marker-end="url(#mREST)"/>
+<text x="1202" y="105" font-size="13" font-weight="600" fill="#1a1c1b">HTTP / REST</text>
+<path d="M1128,130 L1188,130" stroke="#1c71d8" stroke-width="2.6" marker-end="url(#mWS)"/>
+<text x="1202" y="135" font-size="13" font-weight="600" fill="#1a1c1b">WebSocket</text>
+<path d="M1128,160 L1188,160" stroke="#b06d00" stroke-width="2.6" marker-end="url(#mTCP)"/>
+<text x="1202" y="165" font-size="13" font-weight="600" fill="#1a1c1b">TCP</text>
+<path d="M1128,190 L1188,190" stroke="#2f7d32" stroke-width="2.6" marker-end="url(#mUSB)"/>
+<text x="1202" y="195" font-size="13" font-weight="600" fill="#1a1c1b">USB3 / MJPEG</text>
+<path d="M1128,220 L1188,220" stroke="#9141ac" stroke-width="2.6" marker-end="url(#mFILE)"/>
+<text x="1202" y="225" font-size="13" font-weight="600" fill="#1a1c1b">정적 파일</text>
+<path d="M1128,250 L1188,250" stroke="#1a7f7a" stroke-width="2.6" marker-end="url(#mLAN)"/>
+<text x="1202" y="255" font-size="13" font-weight="600" fill="#1a1c1b">LAN</text>
+<rect x="40" y="86" width="1040" height="184" rx="10" stroke="#c6c6c6" stroke-width="1.6" stroke-dasharray="6 4" fill="none"/>
+<text x="56" y="112" font-size="15.5" font-weight="700" fill="#1a1c1b">Client Layer</text>
+<text x="56" y="130" font-size="11.5" fill="#6b6b6b">브라우저만 쓴다 · 설치 없음</text>
+<rect x="70" y="144" width="300" height="96" rx="6" fill="#ffffff" stroke="#c6c6c6"/>
+<text x="220.0" y="188.0" font-size="13" font-weight="600" text-anchor="middle" fill="#1a1c1b">FR5 조작 · 터틀봇 탭</text>
+<text x="220.0" y="206.0" font-size="11" text-anchor="middle" fill="#6b6b6b">React 19 · three.js r185 · urdf-loader</text>
+<rect x="400" y="144" width="300" height="96" rx="6" fill="#ffffff" stroke="#c6c6c6"/>
+<text x="550.0" y="188.0" font-size="13" font-weight="600" text-anchor="middle" fill="#1a1c1b">맵 편집기</text>
+<text x="550.0" y="206.0" font-size="11" text-anchor="middle" fill="#6b6b6b">React 19 · Vite 8 · three.js r185</text>
+<rect x="730" y="144" width="320" height="96" rx="6" fill="#ffffff" stroke="#c6c6c6"/>
+<text x="890.0" y="188.0" font-size="13" font-weight="600" text-anchor="middle" fill="#1a1c1b">AR 화면</text>
+<text x="890.0" y="206.0" font-size="11" text-anchor="middle" fill="#6b6b6b">바닐라 JS · WebXR · AprilTag</text>
+<rect x="300" y="320" width="500" height="260" rx="10" stroke="#1f5f9e" stroke-width="1.6" fill="#ffffff"/>
+<text x="316" y="346" font-size="15.5" font-weight="700" fill="#1a1c1b">브리지</text>
+<text x="316" y="364" font-size="11.5" fill="#6b6b6b">윈도우 작업 스케줄러 · 터틀봇만 파이 안</text>
+<rect x="324" y="370" width="220" height="58" rx="6" fill="#ffffff" stroke="#c6c6c6"/>
+<text x="434.0" y="395.0" font-size="13" font-weight="600" text-anchor="middle" fill="#1a1c1b">FR5 브리지</text>
+<text x="434.0" y="413.0" font-size="11" text-anchor="middle" fill="#6b6b6b">FastAPI · uvicorn · :5055</text>
+<rect x="560" y="370" width="216" height="58" rx="6" fill="#ffffff" stroke="#c6c6c6"/>
+<text x="668.0" y="395.0" font-size="13" font-weight="600" text-anchor="middle" fill="#1a1c1b">터틀봇 브리지</text>
+<text x="668.0" y="413.0" font-size="11" text-anchor="middle" fill="#6b6b6b">FastAPI · :5056 — 파이 안</text>
+<rect x="324" y="438" width="452" height="58" rx="6" fill="#ffffff" stroke="#c6c6c6"/>
+<text x="550.0" y="463.0" font-size="13" font-weight="600" text-anchor="middle" fill="#1a1c1b">안전 게이트</text>
+<text x="550.0" y="481.0" font-size="11" text-anchor="middle" fill="#6b6b6b">속도 상한 10% · 26조건 · 조종권</text>
+<rect x="324" y="506" width="452" height="58" rx="6" fill="#ffffff" stroke="#c6c6c6"/>
+<text x="550.0" y="531.0" font-size="13" font-weight="600" text-anchor="middle" fill="#1a1c1b">비전 연동 상주</text>
+<text x="550.0" y="549.0" font-size="11" text-anchor="middle" fill="#6b6b6b">앵커·받침 자리 — 브리지 안 스레드</text>
+<rect x="40" y="320" width="230" height="220" rx="10" stroke="#c6c6c6" stroke-width="1.6" fill="#ffffff"/>
+<text x="56" y="346" font-size="15.5" font-weight="700" fill="#1a1c1b">공유층</text>
+<text x="56" y="364" font-size="11.5" fill="#6b6b6b">화면 셋이 같이 쓴다</text>
+<rect x="60" y="372" width="190" height="60" rx="6" fill="#ffffff" stroke="#c6c6c6"/>
+<text x="155.0" y="398.0" font-size="13" font-weight="600" text-anchor="middle" fill="#1a1c1b">공통 부품</text>
+<text x="155.0" y="416.0" font-size="11" text-anchor="middle" fill="#6b6b6b">색 · 3D 장면 · 도달 링</text>
+<rect x="60" y="444" width="190" height="76" rx="6" fill="#ffffff" stroke="#c6c6c6"/>
+<text x="155.0" y="478.0" font-size="13" font-weight="600" text-anchor="middle" fill="#1a1c1b">데이터 출처</text>
+<text x="155.0" y="496.0" font-size="11" text-anchor="middle" fill="#6b6b6b">목업 ↔ 실물 ↔ 기록</text>
+<rect x="840" y="320" width="480" height="220" rx="10" stroke="#c6c6c6" stroke-width="1.6" fill="#ffffff"/>
+<text x="856" y="346" font-size="15.5" font-weight="700" fill="#1a1c1b">비전 (같은 윈도우 호스트)</text>
+<text x="856" y="364" font-size="11.5" fill="#6b6b6b">값을 만들고 파일로 낸다</text>
+<rect x="864" y="372" width="220" height="68" rx="6" fill="#ffffff" stroke="#c6c6c6"/>
+<text x="974.0" y="402.0" font-size="13" font-weight="600" text-anchor="middle" fill="#1a1c1b">보정 · 카메라 자리</text>
+<text x="974.0" y="420.0" font-size="11" text-anchor="middle" fill="#6b6b6b">OpenCV · 표식으로 푼다</text>
+<rect x="1100" y="372" width="196" height="68" rx="6" fill="#ffffff" stroke="#c6c6c6"/>
+<text x="1198.0" y="402.0" font-size="13" font-weight="600" text-anchor="middle" fill="#1a1c1b">정합 감시</text>
+<text x="1198.0" y="420.0" font-size="11" text-anchor="middle" fill="#6b6b6b">1Hz 재계산 · 상시</text>
+<rect x="864" y="452" width="432" height="68" rx="6" fill="#ffffff" stroke="#c6c6c6"/>
+<text x="1080.0" y="482.0" font-size="13" font-weight="600" text-anchor="middle" fill="#1a1c1b">손목 뎁스 관문</text>
+<text x="1080.0" y="500.0" font-size="11" text-anchor="middle" fill="#6b6b6b">pyrealsense2 · :5058</text>
+<rect x="300" y="610" width="500" height="178" rx="10" stroke="#c6c6c6" stroke-width="1.6" fill="#ffffff"/>
+<text x="316" y="636" font-size="15.5" font-weight="700" fill="#1a1c1b">로봇</text>
+<text x="316" y="654" font-size="11.5" fill="#6b6b6b">명령은 브리지만 보낸다</text>
+<rect x="324" y="660" width="220" height="68" rx="6" fill="#ffffff" stroke="#c6c6c6"/>
+<text x="434.0" y="690.0" font-size="13" font-weight="600" text-anchor="middle" fill="#1a1c1b">FR5 컨트롤러</text>
+<text x="434.0" y="708.0" font-size="11" text-anchor="middle" fill="#6b6b6b">Fairino Python SDK · TCP 8080</text>
+<rect x="560" y="660" width="216" height="68" rx="6" fill="#ffffff" stroke="#c6c6c6"/>
+<text x="668.0" y="690.0" font-size="13" font-weight="600" text-anchor="middle" fill="#1a1c1b">TurtleBot3 ×2</text>
+<text x="668.0" y="708.0" font-size="11" text-anchor="middle" fill="#6b6b6b">ROS 2 Jazzy · Nav2</text>
+<rect x="840" y="610" width="480" height="178" rx="10" stroke="#c6c6c6" stroke-width="1.6" fill="#ffffff"/>
+<text x="856" y="636" font-size="15.5" font-weight="700" fill="#1a1c1b">기록 노드 (라즈베리파이 5)</text>
+<text x="856" y="654" font-size="11.5" fill="#6b6b6b">SD 저장 · 서빙은 미착수</text>
+<rect x="864" y="660" width="216" height="68" rx="6" fill="#ffffff" stroke="#c6c6c6"/>
+<text x="972.0" y="690.0" font-size="13" font-weight="600" text-anchor="middle" fill="#1a1c1b">수집기</text>
+<text x="972.0" y="708.0" font-size="11" text-anchor="middle" fill="#6b6b6b">쉬는 동안은 건너뛴다</text>
+<rect x="1096" y="660" width="200" height="68" rx="6" fill="#ffffff" stroke="#c6c6c6"/>
+<text x="1196.0" y="690.0" font-size="13" font-weight="600" text-anchor="middle" fill="#1a1c1b">SQLite</text>
+<text x="1196.0" y="708.0" font-size="11" text-anchor="middle" fill="#6b6b6b">10테이블</text>
+<path d="M470,270 L470,320" fill="none" stroke="#ba1a1a" stroke-width="2.4" marker-end="url(#mREST)" marker-start="url(#mREST)"/>
+<path d="M620,270 L620,320" fill="none" stroke="#1c71d8" stroke-width="2.4" marker-end="url(#mWS)"/>
+<path d="M800,394 L840,394" fill="none" stroke="#9141ac" stroke-width="2.4" marker-end="url(#mFILE)" marker-start="url(#mFILE)"/>
+<path d="M270,394 L300,394" fill="none" stroke="#9141ac" stroke-width="2.4" marker-end="url(#mFILE)" marker-start="url(#mFILE)"/>
+<path d="M430,580 L430,610" fill="none" stroke="#b06d00" stroke-width="2.4" marker-end="url(#mTCP)" marker-start="url(#mTCP)"/>
+<path d="M680,580 L680,610" fill="none" stroke="#b06d00" stroke-width="2.4" marker-end="url(#mTCP)" marker-start="url(#mTCP)"/>
+<path d="M800,540 L820,540 L820,700 L840,700" fill="none" stroke="#1a7f7a" stroke-width="2.4" marker-end="url(#mLAN)"/>
+</svg>

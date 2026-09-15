@@ -1,0 +1,38 @@
+{
+  "schema_version": 1,
+  "diagram_type": "workflow",
+  "meta": {
+    "title": "제한 자동 실행 S0–S4",
+    "subtitle": "한 단계의 결과가 다음 단계의 입력이 되는 실기 흐름",
+    "output": "s0-s4.html"
+  },
+  "lanes": [
+    { "id": "main", "label": "실행 흐름" },
+    { "id": "exceptions", "label": "안전 차단", "variant": "exception" }
+  ],
+  "phases": [
+    { "id": "observe", "label": "OBSERVE", "fromCol": 0, "toCol": 2 },
+    { "id": "act", "label": "PREVIEW & ACT", "fromCol": 3, "toCol": 5 }
+  ],
+  "mainPath": ["s0", "s1", "s2", "s3", "s4"],
+  "nodes": [
+    { "id": "s0", "lane": "main", "col": 0, "type": "cloud", "label": "S0 관측", "sublabel": "작업 셀", "tag": "위치 · 상태" },
+    { "id": "s1", "lane": "main", "col": 1, "type": "external", "label": "S1 이동", "tag": "정차", "width": 50 },
+    { "id": "s2", "lane": "main", "col": 2, "type": "backend", "label": "S2 탐색", "tag": "RGB-D", "width": 50 },
+    { "id": "s3", "lane": "main", "col": 3, "type": "frontend", "label": "S3 검토", "sublabel": "고스트 경로", "tag": "충돌 검사", "width": 70 },
+    { "id": "s4", "lane": "main", "col": 5, "type": "backend", "label": "S4 실행", "sublabel": "집기 · 들기", "tag": "HOLD", "width": 78 },
+    { "id": "stop", "lane": "exceptions", "col": 3, "type": "security", "label": "STOP", "sublabel": "명령 0건", "tag": "원인 표시", "width": 70 }
+  ],
+  "edges": [
+    { "from": "s0", "to": "s1", "variant": "emphasis" },
+    { "from": "s1", "to": "s2", "variant": "emphasis" },
+    { "from": "s2", "to": "s3", "variant": "emphasis" },
+    { "from": "s3", "to": "s4", "variant": "emphasis" },
+    { "from": "s3", "to": "stop", "label": "검사 실패", "variant": "security", "fromSide": "bottom", "toSide": "top", "route": "drop", "labelDy": 11 }
+  ],
+  "cards": [
+    { "dot": "cyan", "title": "S0–S2 / 관측", "items": ["셀 좌표와 로봇 상태를 모은다", "이동 후 손목 뎁스로 표적을 다시 찾는다"] },
+    { "dot": "emerald", "title": "S3 / 실행 전", "items": ["고스트 경로와 파지 자세를 먼저 그린다", "IK · 작업영역 · 접촉 검사를 통과해야 한다"] },
+    { "dot": "rose", "title": "S4 / 실기", "items": ["접근 → 사전 성형 → 파지 → 들기", "실패 조건에서는 이동 명령을 보내지 않는다"] }
+  ]
+}

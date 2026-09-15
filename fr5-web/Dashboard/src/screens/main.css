@@ -1,0 +1,611 @@
+/* 맵 편집기 스타일. 공용 토큰은 @fr5/shared/tokens 에서 온다 —
+ * **상태 색(정상/경고/위험)이 AR 과 같아야 한다.** 안전 표시가 화면마다 다르면 오판한다. */
+@import '@fr5/shared/tokens/tokens.css';
+
+:root { color-scheme: dark; }
+* { box-sizing: border-box; }
+/* **높이를 매직넘버로 빼지 않는다.** `calc(100vh - 104px)` 는 머리글이 두 줄이 되는
+ * 순간(폰) 숫자줄을 화면 밖으로 밀어낸다. 플렉스가 남는 높이를 3D 에 준다.
+ * `dvh` 를 쓰는 이유 — 폰 주소창이 접히면 `vh` 는 안 따라온다. */
+body { margin: 0; background: var(--c-bg); color: var(--c-fg); font: var(--f-body);
+       height: 100dvh; display: flex; flex-direction: column; }
+/* React 가 `#root` 를 사이에 끼운다 — 여기를 안 뚫으면 높이가 `main` 까지 못 내려가
+ * 3D 칸이 0 이 된다. 절대배치한 힌트·패널이 머리글 위로 겹쳐 올라온다. */
+#root { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+
+header { display: flex; align-items: baseline; gap: var(--s-3);
+         padding: var(--s-3) var(--s-4); border-bottom: 1px solid var(--c-line); }
+header h1 { margin: 0; font-size: 16px; }
+header .sub { color: var(--c-fg-mute); font-size: 12px; }
+
+nav { display: flex; gap: var(--s-1); padding: var(--s-2) var(--s-4);
+      border-bottom: 1px solid var(--c-line); }
+nav button { padding: 7px 12px; background: var(--c-btn); color: var(--c-btn-fg);
+             border: 1px solid var(--c-line-strong); border-radius: var(--r-ctl);
+             font-size: 13px; cursor: pointer; }
+/* 선택은 중립색이다 — 초록은 「정상」의 색이라 선택 탭이 상태처럼 읽힌다 (ARCHITECTURE §UI 통일 ·
+ * ISA-101 「색은 이상 상태에만」 · 2026-09-05 phase 3 에서 정리) */
+nav button[aria-selected="true"] { background: var(--c-selected); color: var(--c-selected-fg);
+                                   border-color: var(--c-selected); font-weight: 600; }
+
+main { padding: var(--s-4); }
+main h2 { margin: 0 0 var(--s-2); font-size: 15px; }
+.todo { margin: 0; padding: var(--s-3); color: var(--c-fg-mute); font-size: 13px;
+        background: var(--c-sunken); border: 1px dashed var(--c-line-strong);
+        border-radius: var(--r-box); }
+
+/* 데이터 출처 배지 — **목업을 실측으로 오인하지 않게** 항상 보인다 (SR_24) */
+.source { margin-left: auto; padding: 3px 8px; border-radius: 99px; font-size: 11px;
+          font-variant-numeric: tabular-nums; }
+.source[data-src="mock"]     { background: #f0b86222; color: var(--c-warn); }
+.source[data-src="sim"]      { background: #6fb3e022; color: var(--c-info); }
+.source[data-src="measured"] { background: #7fd6a222; color: var(--c-ok); }
+
+/* ── 배치안 뷰 ─────────────────────────────────────────────────────────────
+ * 3D 는 화면을 꽉 채운다 — 이게 메인뷰다. 숫자는 그 아래 얇게 붙는다.
+ */
+main { padding: 0; flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.pane { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+.pane-head { display: flex; align-items: center; gap: var(--s-3);
+             padding: var(--s-2) var(--s-4); border-bottom: 1px solid var(--c-line); }
+.pane-head h2 { margin: 0; font-size: 14px; }
+
+.seg { display: flex; gap: 0; margin-left: auto; }
+.seg button { padding: 5px 11px; background: var(--c-btn); color: var(--c-btn-fg);
+              border: 1px solid var(--c-line-strong); border-radius: 0; font-size: 12px; cursor: pointer; }
+.seg button:first-child { border-radius: var(--r-ctl) 0 0 var(--r-ctl); }
+.seg button:last-child  { border-radius: 0 var(--r-ctl) var(--r-ctl) 0; }
+.seg button + button { border-left: 0; }
+.seg button[aria-selected="true"] { background: var(--c-fg); color: var(--c-bg); border-color: var(--c-fg); }
+
+.view3d { position: relative; flex: 1; min-height: 0; }
+.view3d-host { position: absolute; inset: 0; }
+.view3d-host canvas { display: block; }
+.view3d-status { position: absolute; left: var(--s-4); top: var(--s-3); margin: 0;
+                 padding: 5px 10px; background: var(--c-panel); border: 1px solid var(--c-line);
+                 border-radius: var(--r-ctl); font-size: 12px; color: var(--c-fg-dim); }
+
+.facts { display: flex; flex-wrap: wrap; gap: var(--s-1) var(--s-5);
+         padding: var(--s-3) var(--s-4); border-top: 1px solid var(--c-line);
+         font-size: 12px; color: var(--c-fg-dim); font-variant-numeric: tabular-nums; }
+.facts b { color: var(--c-fg); font-weight: 600; }
+.facts .ok     { color: var(--c-ok); }
+.facts .warn   { color: var(--c-warn); }
+.facts .danger { color: var(--c-danger); }
+
+/* ── 편집 인터랙션 ───────────────────────────────────────────────────────── */
+/* 사용법 안내 — **닫을 수 있다.** 닫으면 안 돌아온다 */
+.view3d-hint { position: absolute; left: var(--s-4); bottom: var(--s-3); margin: 0;
+               display: flex; align-items: flex-start; gap: var(--s-2);
+               padding: 7px 8px 7px 12px; background: var(--c-panel); border: 1px solid var(--c-line);
+               border-radius: var(--r-ctl); font-size: 12px; color: var(--c-fg-dim); line-height: 1.5; }
+.view3d-hint button { padding: 0 4px; background: none; color: var(--c-fg-mute);
+                      border: 0; font-size: 13px; line-height: 1.5; cursor: pointer; }
+
+/* 고른 것 — 화면 위에 얹는다. 3D 를 가리지 않게 좌상단 한 줄 */
+/* 왼쪽 위 통 — **재생 막대와 선택 패널이 위아래로 흐른다.**
+ * 전에는 둘 다 `left: s-4; top: s-3` 이라 그대로 포개졌다. 좌표를 손으로 더해 떼어 놓으면
+ * 막대 높이가 바뀔 때(폰에서 여러 줄로 접힌다) 다시 겹친다 — 그래서 흐름에 맡긴다. */
+.view3d-topleft { position: absolute; left: var(--s-4); top: var(--s-3);
+                  display: flex; flex-direction: column; align-items: flex-start;
+                  gap: var(--s-2); max-width: calc(100% - 2 * var(--s-4));
+                  pointer-events: none; }
+.view3d-topleft > * { pointer-events: auto; }
+.view3d-pick { position: static; display: flex; gap: var(--s-3);
+               align-items: baseline; padding: 6px 12px; background: var(--c-panel);
+               border: 1px solid var(--c-info); border-radius: var(--r-ctl); font-size: 12px;
+               flex-wrap: wrap; }
+.view3d-pick .dim { color: var(--c-fg-mute); }
+
+/* 숫자칸 — **끌기로는 100mm 격자 사이 값을 못 넣는다.** 여기서 정확히 넣는다 */
+.numbox { display: inline-flex; align-items: baseline; gap: 5px; color: var(--c-fg-mute); }
+.numbox input { width: 5.5em; padding: 3px 6px; background: var(--c-sunken); color: var(--c-info);
+                border: 1px solid var(--c-line-strong); border-radius: var(--r-ctl);
+                font: inherit; font-family: ui-monospace, monospace;
+                font-variant-numeric: tabular-nums; text-align: right; }
+.numbox input:focus { outline: 2px solid var(--c-info); outline-offset: -1px; }
+
+/* **`margin-left:auto` 는 `.seg` 하나만 갖는다.** 둘이 가지면 되돌리기 버튼이
+ * 뜨고 지는 순간 A/B 세그먼트가 좌우로 튄다 (2026-07-31 감사 P2).
+ * 지금 배치 — h2 · 저장안내 · 되돌리기 ┄┄auto┄┄ A/B. 양끝이 고정된다. */
+.revert { padding: 5px 11px; background: var(--c-btn); color: var(--c-btn-fg);
+          border: 1px solid var(--c-line-strong); border-radius: var(--r-ctl);
+          font-size: 12px; cursor: pointer; }
+.unsaved, .saved { padding: 3px 8px; border-radius: 99px; font-size: 11px; white-space: nowrap; }
+/* 파일 고르기를 버튼처럼 — `<input type=file>` 은 모양을 못 맞춘다 */
+.revert.as-btn { display: inline-flex; align-items: center; cursor: pointer; }
+.unsaved { background: #f0b86222; color: var(--c-warn); }
+.saved   { background: #7fd6a222; color: var(--c-ok); }
+
+/* 시점 맞추기 · 회전 — 오른쪽 위. **회전은 폰용이다** (키보드가 없다) */
+.view3d-tools { position: absolute; right: var(--s-4); top: var(--s-3); display: flex; gap: var(--s-1); }
+.view3d-tools button { padding: 6px 11px; background: var(--c-panel); color: var(--c-fg-dim);
+                       border: 1px solid var(--c-line-strong); border-radius: var(--r-ctl);
+                       font-size: 12px; cursor: pointer; }
+.view3d-tools button:disabled { opacity: .45; cursor: default; }
+
+/* 재생 막대 — 왼쪽 위. **한 사이클 = 1발 조립** (D63). 
+ * 안내·선택 패널이 아래를 쓰고 시점 버튼이 오른쪽 위라, 남은 자리가 여기다. */
+/* **자리는 `.view3d-topleft` 통이 잡는다** — 여기서 좌표를 잡으면 선택 패널과 또 포개진다 */
+.view3d-play { position: static; display: flex;
+               align-items: center; gap: var(--s-2); padding: 5px 10px;
+               background: var(--c-overlay); border: 1px solid var(--c-line);
+               border-radius: var(--r-ctl); font-size: 12px; max-width: 100%; }
+.view3d-play button { padding: 4px 9px; background: var(--c-panel); color: var(--c-fg-dim);
+                      border: 1px solid var(--c-line-strong); border-radius: var(--r-ctl);
+                      font-size: 12px; cursor: pointer; }
+.view3d-play button:disabled { opacity: .45; cursor: default; }
+.view3d-play input[type="range"] { width: 190px; accent-color: var(--c-fg-dim); }
+.play-now { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.play-now b { font-weight: 600; }
+.play-now.mute { color: var(--c-fg-mute); }
+/* 재생 막대의 배지는 머리글처럼 오른쪽 끝으로 밀지 않는다 — 막대가 폭을 다 먹는다 */
+.view3d-play .source { margin-left: 0; }
+.view3d-play button.on { background: var(--c-fg-dim); color: var(--c-panel); }
+
+/* ── 타임라인 ──────────────────────────────────────────────────────────────
+ * **아래에 붙인다.** 3D 위에 겹치면 방을 가리고, 왼쪽에 두면 폭이 모자라 마커가 겹친다.
+ * 49초에 사건 13개 → 전폭이라야 마커 사이가 손가락 목표(44px)에 가까워진다. */
+.timeline { position: absolute; left: 0; right: 0; bottom: 0; height: 102px;
+            display: flex; flex-direction: column; gap: 3px; padding: 6px 12px 8px;
+            background: var(--c-overlay); border-top: 1px solid var(--c-line);
+            font-size: 12px; }
+.tl-head { display: flex; align-items: center; gap: var(--s-2); }
+.tl-head button { padding: 3px 8px; background: var(--c-panel); color: var(--c-fg-dim);
+                  border: 1px solid var(--c-line-strong); border-radius: var(--r-ctl);
+                  font-size: 11px; cursor: pointer; }
+.tl-head button:disabled { opacity: .45; cursor: default; }
+.tl-pick { max-width: 200px; }
+.tl-hint { margin-left: auto; color: var(--c-fg-mute); font-size: 11px; }
+
+.tl-ticks { position: relative; height: 11px; color: var(--c-fg-mute); font-size: 10px;
+            font-variant-numeric: tabular-nums; }
+.tl-ticks span { position: absolute; transform: translateX(-50%); }
+.tl-ticks .end { transform: translateX(-100%); }
+
+/* 눈금과 마커가 **같은 좌표계**를 쓴다 — 둘이 어긋나면 "24초라 적힌 것이 26초에 있다" 가 된다 */
+.tl-track { position: relative; flex: 1; min-height: 34px;
+            background: var(--c-panel); border: 1px solid var(--c-line);
+            border-radius: var(--r-ctl); }
+.tl-cursor { position: absolute; top: 0; bottom: 0; width: 2px; margin-left: -1px;
+             background: var(--c-fg-dim); pointer-events: none; }
+
+/* 마커. **끄는 물건이라 손가락 목표를 확보한다** — 폭 22px + 세로 전체 */
+.tl-mark { position: absolute; top: 0; bottom: 0; width: 22px; margin-left: -11px;
+           display: flex; flex-direction: column; align-items: center; justify-content: center;
+           gap: 1px; padding: 0; background: transparent; border: 0; cursor: ew-resize;
+           font-size: 9px; line-height: 1; color: var(--c-fg-mute); touch-action: none; }
+.tl-mark::before { content: ''; position: absolute; top: 2px; bottom: 2px; width: 3px;
+                   border-radius: 2px; background: var(--c-line-strong); }
+.tl-mark:hover::before, .tl-mark:focus-visible::before { background: var(--c-fg-dim); }
+.tl-mark b { position: relative; font-variant-numeric: tabular-nums; color: var(--c-fg-dim); }
+/* 사건 이름은 **가로로 눕히면 서로 겹친다** — 세로로 세워 마커 폭 안에 가둔다 */
+.tl-mark span { position: relative; writing-mode: vertical-rl; max-height: 15px;
+                overflow: hidden; }
+
+.ev-menu { width: 182px; }
+.ev-menu label { display: flex; align-items: center; justify-content: space-between;
+                 gap: var(--s-2); padding: 2px 0; font-size: 11px; color: var(--c-fg-mute); }
+.ev-menu label input, .ev-menu label select { width: 96px; font-size: 11px; }
+.ev-menu hr { margin: 4px 0; border: 0; border-top: 1px solid var(--c-line); }
+/* AMR 띠 — 마커 줄 위에 얇게. **안 움직이는 AMR 은 줄이 없다** */
+.tl-amr { display: grid; grid-template-columns: 42px 1fr; align-items: center;
+          gap: var(--s-2); height: 15px; font-size: 10px; }
+.tl-amr-name { color: var(--c-fg-mute); font-variant-numeric: tabular-nums; }
+.tl-amr-rail { position: relative; height: 13px; }
+.tl-amr-rail i { position: absolute; top: 0; height: 13px; min-width: 3px;
+                 display: flex; align-items: center; justify-content: center;
+                 padding: 0 3px; overflow: hidden; white-space: nowrap;
+                 background: var(--c-info, #2f6f8f); color: #fff; opacity: .82;
+                 border-radius: 3px; font-style: normal; font-size: 9px; }
+
+.ev-menu { width: 210px; }
+.ev-menu label input[type="text"] { width: 96px; }
+/* 자세는 **두 벌**이다 — 구간 시작과 끝. 한 줄에 나란히 둔다 */
+.ev-menu .pose-pair { display: grid; grid-template-columns: 44px 1fr 1fr; gap: 3px; }
+.ev-menu .pose-pair select { width: 100%; }
+
+/* ── 자세 패널. **3D 오른쪽 위** — 왼쪽은 팔레트, 아래는 타임라인이 이미 쓴다 */
+.pose-edit { position: absolute; right: var(--s-3); top: calc(var(--s-3) + 40px);
+             width: 216px; display: flex; flex-direction: column; gap: 3px;
+             padding: 8px 10px; background: var(--c-overlay);
+             border: 1px solid var(--c-line); border-radius: var(--r-ctl); font-size: 12px; }
+.pose-edit label { display: grid; grid-template-columns: 20px 1fr 42px; align-items: center;
+                   gap: var(--s-2); color: var(--c-fg-mute); font-size: 11px; }
+.pose-edit label input { width: 100%; accent-color: var(--c-fg-dim); }
+.pose-edit label span { text-align: right; font-variant-numeric: tabular-nums; color: var(--c-fg-dim); }
+.pose-edit .warn { color: var(--c-warn, #b4541c); font-size: 11px; }
+.pose-edit .dim { color: var(--c-fg-mute); font-size: 11px; }
+.pose-act { display: flex; gap: var(--s-2); }
+.pose-act button { flex: 1; }
+.pose-edit button { margin-top: 3px; padding: 4px 9px; background: var(--c-panel);
+                    color: var(--c-fg-dim); border: 1px solid var(--c-line-strong);
+                    border-radius: var(--r-ctl); font-size: 12px; cursor: pointer; }
+.view3d-pick button.on { background: var(--c-fg-dim); color: var(--c-panel); }
+
+@media (max-width: 820px) {
+  /* 폰 — 오른쪽 위는 시점 버튼이 쓴다. **아래에서 위로** 띄우고 폭을 다 준다.
+   *
+   * **관절 칸을 두 줄로 접는다.** 세로로 6칸을 세우면 패널이 280px 이 되어 3D 를 거의 다
+   * 덮는다 — 돌릴 로봇이 안 보이는 채로 링을 잡으라는 화면이 된다 (2026-08-04 폰 폭에서 확인).
+   * 높이도 잘라 둔다: 넘치면 패널 안에서 스크롤한다. */
+  .pose-edit { right: var(--s-2); left: var(--s-2); top: auto; bottom: calc(var(--s-2) + 112px);
+               width: auto; max-height: 34vh; overflow: auto;
+               display: grid; grid-template-columns: 1fr 1fr; gap: 2px var(--s-2); }
+  .pose-edit > b, .pose-edit .warn, .pose-edit .pose-act,
+  .pose-edit .pose-pair, .pose-edit > .dim { grid-column: 1 / -1; }
+  .pose-edit label { grid-template-columns: 18px 1fr 34px; }
+}
+
+/* ── 폰 ────────────────────────────────────────────────────────────────────
+ * 3D 가 메인이므로 **높이를 3D 에 몰아준다.** 머리글·숫자줄을 얇게 만들고
+ * `100dvh` 를 쓴다 — `100vh` 는 주소창 높이를 빼주지 않아 아래가 잘린다. */
+@media (max-width: 820px) {
+  header { padding: var(--s-2) var(--s-3); flex-wrap: wrap; }
+  header .sub { flex-basis: 100%; }
+  nav, .pane-head { padding: var(--s-2) var(--s-3); flex-wrap: wrap; }
+  nav button { padding: 9px 13px; }            /* 손가락 목표 40px 확보 */
+  /* **폰에서는 제목을 숨긴다.** 바로 위 탭에 "배치안" 이 이미 있어 같은 말이고,
+   * 저장 배지가 뜨는 순간 머리줄이 두 줄로 접혀 3D 높이를 44px 먹는다 (실렌더 확인). */
+  .pane-head h2 { display: none; }
+  .seg, .revert { margin-left: 0; }
+  .seg button, .revert, .view3d-tools button { padding: 8px 10px; }
+  .view3d-tools, .view3d-pick, .view3d-hint { left: var(--s-2); right: var(--s-2); }
+  .view3d-tools { justify-content: flex-end; left: auto; }
+  /* 시점 버튼과 같은 줄에 두면 겹친다 — **한 줄 아래로 내리고 폭을 다 준다** */
+  .view3d-topleft { left: var(--s-2); right: var(--s-2); top: calc(var(--s-3) + 40px);
+                    max-width: none; }
+  .view3d-play { flex-wrap: wrap; width: 100%; }
+  .view3d-pick { width: 100%; }
+  .view3d-play input[type="range"] { flex: 1 1 120px; width: auto; }
+  /* **폰에서는 더 높인다.** 마커 폭이 좁아지므로 세로로라도 잡을 곳을 준다.
+   * 안내 문구는 숨긴다 — 한 줄이 두 줄로 접히면 타임라인이 3D 를 40px 더 먹는다 */
+  .timeline { height: 104px; padding: 6px 8px 8px; }
+  .tl-hint { display: none; }
+  .tl-pick { max-width: 120px; }
+  .tl-mark { width: 26px; margin-left: -13px; }
+  /* **선택 패널을 아래로 내린다.** 위에 두면 폭이 좁아 시점·회전 버튼을 덮는다
+   * (실렌더 확인). 안내와 자리가 같지만 둘은 동시에 안 뜬다 — LayoutView 참조 */
+  /* 선택 패널 자리는 **왼쪽 위 통**이 잡는다 — 아래로 내리면 타임라인과 싸운다.
+   *
+   * **자세 편집 중에는 접는다.** 폰은 세로가 모자라 재생 막대·선택 패널·자세 패널·타임라인이
+   * 한 화면에 다 못 선다(실측: 757px 중 넷이 269~705 를 다투었다). 둘은 같은 물건 얘기라
+   * 자세 패널이 이미 팔 이름을 들고 있고, 나가는 버튼도 그 안에 있다.
+   *
+   * **재생 막대도 같이 접는다.** 재생과 자세 편집은 같은 관절을 써서 이미 배타다 —
+   * 재생을 켜면 자세가 꺼진다. 못 쓰는 막대가 3D 를 124px 가리는 것이 손해다.
+   * 데스크톱은 자리가 있어 안 접는다 — 시각을 감아 놓고 그 자세를 만드는 것이 본래 흐름이다. */
+  .view3d:has([data-t="pose-edit"]) .view3d-pick,
+  .view3d:has([data-t="pose-edit"]) .view3d-play { display: none; }
+  .view3d-hint { bottom: var(--s-2); }
+  .facts { padding: var(--s-2) var(--s-3); gap: 2px var(--s-3); font-size: 11px; }
+}
+
+/* ── 편집기 본문 = 좌 팔레트 + 우 3D. 팔레트는 폭 고정, 3D 가 남는 폭을 먹는다. */
+.editor-body { display: flex; flex: 1; min-height: 0; }
+.editor-body .view3d { flex: 1; min-width: 0; }
+
+.palette { width: 232px; flex: none; display: flex; flex-direction: column;
+           border-right: 1px solid var(--c-line); background: var(--c-bg); min-height: 0; }
+/* 탭 — **부품과 시나리오는 다른 것이다.** 자리(①~⑥)는 시나리오 어휘라 부품 탭에 없다 */
+.palette-tabs { display: flex; border-bottom: 1px solid var(--c-line); }
+.palette-tabs button { flex: 1; padding: 8px 0; background: none; border: 0;
+                       border-bottom: 2px solid transparent; color: var(--c-fg-mute);
+                       font: inherit; font-size: 12px; cursor: pointer; }
+.palette-tabs button.on { color: var(--c-fg); border-bottom-color: var(--c-fg-dim); font-weight: 600; }
+
+/* 사건 한 줄 — 시각 · 이름 · 자리 · AMR · 감기 · 삭제 */
+.scn-row { display: grid; grid-template-columns: 40px 1fr 1fr 1fr 18px 18px;
+           gap: 2px; align-items: center; margin-bottom: 3px; }
+.scn-row input, .scn-row select { width: 100%; box-sizing: border-box; padding: 2px 3px;
+                                  font: inherit; font-size: 10px; border: 1px solid var(--c-line);
+                                  border-radius: 3px; background: var(--c-panel); color: var(--c-fg-dim); }
+.scn-row .scn-t { font-variant-numeric: tabular-nums; }
+.scn-row button { padding: 0; background: none; border: 0; color: var(--c-fg-mute);
+                  font-size: 11px; cursor: pointer; }
+.scn-row button:disabled { opacity: .3; cursor: default; }
+/* 방금 만든 사건 — **눈에 띄어야 한다.** 안 그러면 어디로 데려왔는지 모른다 */
+.scn-row.hot input, .scn-row.hot select { border-color: var(--c-info, #2f6f8f);
+                                          box-shadow: 0 0 0 1px var(--c-info, #2f6f8f); }
+.scn-add { width: 100%; margin-top: var(--s-2); padding: 5px 0; background: var(--c-panel);
+           color: var(--c-fg-dim); border: 1px solid var(--c-line-strong);
+           border-radius: var(--r-ctl); font: inherit; font-size: 11px; cursor: pointer; }
+
+.palette-head { padding: var(--s-3) var(--s-3) var(--s-2); border-bottom: 1px solid var(--c-line); }
+.palette-head h3 { margin: 0 0 4px; font-size: 12px; letter-spacing: .04em; text-transform: uppercase;
+                   color: var(--c-fg-mute); }
+.palette-head p { margin: 0 0 var(--s-2); font-size: 11px; line-height: 1.5; color: var(--c-fg-mute); }
+.palette-head input { width: 100%; box-sizing: border-box; padding: 6px 8px; font: inherit; font-size: 12px;
+                      border: 1px solid var(--c-line); border-radius: var(--r-ctl);
+                      background: var(--c-bg); color: var(--c-fg); }
+
+.palette-list { flex: 1; min-height: 0; overflow-y: auto; padding: var(--s-2) var(--s-3); }
+.palette-list section { margin-bottom: var(--s-3); }
+.palette-list h4 { margin: 0 0 6px; font-size: 11px; color: var(--c-fg-mute); font-weight: 600; }
+
+/* 카드 — 중립 흑백. 선택·주요 동작만 흑백을 쓴다는 규약(D38) 그대로. */
+.part-card { display: block; width: 100%; text-align: left; margin-bottom: 4px;
+             padding: 7px 9px; background: var(--c-bg); color: var(--c-fg);
+             border: 1px solid var(--c-line); border-radius: var(--r-ctl); cursor: pointer; }
+.part-card:hover { border-color: var(--c-fg); }
+.part-card:active { background: var(--c-fg); color: var(--c-bg); }
+.part-name { font-size: 12.5px; }
+.palette-note { margin: 0 0 var(--s-1); color: var(--c-fg-mute); font-size: 11px; line-height: 1.45; }
+.part-badge { float: right; font-size: 10px; padding: 1px 5px; color: var(--c-fg-mute);
+              border: 1px solid var(--c-line); border-radius: 2px; }
+.part-hint { display: block; margin-top: 2px; font-size: 10.5px; line-height: 1.4; color: var(--c-fg-mute); }
+.palette-empty { font-size: 12px; color: var(--c-fg-mute); }
+
+.palette-foot { display: flex; align-items: center; gap: var(--s-2); flex-wrap: wrap;
+                padding: var(--s-2) var(--s-3); border-top: 1px solid var(--c-line);
+                font-size: 11px; color: var(--c-fg-mute); }
+.pane-head kbd, .palette-head kbd { font: inherit; font-size: 10px; padding: 0 3px;
+                border: 1px solid var(--c-line); border-radius: 2px; color: var(--c-fg-mute); }
+
+/* 썸네일 카드 — 그림 + 글. 그림은 코드로 구운 dataURL 이라 자산 파일이 없다. */
+.editor-stage { position: relative; flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.part-card { display: flex; align-items: flex-start; gap: 8px; }
+.part-thumb { flex: none; width: 40px; height: 40px; display: grid; place-items: center;
+              border: 1px solid var(--c-line); border-radius: 2px; background: var(--c-bg-soft, #fafafa);
+              overflow: hidden; }
+.part-thumb img { width: 100%; height: 100%; object-fit: contain; display: block; }
+.part-thumb i { font-style: normal; font-size: 17px; color: var(--c-fg-mute); }
+.part-text { flex: 1; min-width: 0; }
+
+/* 씬 드롭다운 — 헤더 오른쪽으로 민다 */
+.scene-pick, .scene-name { margin-left: auto; font: inherit; font-size: 12px; padding: 4px 7px;
+             border: 1px solid var(--c-line); border-radius: var(--r-ctl);
+             background: var(--c-bg); color: var(--c-fg); max-width: 190px; }
+.scene-name { margin-left: 0; }
+.pane-head .scene-pick ~ * { margin-left: 0; }
+
+/* 문·창 편집 — 3D 위 정보판. 반투명은 여기만 허용된다 (D38) */
+.opening-edit { position: absolute; left: var(--s-4); bottom: var(--s-3);
+                display: flex; align-items: center; gap: var(--s-3); flex-wrap: wrap;
+                padding: 7px 11px; font-size: 12px;
+                background: var(--c-overlay, rgba(255,255,255,.86));
+                border: 1px solid var(--c-line); border-radius: var(--r-ctl); }
+.opening-edit label { display: inline-flex; align-items: center; gap: 4px; color: var(--c-fg-mute); }
+.opening-edit input, .opening-edit select { font: inherit; font-size: 12px; padding: 2px 5px; width: 74px;
+                border: 1px solid var(--c-line); border-radius: 2px; background: var(--c-bg); color: var(--c-fg); }
+.opening-edit select { width: 56px; }
+.facts .mute { color: var(--c-fg-mute); }
+
+/* 우클릭 메뉴 — **단축키를 같이 적어 메뉴가 단축키를 가르친다.**
+ * 3D 위에 얹히므로 `position: absolute` 이고, 화면 밖으로 나가지 않게 좌표를 잘라 붙인다. */
+.view3d-menu { position: absolute; z-index: 5; min-width: 148px; margin: 0; padding: 4px;
+               list-style: none; background: var(--c-panel); border: 1px solid var(--c-line-strong);
+               border-radius: var(--r-ctl); box-shadow: 0 6px 18px rgba(0,0,0,.14); font-size: 12px; }
+.view3d-menu-head { padding: 4px 8px 6px; color: var(--c-fg-mute); border-bottom: 1px solid var(--c-line);
+                    margin-bottom: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.view3d-menu button { display: flex; width: 100%; align-items: center; justify-content: space-between;
+                      gap: var(--s-3); padding: 6px 8px; background: none; border: 0; border-radius: 3px;
+                      color: var(--c-fg); font: inherit; cursor: pointer; }
+.view3d-menu button:hover:not(:disabled) { background: var(--c-sunken); }
+.view3d-menu button:disabled { opacity: .4; cursor: default; }
+.view3d-menu button.danger { color: var(--c-danger); }
+.view3d-menu kbd { color: var(--c-fg-mute); font-size: 11px; }
+/* 끄는 동안 뜨는 틈 — **좌표가 아니라 이 숫자가 알고 싶은 값이다** */
+.view3d-pick .gap { color: var(--c-warn, #b06d00); }
+
+/* ── 시뮬 탭 ─────────────────────────────────────────────────────────────
+   토큰만 쓴다. **네온·글래스·게임화 금지**(D109) — 어두운 곳은 3D 카드 안쪽뿐이고
+   그건 3층이 생길 때다. 지금 1층은 밝은 아카데믹 그대로다. */
+/* ══ 「시뮬」 탭 ══════════════════════════════════════════════════════════════
+   **스크롤하지 않는다.** 한 화면에 결론과 차트 셋만 놓고, 깊은 것은 전부 <dialog> 로 연다 —
+   세로로 늘어놓았더니 1,700px 이 됐고 아무도 아래를 안 봤다 (2026-08-12). */
+.sim { flex: 1; min-height: 0; display: flex; flex-direction: column;
+  gap: var(--s-2); padding: var(--s-3); overflow: hidden; }
+.sim .empty { color: var(--c-muted, #666); font-size: 13px; }
+.sim .empty.warn { color: var(--c-warn); }
+.simhead { display: flex; align-items: center; gap: 12px; flex: 0 0 auto; }
+.simhead select { font: inherit; padding: 3px 8px; border: 1px solid var(--c-line); border-radius: 2px;
+  max-width: 34ch; }
+.simhead .fp { font-family: ui-monospace, monospace; font-size: 11px; color: var(--c-muted, #666); }
+
+/* 한 화면 그리드 — 큰 차트가 남는 높이를 먹는다(1fr). 나머지는 내용만큼. */
+.simgrid { flex: 1; min-height: 0; display: grid; gap: var(--s-2);
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: auto auto minmax(0, 1fr) auto auto;
+  grid-template-areas: "verdict verdict" "kpis kpis" "big big" "steps cycle" "chips chips"; }
+.verdict { grid-area: verdict; display: flex; align-items: center; gap: 12px;
+  border: 1px solid var(--c-line-strong); border-left: 3px solid var(--c-info);
+  border-radius: 2px; padding: 8px 12px; }
+.verdict.blocked { border-left-color: var(--c-warn); }
+/* 시간초과한 벌의 시간은 사이클이 아니다 — 표에서 같은 굵기로 서지 않게 한다 (2026-08-19) */
+.grid td .tmo { color: var(--c-warn, #a60); white-space: nowrap; }
+.verdict p { margin: 0; font-size: 15px; line-height: 1.45; flex: 1;
+  display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.verdict .vdetail { font-size: 12px; color: var(--c-muted, #666); font-weight: 400; }
+.verdict button { font: inherit; font-size: 12px; white-space: nowrap; padding: 4px 10px;
+  border: 1px solid var(--c-line-strong); background: none; border-radius: 2px; cursor: pointer; }
+/* ⚠ **글자색을 반드시 박는다.** `:root{color-scheme:dark}` 라 버튼의 UA 기본색이 흰색이고,
+   밝은 바탕에서 라벨이 통째로 사라진다 — 2026-08-12 실렌더가 빈 상자로 잡았다 */
+.verdict button, .card-open, .chip, .replay-bar button, .sheet-x, .grid td button,
+.simtoggle { color: var(--c-fg); }
+
+.kpis { grid-area: kpis; display: flex; flex-wrap: wrap; gap: 0 28px; margin: 0; }
+.kpis div { display: flex; gap: 6px; align-items: baseline; }
+.kpis dt { color: var(--c-muted, #666); font-size: 12px; }
+.kpis dd { margin: 0; font-variant-numeric: tabular-nums; font-weight: 700; font-size: 17px; }
+.kpis dd small { font-weight: 400; font-size: 12px; color: var(--c-muted, #666); }
+.kpis .bad dd { color: var(--c-warn); }
+
+.card { margin: 0; display: flex; flex-direction: column; min-height: 0;
+  border: 1px solid var(--c-line); border-radius: 2px; padding: 6px 8px 4px; }
+.card.big { grid-area: big; }
+.card-head { display: flex; align-items: baseline; gap: 8px; font-size: 12px; flex: 0 0 auto; }
+.card-head b { font-size: 13px; }
+.card-hint { color: var(--c-muted, #666); flex: 1; overflow: hidden; text-overflow: ellipsis;
+  white-space: nowrap; }
+.card-open { font: inherit; font-size: 11px; padding: 2px 8px; border: 1px solid var(--c-line);
+  background: none; border-radius: 2px; cursor: pointer; white-space: nowrap; }
+.card-body { flex: 1; min-height: 0; display: flex; align-items: center; }
+.card-body > svg { width: 100%; height: 100%; max-height: 100%; display: block; }
+.card-body > .stepbar { width: 100%; }
+
+.chips { grid-area: chips; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.chips-label { font-size: 12px; color: var(--c-muted, #666); margin-right: 4px; }
+.chip { font: inherit; font-size: 12px; padding: 3px 9px; border: 1px solid var(--c-line-strong);
+  background: none; border-radius: 2px; cursor: pointer; display: inline-flex; gap: 6px; align-items: baseline; }
+.chip small { color: var(--c-warn); font-variant-numeric: tabular-nums; }
+.chip.ghost { border-style: dashed; color: var(--c-muted, #666); }
+.chip:hover, .card-open:hover, .verdict button:hover { background: var(--c-info-soft); }
+
+/* ── 차트 ─────────────────────────────────────────────────────────────── */
+.band90 { fill: var(--c-source-sim); opacity: 0.16; }
+.band50 { fill: var(--c-source-sim); opacity: 0.34; }
+.median { stroke: var(--c-source-sim); stroke-width: 1.5; }
+.tick { font-size: 10px; fill: var(--c-muted, #666); }
+/* 여유 0 은 눈금이 아니라 **구역 경계**다 — 안쪽을 바탕으로 칠한다 */
+.zeroline { stroke: var(--c-warn); stroke-width: 1.5; stroke-dasharray: 4 3; }
+.zerotag { fill: var(--c-warn); font-weight: 600; }
+.danger { fill: var(--c-warn); opacity: 0.09; }
+.worstdot { fill: var(--c-warn); stroke: var(--c-bg); stroke-width: 1; }
+.barcode { stroke: var(--c-source-sim); stroke-width: 1; opacity: 0.55; }
+.stepbar { display: flex; height: 26px; border: 1px solid var(--c-line); font-size: 11px; }
+.stepbar span { display: flex; align-items: center; justify-content: center; overflow: hidden;
+  white-space: nowrap; color: #fff; background: var(--c-source-sim); border-right: 1px solid var(--c-bg); }
+.stepbar span[data-type=grip] { background: var(--c-line-strong); }
+
+/* ── 모달 ─────────────────────────────────────────────────────────────── */
+.sheet { border: 1px solid var(--c-line-strong); border-radius: 3px; padding: 0;
+  width: min(720px, 92vw); max-height: 88vh; background: var(--c-bg); color: var(--c-fg); }
+.sheet.wide { width: min(1040px, 94vw); }
+.sheet::backdrop { background: rgba(20, 23, 26, 0.42); }
+.sheet-head { display: flex; align-items: baseline; gap: 10px; padding: 10px 14px;
+  border-bottom: 1px solid var(--c-line); position: sticky; top: 0; background: var(--c-bg); }
+.sheet-head h3 { margin: 0; font-size: 15px; }
+.sheet-sub { font-size: 12px; color: var(--c-muted, #666); flex: 1; }
+.sheet-x { font: inherit; border: none; background: none; cursor: pointer; font-size: 15px;
+  color: var(--c-muted, #666); padding: 0 4px; }
+.sheet-body { padding: 12px 14px 16px; overflow: auto; max-height: calc(88vh - 46px); }
+.sheet-body > svg { width: 100%; height: auto; display: block; }
+.sheet .note { font-size: 12px; color: var(--c-muted, #666); line-height: 1.6; margin: 10px 0 0; }
+
+/* ── 표 ───────────────────────────────────────────────────────────────── */
+.grid { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 12px; }
+.grid caption { text-align: left; font-size: 12px; color: var(--c-muted, #666); padding: 10px 0 4px; }
+.grid th, .grid td { border-bottom: 1px solid var(--c-line); padding: 4px 8px; text-align: right;
+  font-variant-numeric: tabular-nums; }
+.grid thead th { font-weight: 500; color: var(--c-muted, #666); }
+.grid th:first-child { text-align: left; font-weight: 500; white-space: nowrap; }
+.grid tr.hot th:first-child { font-weight: 700; }
+.grid td button { font: inherit; font-size: 11px; padding: 1px 8px; border: 1px solid var(--c-line-strong);
+  background: none; border-radius: 2px; cursor: pointer; }
+.density { width: 100%; border-collapse: collapse; font-size: 12px; }
+/* **이름 칸은 글자만큼만.** 안 그러면 남는 폭을 다 가져가 띠가 49px 로 눌린다 (실측) */
+.density th { text-align: left; font-weight: 500; white-space: nowrap; padding-right: 8px; width: 1%; }
+.density .num { text-align: right; font-variant-numeric: tabular-nums; width: 5em; }
+.strip { display: flex; height: 16px; border: 1px solid var(--c-line); }
+.strip i { flex: 1; background: var(--c-source-sim); }
+
+/* ── 3D 재생 ──────────────────────────────────────────────────────────── */
+.replay { display: flex; flex-direction: column; gap: 8px; }
+.replay-3d { height: min(58vh, 520px); border: 1px solid var(--c-line); line-height: 0; }
+.replay-3d canvas { width: 100%; height: 100%; display: block; }
+.replay-bar { display: flex; align-items: center; gap: 12px; font-size: 12px; }
+.replay-bar button { font: inherit; padding: 4px 12px; border: 1px solid var(--c-line-strong);
+  background: none; border-radius: 2px; cursor: pointer; min-width: 72px; }
+.replay-bar input[type=range] { flex: 1; }
+.replay-bar .pct { font-variant-numeric: tabular-nums; min-width: 4ch; text-align: right; }
+.simtoggle { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; cursor: pointer; }
+.replay-note { margin: 0; font-size: 12px; color: var(--c-muted, #666); min-height: 1.4em; }
+.replay-note .warn { color: var(--c-warn); }
+.replay-note .dot { color: #268a52; }
+/* 점군 카드 — **어두운 곳은 여기 안쪽뿐이다** (D109) */
+.cloud > div { line-height: 0; border: 1px solid var(--c-line); }
+.cloud figcaption { font-size: 12px; color: var(--c-muted, #666); margin-top: 6px; line-height: 1.6; }
+.cloud .near { color: #c0392b; }
+.cloud .warn { color: var(--c-warn); }
+
+/* ── F8 생산성 비교 ─────────────────────────────────────────────────────────
+ * **차트 라이브러리가 없다.** 막대는 `<svg>` 두 줄이고 나머지는 표다.
+ * 축은 언제나 0 에서 시작한다 — 잘라 그리면 작은 차이가 커 보인다. */
+.cmp { max-width: 780px; }
+.cmp-lead { margin: 0 0 var(--s-3); font-size: 15px; line-height: 1.5; }
+.cmp-lead b { font-weight: 700; }
+.cmp .good { color: var(--c-ok); }
+.cmp .bad { color: var(--c-warn); }
+
+.cmp-pick { display: flex; gap: var(--s-4); flex-wrap: wrap; margin-bottom: var(--s-3); }
+.cmp-pick label { display: flex; align-items: center; gap: 6px; font-size: 13px; }
+.cmp-pick label > span { font-weight: 700; }
+.cmp-pick select { font: inherit; font-size: 13px; padding: 4px 8px; background: var(--c-btn);
+  color: var(--c-btn-fg); border: 1px solid var(--c-line-strong); border-radius: var(--r-ctl); }
+
+/* 출처 배지 — **목업을 실측으로 오인하는 것이 제일 비싼 사고다** (SR_24) */
+.cmp-src { font-size: 11px; padding: 2px 7px; border-radius: 999px;
+  border: 1px solid var(--c-warn); color: var(--c-warn); }
+.cmp-src.real { border-color: var(--c-ok); color: var(--c-ok); }
+
+.cmp-err { color: var(--c-warn); font-size: 13px; }
+
+.cmp-tab { width: 100%; border-collapse: collapse; font-size: 13px;
+  font-variant-numeric: tabular-nums; }
+.cmp-tab th, .cmp-tab td { padding: 5px 8px; border-bottom: 1px solid var(--c-line);
+  text-align: right; }
+.cmp-tab thead th { color: var(--c-fg-mute); font-weight: 400; font-size: 12px; }
+.cmp-tab th[scope="row"] { text-align: left; font-weight: 400; }
+.cmp-tab th small { color: var(--c-fg-mute); font-size: 11px; margin-left: 5px; }
+.cmp-tab tr.req th[scope="row"] { font-weight: 700; }
+
+.cmp-charts { display: grid; gap: var(--s-3); margin-top: var(--s-4); }
+.cmp-bars { margin: 0; }
+.cmp-bars figcaption { display: flex; align-items: baseline; gap: 8px; font-size: 13px;
+  margin-bottom: 4px; }
+.cmp-bars figcaption small { color: var(--c-fg-mute); font-size: 11px; }
+.cmp-bars figcaption em { margin-left: auto; font-style: normal; font-size: 12px; }
+.cmp-bar { display: grid; grid-template-columns: 14px 1fr 68px; align-items: center; gap: 8px;
+  height: 18px; }
+.cmp-bar .cmp-side { font-size: 11px; color: var(--c-fg-mute); }
+.cmp-bar svg { width: 100%; height: 12px; display: block; }
+.cmp-bar b { text-align: right; font-variant-numeric: tabular-nums; font-size: 13px; }
+
+.cmp-foot { margin-top: var(--s-4); font-size: 12px; color: var(--c-fg-mute); line-height: 1.6; }
+
+/* F10 비교 축 — **새 화면이 아니라 축 하나다** (PRD §F10) */
+.cmp-axis { display: flex; gap: var(--s-1); margin-bottom: var(--s-3); }
+.cmp-axis button { font: inherit; font-size: 12px; padding: 4px 12px; cursor: pointer;
+  background: var(--c-btn); color: var(--c-btn-fg);
+  border: 1px solid var(--c-line-strong); border-radius: var(--r-ctl); }
+.cmp-axis button[aria-selected="true"] { background: var(--c-selected); color: var(--c-selected-fg);
+  border-color: var(--c-selected); font-weight: 600; }
+
+/* 관절 재생 — 두 동작을 **같은 진행률**에 나란히 (F10) */
+.jp-wrap { margin-top: var(--s-4); }
+.jp-bar { display: flex; align-items: center; gap: 10px; font-size: 12px; margin-bottom: 6px; }
+.jp-bar button { font: inherit; font-size: 12px; padding: 3px 12px; cursor: pointer;
+  background: var(--c-btn); color: var(--c-btn-fg);
+  border: 1px solid var(--c-line-strong); border-radius: var(--r-ctl); }
+.jp-bar input[type="range"] { flex: 1; max-width: 320px; }
+.jp-bar b { font-variant-numeric: tabular-nums; min-width: 34px; }
+.jp-legend { display: flex; gap: 7px; margin-left: auto; font-style: normal; }
+.jp-legend i { font-style: normal; font-weight: 700; font-size: 11px; }
+
+.jp-grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s-3); }
+.jp { margin: 0; }
+.jp figcaption { display: flex; align-items: center; gap: 7px; font-size: 12px; margin-bottom: 3px; }
+.jp svg { width: 100%; height: 96px; display: block;
+  border: 1px solid var(--c-line); border-radius: 2px; background: var(--c-bg); }
+.jp-note { margin: 6px 0 0; font-size: 11px; color: var(--c-fg-mute); line-height: 1.6; }
+
+/* §읽는 법 — 시뮬 탭의 `.sheet` 를 그대로 쓴다. 여기는 목록 모양만 더한다 */
+.how { margin: 0; font-size: 13px; line-height: 1.6; }
+.how dt { font-weight: 700; margin-top: 12px; }
+.how dt:first-child { margin-top: 0; }
+.how dd { margin: 3px 0 0; color: var(--c-fg-mute); }
+.how dd b { color: var(--c-fg); }
+.how dd b.good { color: var(--c-ok); }
+
+/* 결론 하나를 크게 — 3초 안에 읽히게 (토스 §Easy to Answer) */
+.cmp .verdict p.cmp-lead { font-size: 20px; line-height: 1.4; }
+.cmp .verdict p.cmp-lead b { font-size: 24px; }
+.cmp-pct { font-size: 12px; color: var(--c-fg-mute); margin-left: 8px;
+  font-variant-numeric: tabular-nums; }
+
+/* 숫자 자세히 — 늘 펼쳐 두면 아무도 안 읽는다 (토스 §Minimum Features) */
+.cmp-more { margin-top: var(--s-3); }
+.cmp-more > summary { font-size: 12px; color: var(--c-fg-mute); cursor: pointer;
+  padding: 4px 0; list-style: revert; }
+.cmp-more > summary::marker { color: var(--c-fg-mute); }

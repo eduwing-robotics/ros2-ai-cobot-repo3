@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<!-- user-scalable=no — 확대 제스처가 카메라 화면과 싸운다 -->
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>FR5 겹쳐 보기 (AR)</title>
+<!-- importmap 이 없다. Vite 가 모듈을 해결한다 —
+     three.core.js 를 빼먹어 화면이 조용히 죽는 부류의 버그가 사라졌다 (D17). -->
+</head>
+<body>
+
+<div id="boot">
+  <h1>FR5 겹쳐 보기</h1>
+  <p id="bootMsg">시작을 누르면 카메라 권한을 묻습니다.<br>
+    인쇄한 마커를 비추세요.</p>
+  <button id="bootBtn">시작</button>
+  <p id="bootNote" style="font-size:12px">모델 <span id="pct">0%</span> · 약 10MB</p>
+</div>
+
+<div id="hud"><div id="dot"></div><div id="status">준비 중…</div></div>
+
+<div id="bar">
+  <button id="bTest">① 상자만</button>
+  <button id="bRobot" class="on">② 로봇</button>
+  <button id="bPath">③ 궤적</button>
+  <button id="bZone">④ 안전 범위</button>
+  <button id="bPlay" disabled>▶ 재생</button>
+  <button id="bTune">⚙</button>
+</div>
+
+<!-- 조정판. 폰에서 콘솔을 못 보니 **크기·스무딩·진단을 화면에서** 다룬다. -->
+<div id="tune" hidden>
+  <label>마커 실측 크기
+    <span class="hint">인쇄물의 검은 사각형 한 변. 이 값이 틀리면 로봇 크기가 틀린다</span>
+    <!-- 하한이 40 이었는데 버거 상판에 들어가는 크기가 10~35mm 라 폰에서 못 넣었다.
+         실험이 재려는 구간을 UI 가 막고 있으면 안 된다. -->
+    <span class="ctl"><input type="range" id="mmR" min="10" max="400" step="1">
+      <input type="number" id="mmN" min="10" max="400" step="1"> mm</span>
+  </label>
+  <label>깜빡임 억제
+    <span class="hint">마커를 놓쳐도 유지하는 시간. 강하게 하면 부드럽지만 반응이 늦다</span>
+    <span class="ctl" id="smRow">
+      <button data-sm="없음">없음</button><button data-sm="약">약</button>
+      <button data-sm="중">중</button><button data-sm="강">강</button>
+    </span>
+  </label>
+  <!-- 실험 측정. **노트북을 오가지 않고 폰에서 한 판을 끝낸다.**
+       위치·마커를 바꾸는 것은 손으로 할 수밖에 없지만, 구간을 끊고 이름을 붙이고
+       결과를 남기는 것은 버튼 하나면 된다. URL 을 폰에서 고치는 것은 고통이다. -->
+  <label>실험 측정
+    <span class="hint">자리를 잡고 누른다. 30초 재는 동안 <b>움직이지 않는다</b></span>
+    <span class="ctl">
+      <button id="bMeasure">측정 30초</button>
+      <span id="mState" class="hint"></span>
+    </span>
+  </label>
+  <!-- 화면 녹화. 폰 내장 녹화와 달리 **버튼바가 안 찍히고** 카메라 영상과
+       겹침만 합쳐진다. 시연 영상·증거 캡처를 폰에서 바로 끝낸다. -->
+  <label>화면 녹화
+    <span class="hint">보이는 그대로 영상으로 남는다. 버튼·수치는 안 찍힌다. 3분이면 자동으로 멈춘다</span>
+    <span class="ctl">
+      <button id="bRec">● 녹화</button>
+      <span id="rState" class="hint"></span>
+    </span>
+  </label>
+  <label><span class="ctl">
+    <button id="bDiag">진단 수치 보기</button>
+    <button id="bReset">수치 초기화</button>
+  </span></label>
+  <pre id="diag" hidden></pre>
+</div>
+
+<button id="toggle" type="button" aria-label="화면 표시 숨기기" aria-pressed="false">⤢</button>
+
+<script type="module" src="/src/screens/ar.js"></script>
+</body>
+</html>

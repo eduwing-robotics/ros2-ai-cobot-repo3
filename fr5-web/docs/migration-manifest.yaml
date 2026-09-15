@@ -1,0 +1,136 @@
+version: 1
+name: fr5-web-post-2026-09-07-sync
+
+source:
+  repository: FR5Web local working copy
+  branch: feat/defense-line-palette
+  committed_head: e24901f
+  captured_window: "2026-09-11 17:36~17:43 +09:00"
+  state: dirty-working-tree
+
+target:
+  repository: eduwing-robotics/ros2-ai-cobot-repo3
+  branch: docs/fr5-evidence-readme
+  initial_import: f6d6620
+  upstream_tip_at_start: 7893655
+  pushed: false
+  deployed: false
+
+method:
+  kind: file-convergence
+  reason: >-
+    최초 반입본이 source commit 1905900과 당시 작업 트리 일부가 섞인 스냅샷이라
+    8ac8e07~e24901f을 그대로 재생하면 이미 반입된 변경을 되돌리거나 중복시킨다.
+    현재 원본과 대상을 파일 단위로 대조해 최종 내용만 옮겼다.
+  public_adaptations:
+    - 폴더 AGENTS.md는 대상의 README.md에 반영
+    - Claude 전용 cdp-harness 경로는 scripts/check/lib/cdp-harness.mjs로 유지
+    - HUD 검사 입력은 제외된 evidence 대신 test/fixtures/rgbd-aligned-color.jpg 사용
+    - 내부 호칭과 로컬 절대경로는 공개 저장소용 중립 표현으로 치환
+
+waves:
+  - id: W0-DOCS
+    status: verified
+    commit: 2b631aa
+    parity:
+      - id: DOC-001
+        feature: 실기 증거 중심 README, 타임라인, GIF·스크린샷
+      - id: DIA-001
+        feature: 시스템 구조와 S0~S4 다이어그램
+
+  - id: W1-CONTRACT
+    status: verified
+    commit: d654f26
+    parity:
+      - id: API-001
+        feature: RGB-D, 스캔 정지화면, 제안 승인, 공동 고스트 계약
+      - id: AUTO-001
+        feature: S0~S4 제한 자동 실행과 단계별 중단 계약
+      - id: AR-001
+        feature: 폰 AprilTag 내부 파라미터와 자세 추정 절차
+
+  - id: W2-BRIDGE
+    status: verified
+    commit: c59af47
+    parity:
+      - id: VIS-001
+        feature: 동기화 RGB-D와 거치대·총알 검출
+      - id: SAFE-001
+        feature: 스캔 프레임 저장, 제안·승인, 2초 공동 고스트 임대
+      - id: TB-001
+        feature: 최신 TurtleBot 정차·이동 설정
+
+  - id: W3-SURFACE
+    status: verified-local
+    commit: 56831fb
+    parity:
+      - id: AUTO-002
+        feature: S2 최대 4개 관측 자세·12회 촬영 자동 복구와 S4 HOLD
+      - id: TWIN-001
+        feature: 검출 총알, 파지 고스트, 손에 든 거치대의 트윈 표시
+      - id: AR-002
+        feature: 폰 태그 직접 검출·자세와 글로벌카메라 공동 고스트
+      - id: MAP-001
+        feature: factory-walk 연출 프리셋과 맵 편집기 표시
+
+impact_map:
+  axis: mixed
+  core_paths:
+    - FR5/bridge
+    - Vision/bridge
+    - FR5/src/features/live
+    - FR5/src/features/sim
+    - AR/src
+    - Dashboard/src/features/layout
+    - Shared/data
+    - Shared/view3d
+  companion_docs:
+    - docs/ref/contract/API-CONTRACT.md
+    - docs/ref/contract/VISION-CONTRACT.md
+    - docs/ref/contract/PROGRAM-CONTRACT.md
+    - docs/ref/contract/SHARED-CORE.md
+    - docs/ref/plan/AUTOMATIC-SEQUENCE-STAGE-GATES.md
+    - docs/ref/arch/IP-GLOBAL-WALK.md
+  naming_contracts:
+    - motionTarget
+    - visualGhost
+    - bulletsUser1Mm
+    - targetPx
+    - S0-S4
+
+verification:
+  - command: npm run build:ar && npm run build:dash && npm run build:fr5
+    result: pass
+  - command: bash scripts/check/fr5-unit.sh
+    result: pass-316
+  - command: bash scripts/check/cam-unit.sh
+    result: pass-35-plus-auxiliary
+  - command: bash scripts/check/layout.sh
+    result: pass
+  - command: node scripts/check/sim-contact.mjs
+    result: pass-11-of-11
+  - command: node scripts/check/sim-tab.mjs
+    result: pass-114-of-114
+  - command: node scripts/check/xr-web-verify.mjs
+    result: pass-94-of-94
+  - command: node scripts/check/fr5-web-verify.mjs
+    result: flaky-107-of-110-then-109-of-110
+  - command: bash scripts/check/all.sh --fast
+    result: fail-2-gates
+    failures:
+      - grasp-rank: fixture tableZMm 실측 없음
+      - sim-batch: 현재 작업영역·충돌체에서 프로그램 0/8 완주
+
+excluded:
+  - .claude and .codex-pptx harness state
+  - artifacts, dist, node_modules, caches
+  - 원본 전체 evidence와 research/status 작업 문서
+  - 로컬 호스트·드리프트·AMR 런타임 생성 설정
+  - Database 설명과 기능을 공개 개요에서 제외; 기존 코드 삭제는 별도 범위
+
+residual_risks:
+  - S2 자동 재탐색과 공동 고스트는 새 실기 배포·촬영 전
+  - FR5 전체 실렌더의 타이밍 민감 항목이 실행마다 다르게 실패
+  - 빠른 게이트의 scenario.sh가 line 20에서 blank command not found 경고를 냈지만 종료 코드는 0
+  - npm audit에서 transitive nanoid 1건 high 보고
+  - S5 이후 운반·놓기·반복 사이클은 완료 아님

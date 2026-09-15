@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FR5 3D — 그리퍼 정합</title>
+<!-- importmap 이 없다. Vite 가 모듈을 해결한다 —
+     three.core.js 를 빼먹어 화면이 조용히 죽는 부류의 버그가 사라졌다 (D17). -->
+</head>
+<body>
+<div id="view"></div>
+<div id="loading">모델 읽는 중… <span id="pct">0%</span></div>
+<button id="fold" type="button" hidden aria-label="패널 접기" aria-pressed="false">☰</button>
+
+<div id="panel" hidden>
+  <h1>그리퍼 정합</h1>
+  <p class="sub">손목 좌표축(빨강 X · 초록 Y · 파랑 Z)에 그리퍼 밑면을 맞춘다.
+    맞으면 <b>저장용 JSON</b>의 값을 <code>.env</code>에 넣고
+    <code>node scripts/build/config.mjs</code>로 굽는다.</p>
+
+  <fieldset>
+    <legend>위치 (mm)</legend>
+    <div class="row"><label>X</label><input type="range" id="px" min="-200" max="200" step="0.5"><input type="number" id="nx" step="0.5"></div>
+    <div class="row"><label>Y</label><input type="range" id="py" min="-200" max="200" step="0.5"><input type="number" id="ny" step="0.5"></div>
+    <div class="row"><label>Z</label><input type="range" id="pz" min="-200" max="300" step="0.5"><input type="number" id="nz" step="0.5"></div>
+  </fieldset>
+
+  <fieldset>
+    <legend>회전 (도)</legend>
+    <div class="row"><label>X</label><input type="range" id="rx" min="-180" max="180" step="15"><input type="number" id="mx" step="1"></div>
+    <div class="row"><label>Y</label><input type="range" id="ry" min="-180" max="180" step="15"><input type="number" id="my" step="1"></div>
+    <div class="row"><label>Z</label><input type="range" id="rz" min="-180" max="180" step="15"><input type="number" id="mz" step="1"></div>
+  </fieldset>
+
+  <fieldset>
+    <legend>보기</legend>
+    <button id="poseZero">영점 자세</button>
+    <button id="poseBent">굽힌 자세</button>
+    <button id="toggleAxes">좌표축 켜기/끄기</button>
+    <button id="toggleGrip">그리퍼 숨기기</button>
+  </fieldset>
+
+  <fieldset>
+    <legend>실측</legend>
+    <div id="stats">읽는 중…</div>
+  </fieldset>
+
+  <fieldset>
+    <legend>저장용 JSON</legend>
+    <button id="copy">복사</button>
+    <pre id="out"></pre>
+  </fieldset>
+</div>
+
+<script type="module" src="/src/screens/robot.js"></script>
+</body>
+</html>

@@ -1,0 +1,73 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 514" width="1280" height="514" font-family="'Pretendard','Apple SD Gothic Neo',system-ui,sans-serif">
+<!-- fr5:verified=2026-08-31 fr5:sources=docs/ref/product/USER-REQUIREMENTS.md|docs/ref/product/PRD.md|docs/ref/product/FEATURE-SPEC.md -->
+<rect width="1280" height="514" fill="#faf9f7"/>
+<text x="34" y="44" font-size="25" font-weight="700" fill="#1a1c1b">운영 시나리오</text>
+<text x="34" y="68" font-size="13" fill="#6b6b6b">화면에서 만든 숫자를 실물로 되돌리는 한 바퀴</text>
+<rect x="34.0" y="100.0" width="597.0" height="175" rx="2" fill="#ffffff" stroke="#e4e2df"/>
+<rect x="34.0" y="100.0" width="3.5" height="175" fill="#2f7d32"/>
+<text x="49.0" y="130" font-size="16" font-weight="700" fill="#1a1c1b">Scenario 1. 조립 과정을 화면으로 본다</text>
+<text x="616.0" y="130" font-size="12.5" text-anchor="end" fill="#2f7d32" font-weight="600">됨</text>
+<circle cx="58.0" cy="151" r="8.5" fill="#2f7d32" opacity="0.16"/>
+<text x="58.0" y="155" font-size="10.5" text-anchor="middle" fill="#1a1c1b">1</text>
+<text x="74.0" y="156" font-size="13" fill="#1a1c1b">사용자가 맵 편집기에서 조립 셀을 엽니다.</text>
+<circle cx="58.0" cy="172" r="8.5" fill="#2f7d32" opacity="0.16"/>
+<text x="58.0" y="176" font-size="10.5" text-anchor="middle" fill="#1a1c1b">2</text>
+<text x="74.0" y="177" font-size="13" fill="#1a1c1b">팔 둘이 리프터를 마주 보고, 탄두는 고정된 채 작업이 붙습니다.</text>
+<circle cx="58.0" cy="193" r="8.5" fill="#2f7d32" opacity="0.16"/>
+<text x="58.0" y="197" font-size="10.5" text-anchor="middle" fill="#1a1c1b">3</text>
+<text x="74.0" y="198" font-size="13" fill="#1a1c1b">타임라인을 흘리면 작업물이 라인을 따라 이동하고 탄두가 쪼개집니다.</text>
+<circle cx="58.0" cy="214" r="8.5" fill="#2f7d32" opacity="0.16"/>
+<text x="58.0" y="218" font-size="10.5" text-anchor="middle" fill="#1a1c1b">4</text>
+<text x="74.0" y="219" font-size="13" fill="#1a1c1b">탄두 1발이 끝나는 지점이 한 시퀀스입니다.</text>
+<circle cx="58.0" cy="235" r="8.5" fill="#2f7d32" opacity="0.16"/>
+<text x="58.0" y="239" font-size="10.5" text-anchor="middle" fill="#1a1c1b">5</text>
+<text x="74.0" y="240" font-size="13" fill="#1a1c1b">실물 로봇이 붙어 있으면 화면 속 로봇이 같은 자세로 따라 움직입니다.</text>
+<rect x="649.0" y="100.0" width="597.0" height="175" rx="2" fill="#ffffff" stroke="#e4e2df"/>
+<rect x="649.0" y="100.0" width="3.5" height="175" fill="#c6c6c6"/>
+<text x="664.0" y="130" font-size="16" font-weight="700" fill="#1a1c1b">Scenario 2. 배치를 바꿔 생산성을 견준다</text>
+<text x="1231.0" y="130" font-size="12.5" text-anchor="end" fill="#c6c6c6" font-weight="600">미착수</text>
+<circle cx="673.0" cy="151" r="8.5" fill="#c6c6c6" opacity="0.16"/>
+<text x="673.0" y="155" font-size="10.5" text-anchor="middle" fill="#1a1c1b">1</text>
+<text x="689.0" y="156" font-size="13" fill="#1a1c1b">사용자가 팔·작업대·AMR 경로를 옮겨 맵 A 를 저장합니다.</text>
+<circle cx="673.0" cy="172" r="8.5" fill="#c6c6c6" opacity="0.16"/>
+<text x="673.0" y="176" font-size="10.5" text-anchor="middle" fill="#1a1c1b">2</text>
+<text x="689.0" y="177" font-size="13" fill="#1a1c1b">도달 범위를 벗어난 스테이션은 그 자리에서 경고가 뜹니다.</text>
+<circle cx="673.0" cy="193" r="8.5" fill="#c6c6c6" opacity="0.16"/>
+<text x="673.0" y="197" font-size="10.5" text-anchor="middle" fill="#1a1c1b">3</text>
+<text x="689.0" y="198" font-size="13" fill="#1a1c1b">같은 방으로 맵 B 를 하나 더 만듭니다.</text>
+<circle cx="673.0" cy="214" r="8.5" fill="#c6c6c6" opacity="0.16"/>
+<text x="673.0" y="218" font-size="10.5" text-anchor="middle" fill="#1a1c1b">4</text>
+<text x="689.0" y="219" font-size="13" fill="#1a1c1b">두 맵의 시간당 처리량과 평균 시퀀스 타임을 나란히 놓습니다.</text>
+<circle cx="673.0" cy="235" r="8.5" fill="#c6c6c6" opacity="0.16"/>
+<text x="673.0" y="239" font-size="10.5" text-anchor="middle" fill="#1a1c1b">5</text>
+<text x="689.0" y="240" font-size="13" fill="#1a1c1b">화면이 어느 쪽이 몇 % 나은지 말하고, 값의 출처를 함께 표시합니다.</text>
+<rect x="34.0" y="293.0" width="597.0" height="175" rx="2" fill="#ffffff" stroke="#e4e2df"/>
+<rect x="34.0" y="293.0" width="3.5" height="175" fill="#b06d00"/>
+<text x="49.0" y="323" font-size="16" font-weight="700" fill="#1a1c1b">Scenario 3. 화면의 숫자를 실물로 되돌린다</text>
+<text x="616.0" y="323" font-size="12.5" text-anchor="end" fill="#b06d00" font-weight="600">부분</text>
+<circle cx="58.0" cy="344" r="8.5" fill="#b06d00" opacity="0.16"/>
+<text x="58.0" y="348" font-size="10.5" text-anchor="middle" fill="#1a1c1b">1</text>
+<text x="74.0" y="349" font-size="13" fill="#1a1c1b">고른 맵을 폰으로 실제 바닥에 배치해 통로와 작업대 충돌을 봅니다.</text>
+<circle cx="58.0" cy="365" r="8.5" fill="#b06d00" opacity="0.16"/>
+<text x="58.0" y="369" font-size="10.5" text-anchor="middle" fill="#1a1c1b">2</text>
+<text x="74.0" y="370" font-size="13" fill="#1a1c1b">실물 로봇으로 그 동작을 실행하고 결과를 기록에 남깁니다.</text>
+<circle cx="58.0" cy="386" r="8.5" fill="#b06d00" opacity="0.16"/>
+<text x="58.0" y="390" font-size="10.5" text-anchor="middle" fill="#1a1c1b">3</text>
+<text x="74.0" y="391" font-size="13" fill="#1a1c1b">궤적에 로봇 정체·도구·속도 상한이 함께 찍혀 비교 자격이 정해집니다.</text>
+<circle cx="58.0" cy="407" r="8.5" fill="#b06d00" opacity="0.16"/>
+<text x="58.0" y="411" font-size="10.5" text-anchor="middle" fill="#1a1c1b">4</text>
+<text x="74.0" y="412" font-size="13" fill="#1a1c1b">화면에서 날짜와 종류로 지난 시퀀스를 찾습니다.</text>
+<circle cx="58.0" cy="428" r="8.5" fill="#b06d00" opacity="0.16"/>
+<text x="58.0" y="432" font-size="10.5" text-anchor="middle" fill="#1a1c1b">5</text>
+<text x="74.0" y="433" font-size="13" fill="#1a1c1b">화면의 예측과 실물의 실측이 갈리면 그 차이가 다음 맵의 입력이 됩니다.</text>
+<rect x="1161" y="26" width="75" height="26" rx="2" fill="#c6c6c6" opacity="0.14"/>
+<rect x="1161" y="26" width="4" height="26" fill="#c6c6c6"/>
+<text x="1173" y="44" font-size="14" fill="#1a1c1b">미착수 1</text>
+<rect x="1087" y="26" width="64" height="26" rx="2" fill="#b06d00" opacity="0.14"/>
+<rect x="1087" y="26" width="4" height="26" fill="#b06d00"/>
+<text x="1099" y="44" font-size="14" fill="#1a1c1b">부분 1</text>
+<rect x="1024" y="26" width="53" height="26" rx="2" fill="#2f7d32" opacity="0.14"/>
+<rect x="1024" y="26" width="4" height="26" fill="#2f7d32"/>
+<text x="1036" y="44" font-size="14" fill="#1a1c1b">됨 1</text>
+<text x="34" y="498" font-size="12" fill="#6b6b6b">색은 오늘 되는 정도 — 시나리오 2 가 남은 본론이다</text>
+</svg>

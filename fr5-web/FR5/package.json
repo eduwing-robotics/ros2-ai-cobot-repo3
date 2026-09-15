@@ -1,0 +1,22 @@
+{
+  "name": "@fr5/fr5",
+  "private": true,
+  "version": "0.1.0",
+  "description": "FR5 웹 티칭 펜던트 — 조작·티칭·슬롯·경로·기록 (FR5-IMPLEMENTATION-PLAN.md)",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build"
+  },
+  "dependencies": {
+    "@fr5/shared": "*",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "three": "^0.185.0",
+    "urdf-loader": "^0.13.1"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^5.0.0",
+    "vite": "^8.0.0"
+  }
+}

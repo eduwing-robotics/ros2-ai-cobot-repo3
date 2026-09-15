@@ -1,0 +1,14 @@
+{
+  "name": "@fr5/sim",
+  "private": true,
+  "version": "0.1.0",
+  "description": "승인된 슬롯을 N벌로 증식해 재는 곳 — 장면 생성·배치 실행 (SIM-CONTRACT.md)",
+  "type": "module",
+  "scripts": {
+    "scene": "node scene/build-scene.mjs"
+  },
+  "dependencies": {
+    "@fr5/shared": "*",
+    "@mujoco/mujoco": "3.11.0"
+  }
+}

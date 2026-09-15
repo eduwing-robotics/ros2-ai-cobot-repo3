@@ -1,0 +1,12 @@
+{
+ "_무엇": "폰 정합 포스터 배치 — 사진(무늬)+AprilTag id40 한 장 · 인쇄 배율은 100mm 자로 확인",
+ "photoWidthMm": 190,
+ "photoHeightMm": 126.7,
+ "tagId": 40,
+ "tagSizeMm": 100,
+ "photoCenterToTagCenterMm": [
+  -0.0,
+  131.4
+ ],
+ "image": "probe.jpg"
+}

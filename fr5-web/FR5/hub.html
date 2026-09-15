@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="ko" data-theme="light">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>FR5Web — 고리</title>
+    <!-- 허브 — `scripts/dev/health.sh` 의 일곱 고리를 화면으로 (수렴 루프 2026-09-05 phase 3).
+         FR5 브리지가 `/hub.html` 로 서빙한다. **아무것도 안 고친다** — 빨간 칸에 처방을 글로 붙일 뿐.
+         Vercel(https) 에는 못 둔다 — LAN 의 평문 브리지를 https 페이지가 못 부른다(혼합 콘텐츠). -->
+    <link rel="stylesheet" href="/src/screens/hub.css" />
+  </head>
+  <body>
+    <header>
+      <h1>FR5Web 고리</h1>
+      <span class="sub">지금 뭐가 붙어 있나 — 10초마다 다시 잰다 · 읽기만 한다</span>
+      <nav class="links">
+        <a href="./">팔 조작 · 터틀봇 탭</a>
+        <a href="./ar/">AR 겹쳐 보기</a>
+        <a href="https://fr5dashboard.vercel.app">맵 편집기 (Vercel)</a>
+      </nav>
+    </header>
+    <main id="cells" data-t="hub-cells"></main>
+    <p class="foot" id="foot"></p>
+    <script type="module" src="/src/screens/hub.js"></script>
+  </body>
+</html>
