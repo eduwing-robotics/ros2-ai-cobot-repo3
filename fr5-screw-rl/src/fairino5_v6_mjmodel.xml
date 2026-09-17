@@ -1,0 +1,227 @@
+<mujoco model="fairino5_v6_robot">
+  <!-- meshdir 는 **이 XML 파일 위치 기준**이다. 절대경로를 쓰면 이 저장소를 받은
+       다른 사람 기계에서 씬이 안 뜬다 (2026-09-03 상대경로 전환). -->
+  <compiler angle="radian" meshdir="../meshes"/>
+
+  <asset>
+    <mesh name="base_link" content_type="model/stl" file="fairino5_v6/base_link.STL"/>
+    <mesh name="shoulder_link" content_type="model/stl" file="fairino5_v6/shoulder_link.STL"/>
+    <mesh name="upperarm_link" content_type="model/stl" file="fairino5_v6/upperarm_link.STL"/>
+    <mesh name="forearm_link" content_type="model/stl" file="fairino5_v6/forearm_link.STL"/>
+    <mesh name="wrist1_link" content_type="model/stl" file="fairino5_v6/wrist1_link.STL"/>
+    <mesh name="wrist2_link" content_type="model/stl" file="fairino5_v6/wrist2_link.STL"/>
+    <mesh name="wrist3_link" content_type="model/stl" file="fairino5_v6/wrist3_link.STL"/>
+    <!-- 실측 치수로 생성한 탄두/탄피 회전체 메시 (make_ammo_meshes.py).
+         MuJoCo 기본 도형에 원뿔이 없어 오지브를 원통 6개로 계단 근사하던 것을 대체. -->
+    <mesh name="bullet_mesh" content_type="model/stl" file="ammo/bullet.stl"/>
+    <mesh name="casing_mesh" content_type="model/stl" file="ammo/casing.stl"/>
+    <mesh name="fixture_mesh" content_type="model/stl" file="ammo/fixture.stl"/>
+    <!-- DH-Robotics 그리퍼. 원본 pgea_100_40.stl 에는 그리퍼 자체 조(jaw)가
+         포함돼 있어, 아래에서 따로 만든 가동 조와 겹쳐 "손 위에 손" 이 됐다.
+         (2026-09-01 실물 영상 대조로 발견)
+         원본을 툴축 기준으로 잘라 두 조각으로 나눴다. 원본 파일은 그대로 둔다.
+           pgea50_body.stl  검정 본체       툴축 ~ -47mm
+           pgea50_end.stl   은색 끝단부      -47 ~ -24mm  (실물에서 무도장 알루미늄)
+           잘라낸 조 스텁    -24 ~ -18mm     -> 가동 조가 대체 -->
+    <mesh name="pgea50_body" content_type="model/stl" file="gripper/pgea50_body.stl" scale="-0.001 0.001 0.001"/>
+    <mesh name="pgea50_end" content_type="model/stl" file="gripper/pgea50_end.stl" scale="-0.001 0.001 0.001"/>
+  </asset>
+
+  <contact>
+    <exclude body1="base_link" body2="shoulder_link"/>
+    <exclude body1="shoulder_link" body2="upperarm_link"/>
+    <exclude body1="upperarm_link" body2="forearm_link"/>
+    <exclude body1="forearm_link" body2="wrist1_link"/>
+    <exclude body1="wrist1_link" body2="wrist2_link"/>
+    <exclude body1="wrist2_link" body2="wrist3_link"/>
+    <exclude body1="wrist3_link" body2="finger_tip_right_link"/>
+    <exclude body1="wrist3_link" body2="finger_tip_left_link"/>
+    <!-- 탄피는 고정대의 **뚫린 구멍**에 3mm 꽂혀 있다. 고정대를 통짜 박스로
+         모델링해 구멍이 없으므로 상시 접촉이 잡힌다. 실제로는 정상이라 제외한다. -->
+    <exclude body1="casing" body2="bench"/>
+  </contact>
+
+  <!-- ══ 조명 ══ 2026-09-07 신설 ═════════════════════════════════════════
+       ⚠ 전에는 아무것도 없어서 MuJoCo 기본값으로 떴다 — **어둡고 회색으로 보였다.**
+         로봇 링크 색은 원래 rgba 0.898 0.918 0.929 (거의 흰색)인데 조명이 약해
+         회색으로 보인 것이다. 플릿 씬(fr5_multi_fleet_control)에는 같은 설정이
+         이미 들어 있었고, 1대 씬만 빠져 있어 둘의 색이 달랐다.
+       그림자도 끈다 — 탄두·탄피가 Ø9~10mm 라 팔 그림자가 그 위에 떨어지면 묻힌다. -->
+  <visual>
+    <headlight ambient="0.5 0.5 0.5" diffuse="0.45 0.45 0.45" specular="0.1 0.1 0.1"/>
+    <quality shadowsize="0"/>
+  </visual>
+
+  <worldbody>
+    <light pos="0 0 3" dir="0 0 -1" directional="true" castshadow="false"
+           diffuse="0.6 0.6 0.6"/>
+    <light pos="-2 -2 2" dir="0.5 0.5 -1" directional="true" castshadow="false"
+           diffuse="0.35 0.35 0.35"/>
+
+    <!-- ══ 작업대 · 받침판 · 고정대 ══ 2026-09-07 ═══════════════════════════
+         ⚠ **남은 불일치는 4.4mm 다** (2026-09-07. 그 전에는 19.4mm 였다).
+
+         **19.4 -> 4.4 로 줄인 근거 — IMG_4917.jpeg.**
+           그 사진은 탄두를 탄피에 얹고 티칭하던 순간이다. 거기서 **그리퍼 조 아랫면이
+           탄피 입구와 거의 같은 높이**이고, 탄두는 이미 나사산이 물려 탄피 안으로
+           들어가 있다. 그런데 캘리브레이션은 `TCP_TO_TIP = 13mm` 를 믿고
+           **"탄두 나사 선단이 탄피 입구에 얹혀 있다"** 고 계산했다. 선단은 입구가 아니라
+           입구보다 13mm 아래(탄피 안)에 있었다. 그 13mm 가 어긋남의 대부분이었다.
+           → 그래서 여기서는 **조 끝(tool0) 높이를 탄피 입구로** 잡는다.
+
+         지금 값:
+           탄피 입구  z = +61.6   = 티칭 자세의 조 끝(tool0) 높이
+           탄피 바닥  z =  +4.6   입구 - 전장 57mm [실측]
+           고정대     z = -19.4 ~ +9.6   두께 29mm [실측] · 탄피가 **5mm** 꽂힘 [실측]
+                                 구멍 깊이 15mm 안에 들어간다 (뚫고 나가지 않는다)
+           책상 윗면  z = -19.4   고정대가 여기 붙어 있다
+           받침판     z = -19.4 ~ 0  → 19.4mm.  **실측은 15.0mm 라 여기에 4.4mm 가 남는다.**
+
+         **남은 4.4mm 를 없애려면** — 탄두를 17% 로 물었을 때 **나사 선단이 조 아랫면보다
+         몇 mm 나오는지** 재라. 지금 모델은 13mm(TCP_TO_TIP)로 잡고 있는데, 실제로 그보다
+         작으면(예: 6mm) 남은 차이가 설명된다.
+           ⚠ 이 값은 `fr5_execute_policy` 가 실물 목표점을 만들 때도 쓴다. 그리고
+             `task_origin.json` 의 z 도 같은 13mm 가정으로 저장돼 있다 — **아직 안 고쳤다.**
+             시뮬만 먼저 맞춘 상태이므로, 실물에 쓰기 전에 재고 같이 고쳐라.
+
+         고정대 방향은 **티칭 자세의 그리퍼와 평행**하다(조가 열리는 방향이 월드 x 에서
+         -0.50°). 참고 씬의 19.055° 를 그대로 쓰면 화면에서 마름모로 보인다.
+         ⚠ 각도를 바꾸면 구멍 위치도 돌아가므로, **5번 구멍(국소 0,+28mm)이 탄피
+           자리에 오도록 중심을 다시 잡아야 한다.** make_fixture_mesh.py 의 구멍
+           순서는 index = i*3+j, 위치 ((i-1)*28, (j-1)*28) mm 다.
+
+         ⚠ 충돌은 책상·받침판·고정대 전부 켜져 있다.
+           구멍 원반은 고정대 윗면과 **거의 같은 높이**다(0.05mm 만 위). 더 내리면
+           고정대 박스에 가려 안 보이고, 더 올리면 혹처럼 튀어나온다. -->
+    <body name="bench">
+      <geom name="desk" type="box" pos="-0.150 -0.350 -0.041400" size="0.5000 0.4500 0.0150"
+            rgba="0.90 0.90 0.88 1"/>
+      <geom name="riser" type="box" pos="0 0 -0.013200" size="0.1300 0.1300 0.013200"
+            rgba="0.72 0.74 0.76 1"/>
+      <!-- 구멍이 **진짜로 뚫린** 메시다 (make_fixture_mesh.py 가 만든다).
+           Ø11 x 깊이 15mm, 3x3, 간격 28mm. 박스+어두운 원반으로는 구멍처럼
+           안 보여서 형상으로 팠다.
+           ⚠ MuJoCo 는 메시 충돌을 **볼록껍질**로 본다 — 충돌상으로는 여전히
+             통짜 박스이고 구멍이 없다. 보이기용이다. -->
+      <geom name="fixture" type="mesh" mesh="fixture_mesh" pos="-0.274264 -0.682798 -0.011900"
+            euler="0 0 -0.008727" rgba="0.90 0.84 0.62 1"/>
+      <!-- [2026-09-16] 고정대 색 0.93 0.91 0.80 → 0.90 0.84 0.62 (연베이지).
+           이전 값은 책상(0.90 0.90 0.88)과 거의 같아 **고정대가 책상에 녹아 보였고**
+           3x3 구멍도 식별되지 않았다. 책상 대비차 35.5 → 54.4 로 올렸다.
+           ⚠ 책상은 건드리지 않았다. 2026-09-08 에 책상을 어둡게(0.13) 바꿨다가
+             되돌린 적이 있다. 눈부심은 노출 문제였고 조명으로 해결했다
+             (record_screw_video.py headlight 0.32/0.58).
+           ⚠ 더 진하게(0.82 0.72 0.44) 가면 탄피 노란색과 가까워져 근접 영상에서
+             부품과 고정대가 헷갈린다. 여기서 멈춘다. -->
+    </body>
+    <body name="base_link">
+      <!-- mesh 그대로 시각+충돌 겸용 (MuJoCo가 자동으로 convex hull로 충돌 계산) -->
+      <geom type="mesh" rgba="0.89804 0.91765 0.92941 1" mesh="base_link"/>
+    </body>
+    
+    <!-- ══ 실측 기반 탄피(case) ══ 전장 57mm / 결합부 Ø10 외경·Ø5 내경 ══
+         MuJoCo 에 튜브 primitive 가 없어 결합부는 박스 12개 링으로 근사.
+         내경은 삽입 clearance 확보를 위해 Ø5.2 로 0.2mm 확장했다. -->
+    <!-- ══ 실측 기반 탄피(case) ══ 전장 57mm / 결합부 Ø10 외경·Ø5 내경 ══
+         회전체 메시라 결합부 구멍까지 실제 형상 그대로다. -->
+    <!-- [실측 FK 2026-09-07] 입구가 월드 (-274.0, -654.8, +48.6) mm 에 온다.
+         ⚠ 예전에는 (0,0,0.1) 즉 **로봇 베이스 바로 위 공중**에 떠 있었고, 그래서
+           selfcheck 가 casing 을 "씬 아티팩트" 로 제외해야 했다. 이제 아니다. -->
+    <!-- ⚠ [추정 2026-09-07] held_bullet = 0.274.
+         = 조 끝(tool0, 0.265) 아래로 **9mm**. 사람이 정한 파지 위치다 —
+           **조 아랫면이 탄두 나사산 시작(어깨, 선단에서 6mm)보다 3mm 위**를 잡는다.
+           6 + 3 = 9. 조가 Ø9 몸통(선단에서 6~13mm) 안쪽을 무는 셈이라 형상과 맞는다.
+         이전 값 13mm 는
+         IMG_4917 과 안 맞았다 — 그 사진에서 조 아랫면이 탄피 입구 높이이고 나사산이
+         이미 물려 있다. 6mm 면 나사부(6mm)가 딱 물린 상태가 된다.
+         **아직 자로 안 잰 값이다.** 탄두를 17% 로 물고 조 아랫면에서 나사 선단까지
+         재면 확정된다. 재고 나서 fr5_screw_assembly.TCP_TO_TIP 와 task_origin.json
+         (아직 13mm 가정으로 저장돼 있다) 을 같이 맞춰라. -->
+    <body name="casing" mocap="true" pos="-0.27402 -0.654799 0.026100">
+      <geom name="case_body" type="mesh" mesh="casing_mesh" pos="0 0 -0.0285"
+            rgba="0.83 0.65 0.22 1"/>
+      <site name="case_mouth" pos="0 0 0.02850" size="0.0008" rgba="0 1 0 1"/>
+    </body>
+
+    <body name="shoulder_link">
+      <inertial pos="5.0029e-07 -0.0040922 0.14629" quat="0.999588 0.0287044 7.54149e-06 -1.58789e-05" mass="4.3771" diaginertia="0.010731 0.0104154 0.00817191"/>
+      <joint name="j1" pos="0 0 0" axis="0 0 1" range="-3.0543 3.0543" actuatorfrcrange="-150 150" damping="3"/>
+      <geom type="mesh" rgba="0.89804 0.91765 0.92941 1" mesh="shoulder_link"/>
+
+      <body name="upperarm_link" pos="0 0 0.152" quat="0.707105 0.707108 0 0">
+        <inertial pos="-0.2125 -5.7643e-09 0.1346" quat="0.5 0.5 0.5 0.5" mass="14.458" diaginertia="0.4559 0.44974 0.028392"/>
+        <joint name="j2" pos="0 0 0" axis="0 0 1" range="-4.6251 1.4835" actuatorfrcrange="-150 150" damping="3"/>
+        <geom type="mesh" rgba="0.89804 0.91765 0.92941 1" mesh="upperarm_link"/>
+
+        <!-- j3 range 는 원본 URDF 가 ±2.8274rad(±162°) 였으나, FR5 공식 Soft Limit 은
+             ±150° 이고 Hard Limit 조차 ±152° 다(교육자료 1장 1-1 Working Range).
+             즉 URDF 값이 하드웨어 물리한계를 넘어서 있어 ±150° 로 교정했다. -->
+        <body name="forearm_link" pos="-0.425 0 0">
+          <inertial pos="-0.18793 -8.4503e-07 0.0066357" quat="0.510607 0.489172 0.489196 0.510568" mass="7.6737" diaginertia="0.16971 0.168834 0.00821541"/>
+          <joint name="j3" pos="0 0 0" axis="0 0 1" range="-2.6180 2.6180" actuatorfrcrange="-150 150" damping="2"/>
+          <geom type="mesh" rgba="0.89804 0.91765 0.92941 1" mesh="forearm_link"/>
+
+          <body name="wrist1_link" pos="-0.39501 0 0">
+            <inertial pos="4.98e-07 -0.003754 0.097155" quat="0.736149 0.676819 -6.33095e-05 7.15237e-05" mass="1.6266" diaginertia="0.00216 0.00199337 0.00154233"/>
+            <joint name="j4" pos="0 0 0" axis="0 0 1" range="-4.6251 1.4835" actuatorfrcrange="-28 28" damping="1"/>
+            <geom type="mesh" rgba="0.89804 0.91765 0.92941 1" mesh="wrist1_link"/>
+
+            <body name="wrist2_link" pos="0 0 0.1021" quat="0.707105 0.707108 0 0">
+              <inertial pos="-4.5588e-07 0.0038617 0.098257" quat="0.68712 0.726544 0.000128667 -0.000114125" mass="1.5812" diaginertia="0.0020612 0.00195889 0.00144611"/>
+              <joint name="j5" pos="0 0 0" axis="0 0 1" range="-3.0543 3.0543" actuatorfrcrange="-28 28" damping="0.8"/>
+              <geom type="mesh" rgba="0.89804 0.91765 0.92941 1" mesh="wrist2_link"/>
+
+              <body name="wrist3_link" pos="0 0 0.102" quat="0.707105 -0.707108 0 0">
+                <inertial pos="0.00323665 1.31717e-05 0.122907" quat="0.708817 0.0129839 0.012974 0.705154" mass="1.03348" diaginertia="0.00372857 0.00358794 0.000618966"/>
+                <joint name="j6" pos="0 0 0" axis="0 0 1" range="-3.0543 3.0543" actuatorfrcrange="-28 28" damping="0.5"/>
+                <geom type="mesh" rgba="0.89804 0.91765 0.92941 1" mesh="wrist3_link"/>
+                <geom size="0.032 0.005" pos="0 0 0.104" type="cylinder" rgba="0.1 0.1 0.1 1"/>
+                <geom pos="0.0028 -0.325639 0.18098" quat="0.707105 0.707108 0 0" type="mesh" rgba="0.1 0.1 0.1 1" mesh="pgea50_body"/>
+                <geom pos="0.0028 -0.325639 0.18098" quat="0.707105 0.707108 0 0" type="mesh" rgba="0.62 0.63 0.65 1" mesh="pgea50_end"/>
+                <!-- 실물 그리퍼 끝단 구성 (IMG_4649/4650/4694/4695 확인)
+                       검은 DH-Robotics 본체 → 은색 핑거팁 마운트 → 검은 손가락 2개
+                     체결 회전은 j6(손목)가 담당한다. 그리퍼 자체는 개폐만 한다. -->
+                  <!-- 실물 사진의 넓은 은색 바는 그리퍼 자체 끝단부다 (pgea50_end).
+                       예전에 따로 넣었던 gripper_end 상자는 메시 안에 묻힌
+                       팬텀 부품이라 제거했다. -->
+                  <site name="tool0" pos="0 0 0.265" size="0.0015" rgba="1 0 0 1"/>
+
+                <!-- ══ 그리퍼에 물린 탄두(bullet) ══ 전장 30mm / Ø9 / 나사부 Ø5×7mm ══
+                     파지 상태를 눈으로 확인하기 위한 시각 전용 바디(contype=0).
+                     quat 로 180° 뒤집어 나사부가 접근 방향(+z, 탄피 쪽)을 향한다.
+                     그리퍼 손가락 구간(z 0.247~0.265) 이 탄두 몸통을 물도록 배치. -->
+                <body name="held_bullet" pos="0 0 0.274" quat="0 1 0 0">
+                  <geom name="bullet" type="mesh" mesh="bullet_mesh"
+                        rgba="0.45 0.28 0.26 1" contype="0" conaffinity="0"/>
+                </body>
+                <!-- ══ 그리퍼 조 + 커스텀 핑거 ══════════════════════════════════
+                     은색 조(구멍 3개 뚫린 부분) — 도면(9장 Technical Drawings) 좌측면도
+                     실측. 그 뷰는 세로가 73.80(조 이동 방향 x), 가로가 29(y) 이다.
+                       16.50 (x, 조 이동 방향)  x  16.00 (y)  x  6.00 (z, 높이)
+                       스트로크 MAX 40.80 ~ MIN 0.80mm  -> 편측 20.00mm
+                       body x = 40.80/2 + 16.50/2 = 28.65mm
+                     납작한 사각형이다. 이전에 6.00 자리에 16.50 을 넣어
+                     조가 16mm 나 길게 튀어나와 있었다 (2026-09-01 실물 대조로 발견).
+
+                     검정 고무 핑거는 커스텀 부품이라 도면에 없다.
+                       15 x 15 x 18mm  [교육자료 12장 URDF box size + 길이 18 실측]
+                     조 아래에 붙어 z 0.247~0.265 (선단이 tool0) 구간을 차지하고,
+                     안쪽면은 조 안쪽면과 맞춘다 (x 로 0.75mm 바깥쪽에 배치). -->
+                <body name="finger_tip_right_link" pos="0.02865 0 0.241">
+                  <joint name="finger_right_joint" pos="0 0 0" axis="-1 0 0" type="slide" range="0 0.020" actuatorfrcrange="-20 20" damping="0.2"/>
+                  <geom name="jaw_right" size="0.00825 0.008 0.003" pos="0 0 0.003" type="box" rgba="0.62 0.63 0.65 1"/>
+                  <geom name="finger_right" size="0.0075 0.0075 0.009" pos="-0.00075 0 0.015" type="box" rgba="0.1 0.1 0.1 1"/>
+                </body>
+                <body name="finger_tip_left_link" pos="-0.02865 0 0.241">
+                  <joint name="finger_left_joint" pos="0 0 0" axis="1 0 0" type="slide" range="0 0.020" actuatorfrcrange="-20 20" damping="0.2"/>
+                  <geom name="jaw_left" size="0.00825 0.008 0.003" pos="0 0 0.003" type="box" rgba="0.62 0.63 0.65 1"/>
+                  <geom name="finger_left" size="0.0075 0.0075 0.009" pos="0.00075 0 0.015" type="box" rgba="0.1 0.1 0.1 1"/>
+                </body>
+              </body>
+            </body>
+          </body>
+        </body>
+      </body>
+    </body>
+  </worldbody>
+</mujoco>
