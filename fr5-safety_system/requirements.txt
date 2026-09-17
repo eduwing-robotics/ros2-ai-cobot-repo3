@@ -1,0 +1,7 @@
+# AI 자율안전관리 — 환경(온·습도) 제어 시스템
+#
+# 설치:  ../../bin/pip install -r requirements.txt
+#
+paho-mqtt>=2.1.0    # MQTT 클라이언트 — 모든 모듈이 쓴다
+amqtt>=0.12.0       # 순수 파이썬 MQTT 브로커. sudo 없이 브로커를 띄울 때만 필요.
+                    #   mosquitto 를 쓸 거면 이 줄은 없어도 된다.

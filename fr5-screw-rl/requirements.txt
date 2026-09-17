@@ -1,0 +1,10 @@
+# FR5 나사 체결 강화학습
+#   python3 -m venv .venv && source .venv/bin/activate
+#   pip install -r requirements.txt
+mujoco>=3.0
+gymnasium>=0.29
+stable-baselines3>=2.0
+numpy
+imageio
+imageio-ffmpeg        # 영상 녹화 (record_screw_video.py)
+optuna                # 하이퍼파라미터 탐색 (tune_screw_ppo.py) — 선택

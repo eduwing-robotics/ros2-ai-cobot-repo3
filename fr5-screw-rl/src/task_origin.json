@@ -1,0 +1,16 @@
+{
+  "origin_mm": [
+    -274.02,
+    -654.799,
+    -79.902
+  ],
+  "measured": true,
+  "method": "robot-joints+FK(bullet)+sdk",
+  "note": "관절각+FK 방식 — 로봇 TCP(toolcoord) 설정과 무관. 읽기는 SDK 직결(20003)",
+  "saved_at": "2026-09-07 10:42:05",
+  "local_frame": {
+    "casing_center_z_m": 0.1,
+    "mouth_z_m": 0.1285,
+    "tcp_to_tip_m": 0.013
+  }
+}
