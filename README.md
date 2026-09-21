@@ -147,12 +147,12 @@ TurtleBot3가 부품을 조립 위치로 운반하면 FR5가 SAM3 비전으로 �
 
 ```text
 .
-├── fr5-web/                             # FR5 웹 관제 · 디지털 트윈 · AR/XR · TurtleBot/카메라 브리지 · DB
+├── fr5-web/                             # AR : FR5 웹 관제 · 디지털 트윈 · AR/XR · TurtleBot/카메라 브리지 · DB
 ├── vision-pick-and-place/sam3/          # SAM3 비주얼 서보잉 탄피 · 탄두 Pick & Place (FR5 + D435 + ROS 2)
 ├── sam3-realsense/                      # SAM 3.1 텍스트 프롬프트 분할을 RealSense 프레임에 돌리는 테스트
 ├── fr5-screw-rl/                        # 탄두–탄피 나사 체결 PPO 강화학습 환경 · 학습된 정책 · 실기 실행
 ├── fr5-safety_system/                   # 가상 센서 기반 온 · 습도 제어 폐루프, MQTT 상태 발행
-├── docs/                                # FR5 통합 기능 · 증거 타임라인
+├── docs/                                # AR : FR5 통합 기능 · 증거 타임라인
 └── assets/                              # README용 아키텍처 · 다이어그램 · 공정 · 영상 이미지
 ```
 
