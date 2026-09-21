@@ -7,7 +7,7 @@
 FAIRINO FR5 협동로봇과 TurtleBot3가 부품 운반 → 비전 기반 Pick & Place → 강화학습 나사 체결 → 모방학습 완제품 이동 → 완제품 운반·적재까지 한 공정으로 수행하고, AR · 디지털 트윈 · 온·습도 안전관리 · 재고 DB가 이를 관제하는 스마트 팩토리 프로젝트입니다.
 
 
-<a href="https://youtu.be/"><img src="assets/video/promo-thumb.jpg" alt="프로젝트 소개 영상 보기 (YouTube)" width="100%" /></a>
+https://github.com/user-attachments/assets/10ba5a26-def8-453d-99c1-f996dac514ba
 
 
 ## 1. 팀 구성 및 역할
