@@ -123,7 +123,7 @@ TurtleBot3가 부품을 조립 위치로 운반하면 FR5가 SAM3 비전으로 �
 
 <img src="assets/sequence/scene1.png" alt="Scenario 1 시퀀스 다이어그램" width="100%" />
 
-### Scenario 2. 위험 상황 예측 (온 · 습도 기반 결로 예방)
+### Scenario 2. 환경 제어 시스템 (온 · 습도 기반 결로 예방)
 
 <img src="assets/sequence/scene2.png" alt="Scenario 2 시퀀스 다이어그램" width="100%" />
 
@@ -141,7 +141,7 @@ TurtleBot3가 부품을 조립 위치로 운반하면 FR5가 SAM3 비전으로 �
 
 <img src="assets/state/scene1-process.png" alt="공정 기본 사이클 상태도" width="100%" />
 
-### Scenario 2. 위험 상황 예측 (온 · 습도 기반 결로 예방)
+### Scenario 2. 환경 제어 시스템 (온 · 습도 기반 결로 예방)
 
 <img src="assets/state/scene2-safety.png" alt="온 · 습도 안전관리 상태도" width="100%" />
 
