@@ -137,13 +137,21 @@ TurtleBot3가 부품을 조립 위치로 운반하면 FR5가 SAM3 비전으로 �
 
 ## 9. 상태 다이어그램
 
-<img src="assets/state/state-process.png" alt="공정 기본 사이클 상태도" width="100%" />
+### Scenario 1. 공정 기본 사이클
 
-<img src="assets/state/state-safety.png" alt="온 · 습도 안전관리 상태도" width="100%" />
+<img src="assets/state/scene1-process.png" alt="공정 기본 사이클 상태도" width="100%" />
 
-<img src="assets/state/state-inventory.png" alt="재고 동기화 상태도" width="100%" />
+### Scenario 2. 위험 상황 예측 (온 · 습도 기반 결로 예방)
 
-<img src="assets/state/state-estop.png" alt="긴급정지 상태도" width="100%" />
+<img src="assets/state/scene2-safety.png" alt="온 · 습도 안전관리 상태도" width="100%" />
+
+### Scenario 3. 시뮬레이션 · 현실 재고 동기화
+
+<img src="assets/state/scene3-inventory.png" alt="재고 동기화 상태도" width="100%" />
+
+### Scenario 4. 긴급정지
+
+<img src="assets/state/scene4-estop.png" alt="긴급정지 상태도" width="100%" />
 
 ## 10. 작업장 구성과 공정 흐름
 
