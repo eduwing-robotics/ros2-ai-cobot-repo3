@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>Scenario #3</title>
+<style>
+  body { margin:0; padding:24px; background:#f5f5f5; font-family: 'Malgun Gothic','Apple SD Gothic Neo','Noto Sans KR',sans-serif; }
+  .frame { background:white; max-width:1105.0px; margin:0 auto; padding:20px; box-shadow:0 1px 4px rgba(0,0,0,0.15); }
+  svg { display:block; width:100%; height:auto; }
+</style>
+</head>
+<body>
+<div class="frame">
+<svg viewBox="0 0 1065.0 1167" xmlns="http://www.w3.org/2000/svg">
+<rect x="0" y="0" width="1065.0" height="1167" fill="white"/>
+<text x="40" y="40" font-family="Malgun Gothic, Apple SD Gothic Neo, Noto Sans KR, sans-serif" font-size="22" font-weight="bold" fill="black">Scenario #3 &#8212; 시뮬레이션-현실 재고 동기화</text>
+<g transform="translate(0,20)">
+<line x1="920" y1="136" x2="920" y2="1087" stroke="#888" stroke-width="1.3" stroke-dasharray="4,3"/>
+<line x1="670" y1="136" x2="670" y2="1087" stroke="#888" stroke-width="1.3" stroke-dasharray="4,3"/>
+<line x1="420" y1="136" x2="420" y2="1087" stroke="#888" stroke-width="1.3" stroke-dasharray="4,3"/>
+<line x1="170" y1="136" x2="170" y2="1087" stroke="#888" stroke-width="1.3" stroke-dasharray="4,3"/>
+<rect x="85.0" y="90" width="170" height="46" rx="6" ry="6" fill="#1baf7a" stroke="rgba(0,0,0,0.15)" stroke-width="1"/>
+<text font-family="Malgun Gothic, Apple SD Gothic Neo, Noto Sans KR, sans-serif" font-size="13" font-weight="bold" fill="white" text-anchor="middle"><tspan x="170" y="117.5">Database</tspan></text>
+<rect x="335.0" y="90" width="170" height="46" rx="6" ry="6" fill="#2a78d6" stroke="rgba(0,0,0,0.15)" stroke-width="1"/>
+<text font-family="Malgun Gothic, Apple SD Gothic Neo, Noto Sans KR, sans-serif" font-size="13" font-weight="bold" fill="white" text-anchor="middle"><tspan x="420" y="108.5">Main Server</tspan><tspan x="420" y="126.5">(공정 관제)</tspan></text>
+<rect x="585.0" y="90" width="170" height="46" rx="6" ry="6" fill="#4a3aa7" stroke="rgba(0,0,0,0.15)" stroke-width="1"/>
+<text font-family="Malgun Gothic, Apple SD Gothic Neo, Noto Sans KR, sans-serif" font-size="13" font-weight="bold" fill="white" text-anchor="middle"><tspan x="670" y="108.5">시뮬레이션 환경</tspan><tspan x="670" y="126.5">(디지털 트윈)</tspan></text>
+<rect x="835.0" y="90" width="170" height="46" rx="6" ry="6" fill="#eb6834" stroke="rgba(0,0,0,0.15)" stroke-width="1"/>
+<text font-family="Malgun Gothic, Apple SD Gothic Neo, Noto Sans KR, sans-serif" font-size="13" font-weight="bold" fill="white" text-anchor="middle"><tspan x="920" y="108.5">현장 설비</tspan><tspan x="920" y="126.5">(터틀봇·로봇팔)</tspan></text>
+<line x1="60" y1="170" x2="1005.0" y2="170" stroke="#999" stroke-width="1" stroke-dasharray="2,3"/>
+<text font-family="Malgun Gothic, Apple SD Gothic Neo, Noto Sans KR, sans-serif" font-size="12.5" font-weight="bold" fill="#666" text-anchor="start"><tspan x="70" y="164.4">A. 현실 → 시뮬레이션 : 실제 재고 변화 반영</tspan></text>
+<rect x="414.0" y="194.0" width="12" height="869.0" fill="#2a78d6" fill-opacity="0.28" stroke="#2a78d6" stroke-width="1.4"/>
+<line x1="920" y1="200" x2="420" y2="200" stroke="black" stroke-width="1.6"/><polygon points="420,200 432,194 432,206" fill="black"/>
+<rect x="488.0" y="180" width="364.0" height="18" fill="white"/>
+<text font-family="Malgun Gothic, Apple SD Gothic Neo, Noto Sans KR, sans-serif" font-size="12.5" font-weight="normal" fill="black" text-anchor="middle"><tspan x="670.0" y="194.4">실제 재고 변화 통지 (Pick&amp;Place / 운반 완료)</tspan></text>
+<rect x="664.0" y="252.0" width="12" height="144.0" fill="#4a3aa7" fill-opacity="0.28" stroke="#4a3aa7" stroke-width="1.4"/>
+<line x1="420" y1="258" x2="670" y2="258" stroke="black" stroke-width="1.6"/><polygon points="670,258 658,252 658,264" fill="black"/>
+<rect x="456.5" y="238" width="177.0" height="18" fill="white"/>
+<text font-family="Malgun Gothic, Apple SD Gothic Neo, Noto Sans KR, sans-serif" font-size="12.5" font-weight="normal" fill="black" text-anchor="middle"><tspan x="545.0" y="252.4">현실 재고 변화 동기화 요청</tspan></text>
+<path d="M 670,316 C 748,316 748,342 670,342" fill="none" stroke="black" stroke-width="1.6"/>
+<polygon points="670,342 680,336 680,348" fill="black"/>
+<text font-family="Malgun Gothic, Apple SD Gothic Neo, Noto Sans KR, sans-serif" font-size="12.5" font-weight="normal" fill="black" text-anchor="start"><tspan x="756" y="333.4">디지털 트윈 재고 갱신</tspan></text>
+<line x1="670" y1="390" x2="420" y2="390" stroke="black" stroke-width="1.6" stroke-dasharray="6,4"/><polygon points="420,390 432,384 432,396" fill="black"/>
+<rect x="489.5" y="370" width="111.0" height="18" fill="white"/>
+<text font-family="Malgun Gothic, Apple SD Gothic Neo, Noto Sans KR, sans-serif" font-size="12.5" font-weight="normal" fill="black" text-anchor="middle"><tspan x="545.0" y="384.4">동기화 완료 응답</tspan></text>
+<line x1="60" y1="442" x2="1005.0" y2="442" stroke="#999" stroke-width="1" stroke-dasharray="2,3"/>
+<text font-family="Malgun Gothic, Apple SD Gothic Neo, Noto Sans KR, sans-serif" font-size="12.5" font-weight="bold" fill="#666" text-anchor="start"><tspan x="70" y="436.4">B. 시뮬레이션 → DB : 주기적 재고현황 반영</tspan></text>
+<path d="M 420,472 C 498,472 498,498 420,498" fill="none" stroke="black" stroke-width="1.6"/>
+<polygon points="420,498 430,492 430,504" fill="black"/>
+<text font-family="Malgun Gothic, Apple SD Gothic Neo, Noto Sans KR, sans-serif" font-size="12.5" font-weight="normal" fill="black" text-anchor="start"><tspan x="506" y="489.4">동기화 주기 도달 확인</tspan></text>
+<rect x="664.0" y="540.0" width="12" height="70.0" fill="#4a3aa7" fill-opacity="0.28" stroke="#4a3aa7" stroke-width="1.4"/>
+<line x1="420" y1="546" x2="670" y2="546" stroke="black" stroke-width="1.6"/><polygon points="670,546 658,540 658,552" fill="black"/>
+<rect x="456.5" y="526" width="177.0" height="18" fill="white"/>
+<text font-family="Malgun Gothic, Apple SD Gothic Neo, Noto Sans KR, sans-serif" font-size="12.5" font-weight="normal" fill="black" text-anchor="middle"><tspan x="545.0" y="540.4">재고·작업 데이터 조회 요청</tspan></text>
+<line x1="670" y1="604" x2="420" y2="604" stroke="black" stroke-width="1.6" stroke-dasharray="6,4"/><polygon points="420,604 432,598 432,610" fill="black"/>
+<rect x="473.0" y="584" width="144.0" height="18" fill="white"/>
+<text font-family="Malgun Gothic, Apple SD Gothic Neo, Noto Sans KR, sans-serif" font-size="12.5" font-weight="normal" fill="black" text-anchor="middle"><tspan x="545.0" y="598.4">재고·작업 데이터 응답</tspan></text>
+<path d="M 420,662 C 498,662 498,688 420,688" fill="none" stroke="black" stroke-width="1.6"/>
+<polygon points="420,688 430,682 430,694" fill="black"/>
+<text font-family="Malgun Gothic, Apple SD Gothic Neo, Noto Sans KR, sans-serif" font-size="12.5" font-weight="normal" fill="black" text-anchor="start"><tspan x="506" y="679.4">현재 공정 단계 판단</tspan></text>
+<rect x="164.0" y="760.0" width="12" height="70.0" fill="#1baf7a" fill-opacity="0.28" stroke="#1baf7a" stroke-width="1.4"/>
+<line x1="420" y1="766" x2="170" y2="766" stroke="black" stroke-width="1.6"/><polygon points="170,766 182,760 182,772" fill="black"/>
+<rect x="206.5" y="746" width="177.0" height="18" fill="white"/>
+<text font-family="Malgun Gothic, Apple SD Gothic Neo, Noto Sans KR, sans-serif" font-size="12.5" font-weight="normal" fill="black" text-anchor="middle"><tspan x="295.0" y="760.4">재고현황 = 부품 수량 반영</tspan></text>
+<rect x="164.0" y="844.0" width="12" height="70.0" fill="#1baf7a" fill-opacity="0.28" stroke="#1baf7a" stroke-width="1.4"/>
+<line x1="420" y1="850" x2="170" y2="850" stroke="black" stroke-width="1.6"/><polygon points="170,850 182,844 182,856" fill="black"/>
+<rect x="212.0" y="830" width="166.0" height="18" fill="white"/>
+<text font-family="Malgun Gothic, Apple SD Gothic Neo, Noto Sans KR, sans-serif" font-size="12.5" font-weight="normal" fill="black" text-anchor="middle"><tspan x="295.0" y="844.4">재고현황 = 제품수량 반영</tspan></text>
+<rect x="75" y="722" width="440" height="182" fill="none" stroke="#444" stroke-width="1.4"/>
+<polygon points="75,722 121,722 121,738 113,746 75,746" fill="#eee" stroke="#444" stroke-width="1.2"/>
+<text font-family="Malgun Gothic, Apple SD Gothic Neo, Noto Sans KR, sans-serif" font-size="12" font-weight="bold" fill="black" text-anchor="middle"><tspan x="98.0" y="738.2">alt</tspan></text>
+<rect x="129.0" y="723.0" width="120.0" height="18" fill="#eee"/>
+<text font-family="Malgun Gothic, Apple SD Gothic Neo, Noto Sans KR, sans-serif" font-size="12.5" font-weight="bold" fill="black" text-anchor="start"><tspan x="133" y="738.4">[부품 운반·조립]</tspan></text>
+<line x1="75" y1="808" x2="515" y2="808" stroke="#444" stroke-width="1.2" stroke-dasharray="6,4"/>
+<rect x="81.0" y="814.0" width="98.0" height="18" fill="#eee"/>
+<text font-family="Malgun Gothic, Apple SD Gothic Neo, Noto Sans KR, sans-serif" font-size="12.5" font-weight="bold" fill="black" text-anchor="start"><tspan x="85" y="828.4">[완제품 운반]</tspan></text>
+<path d="M 420,983 C 498,983 498,1009 420,1009" fill="none" stroke="black" stroke-width="1.6"/>
+<polygon points="420,1009 430,1003 430,1015" fill="black"/>
+<text font-family="Malgun Gothic, Apple SD Gothic Neo, Noto Sans KR, sans-serif" font-size="12.5" font-weight="normal" fill="black" text-anchor="start"><tspan x="506" y="1000.4">대기 상태로 복귀 (다음 동기화 주기까지)</tspan></text>
+</g>
+</svg>
+</div>
+</body>
+</html>

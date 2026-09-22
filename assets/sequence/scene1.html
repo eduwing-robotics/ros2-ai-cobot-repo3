@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>Scenario #1</title>
+<style>
+  body { margin:0; padding:24px; background:#f5f5f5; font-family: 'Malgun Gothic','Apple SD Gothic Neo','Noto Sans KR',sans-serif; }
+  .frame { background:white; max-width:1485.0px; margin:0 auto; padding:20px; box-shadow:0 1px 4px rgba(0,0,0,0.15); }
+  svg { display:block; width:100%; height:auto; }
+</style>
+</head>
+<body>
+<div class="frame">
+<svg viewBox="0 0 1445.0 1822" xmlns="http://www.w3.org/2000/svg">
+<rect x="0" y="0" width="1445.0" height="1822" fill="white"/>
+<text x="40" y="40" font-family="Malgun Gothic, Apple SD Gothic Neo, Noto Sans KR, sans-serif" font-size="22" font-weight="bold" fill="black">Scenario #1 &#8212; 공정 기본 사이클 ( 하단 #4 긴급정지 참고 )</text>
+<text x="40" y="62" font-family="Malgun Gothic, Apple SD Gothic Neo, Noto Sans KR, sans-serif" font-size="12.5" fill="#555" font-style="italic">※ 긴급정지는 Scenario #4 참고</text>
+<g transform="translate(0,20)">
+<line x1="1310" y1="136" x2="1310" y2="1742" stroke="#888" stroke-width="1.3" stroke-dasharray="4,3"/>
+<line x1="1115" y1="136" x2="1115" y2="1742" stroke="#888" stroke-width="1.3" stroke-dasharray="4,3"/>
+<line x1="920" y1="136" x2="920" y2="1742" stroke="#888" stroke-width="1.3" stroke-dasharray="4,3"/>
+<line x1="725" y1="136" x2="725" y2="1742" stroke="#888" stroke-width="1.3" stroke-dasharray="4,3"/>
+<line x1="530" y1="136" x2="530" y2="1742" stroke="#888" stroke-width="1.3" stroke-dasharray="4,3"/>
+<line x1="335" y1="136" x2="335" y2="1742" stroke="#888" stroke-width="1.3" stroke-dasharray="4,3"/>
+<line x1="140" y1="136" x2="140" y2="1742" stroke="#888" stroke-width="1.3" stroke-dasharray="4,3"/>
+<rect x="65.0" y="90" width="150" height="46" rx="6" ry="6" fill="#eb6834" stroke="rgba(0,0,0,0.15)" stroke-width="1"/>
+<text font-family="Malgun Gothic, Apple SD Gothic Neo, Noto Sans KR, sans-serif" font-size="13" font-weight="bold" fill="white" text-anchor="middle"><tspan x="140" y="117.5">MES / 스케줄러</tspan></text>
+<rect x="260.0" y="90" width="150" height="46" rx="6" ry="6" fill="#eda100" stroke="rgba(0,0,0,0.15)" stroke-width="1"/>
+<text font-family="Malgun Gothic, Apple SD Gothic Neo, Noto Sans KR, sans-serif" font-size="13" font-weight="bold" fill="white" text-anchor="middle"><tspan x="335" y="108.5">터틀봇</tspan><tspan x="335" y="126.5">(부품·완제품 운반)</tspan></text>
+<rect x="455.0" y="90" width="150" height="46" rx="6" ry="6" fill="#2a78d6" stroke="rgba(0,0,0,0.15)" stroke-width="1"/>
+<text font-family="Malgun Gothic, Apple SD Gothic Neo, Noto Sans KR, sans-serif" font-size="13" font-weight="bold" fill="white" text-anchor="middle"><tspan x="530" y="108.5">Main Server</tspan><tspan x="530" y="126.5">(공정 관제)</tspan></text>
+<rect x="650.0" y="90" width="150" height="46" rx="6" ry="6" fill="#e87ba4" stroke="rgba(0,0,0,0.15)" stroke-width="1"/>
+<text font-family="Malgun Gothic, Apple SD Gothic Neo, Noto Sans KR, sans-serif" font-size="13" font-weight="bold" fill="white" text-anchor="middle"><tspan x="725" y="108.5">조립 로봇</tspan><tspan x="725" y="126.5">(FR5)</tspan></text>
+<rect x="845.0" y="90" width="150" height="46" rx="6" ry="6" fill="#008300" stroke="rgba(0,0,0,0.15)" stroke-width="1"/>
+<text font-family="Malgun Gothic, Apple SD Gothic Neo, Noto Sans KR, sans-serif" font-size="13" font-weight="bold" fill="white" text-anchor="middle"><tspan x="920" y="117.5">포장 로봇</tspan></text>
+<rect x="1040.0" y="90" width="150" height="46" rx="6" ry="6" fill="#e34948" stroke="rgba(0,0,0,0.15)" stroke-width="1"/>
+<text font-family="Malgun Gothic, Apple SD Gothic Neo, Noto Sans KR, sans-serif" font-size="13" font-weight="bold" fill="white" text-anchor="middle"><tspan x="1115" y="117.5">적재 로봇</tspan></text>
+<rect x="1235.0" y="90" width="150" height="46" rx="6" ry="6" fill="#1baf7a" stroke="rgba(0,0,0,0.15)" stroke-width="1"/>
+<text font-family="Malgun Gothic, Apple SD Gothic Neo, Noto Sans KR, sans-serif" font-size="13" font-weight="bold" fill="white" text-anchor="middle"><tspan x="1310" y="117.5">Database</tspan></text>
+<rect x="524.0" y="170.0" width="12" height="1548.0" fill="#2a78d6" fill-opacity="0.28" stroke="#2a78d6" stroke-width="1.4"/>
+<line x1="140" y1="176" x2="530" y2="176" stroke="black" stroke-width="1.6"/><polygon points="530,176 518,170 518,182" fill="black"/>
+<rect x="268.5" y="156" width="133.0" height="18" fill="white"/>
+<text font-family="Malgun Gothic, Apple SD Gothic Neo, Noto Sans KR, sans-serif" font-size="12.5" font-weight="normal" fill="black" text-anchor="middle"><tspan x="335.0" y="170.4">운반 임무 할당 요청</tspan></text>
+<rect x="329.0" y="228.0" width="12" height="144.0" fill="#eda100" fill-opacity="0.28" stroke="#eda100" stroke-width="1.4"/>
+<line x1="530" y1="234" x2="335" y2="234" stroke="black" stroke-width="1.6"/><polygon points="335,234 347,228 347,240" fill="black"/>
+<rect x="366.0" y="214" width="133.0" height="18" fill="white"/>
+<text font-family="Malgun Gothic, Apple SD Gothic Neo, Noto Sans KR, sans-serif" font-size="12.5" font-weight="normal" fill="black" text-anchor="middle"><tspan x="432.5" y="228.4">부품 운반 임무 전송</tspan></text>
+<path d="M 335,292 C 413,292 413,318 335,318" fill="none" stroke="black" stroke-width="1.6"/>
+<polygon points="335,318 345,312 345,324" fill="black"/>
+<text font-family="Malgun Gothic, Apple SD Gothic Neo, Noto Sans KR, sans-serif" font-size="12.5" font-weight="normal" fill="black" text-anchor="start"><tspan x="421" y="309.4">부품 운반 시작 (터틀봇 이동)</tspan></text>
+<line x1="335" y1="366" x2="530" y2="366" stroke="black" stroke-width="1.6"/><polygon points="530,366 518,360 518,372" fill="black"/>
+<rect x="366.0" y="346" width="133.0" height="18" fill="white"/>
+<text font-family="Malgun Gothic, Apple SD Gothic Neo, Noto Sans KR, sans-serif" font-size="12.5" font-weight="normal" fill="black" text-anchor="middle"><tspan x="432.5" y="360.4">부품 운반 도착 보고</tspan></text>
+<rect x="719.0" y="418.0" width="12" height="160.0" fill="#e87ba4" fill-opacity="0.28" stroke="#e87ba4" stroke-width="1.4"/>
+<line x1="530" y1="424" x2="725" y2="424" stroke="black" stroke-width="1.6"/><polygon points="725,424 713,418 713,430" fill="black"/>
+<rect x="506.0" y="404" width="243.0" height="18" fill="white"/>
+<text font-family="Malgun Gothic, Apple SD Gothic Neo, Noto Sans KR, sans-serif" font-size="12.5" font-weight="normal" fill="black" text-anchor="middle"><tspan x="627.5" y="418.4">부품 Pick &amp; Place 명령 전송</tspan></text>
+<path d="M 725,482 C 803,482 803,508 725,508" fill="none" stroke="black" stroke-width="1.6"/>
+<polygon points="725,508 735,502 735,514" fill="black"/>
+<text font-family="Malgun Gothic, Apple SD Gothic Neo, Noto Sans KR, sans-serif" font-size="12.5" font-weight="normal" fill="black" text-anchor="start"><tspan x="811" y="490.6">보관함 → FR5</tspan><tspan x="811" y="508.1">탄피·탄두 Pick &amp; Place</tspan></text>
+<line x1="725" y1="572" x2="530" y2="572" stroke="black" stroke-width="1.6" stroke-dasharray="6,4"/><polygon points="530,572 542,566 542,578" fill="black"/>
+<rect x="522.5" y="552" width="210.0" height="18" fill="white"/>
+<text font-family="Malgun Gothic, Apple SD Gothic Neo, Noto Sans KR, sans-serif" font-size="12.5" font-weight="normal" fill="black" text-anchor="middle"><tspan x="627.5" y="566.4">Pick &amp; Place 완료 보고</tspan></text>
+<rect x="719.0" y="624.0" width="12" height="144.0" fill="#e87ba4" fill-opacity="0.28" stroke="#e87ba4" stroke-width="1.4"/>
+<line x1="530" y1="630" x2="725" y2="630" stroke="black" stroke-width="1.6"/><polygon points="725,630 713,624 713,636" fill="black"/>
+<rect x="561.0" y="610" width="133.0" height="18" fill="white"/>
+<text font-family="Malgun Gothic, Apple SD Gothic Neo, Noto Sans KR, sans-serif" font-size="12.5" font-weight="normal" fill="black" text-anchor="middle"><tspan x="627.5" y="624.4">부품 조립 명령 전송</tspan></text>
+<path d="M 725,688 C 803,688 803,714 725,714" fill="none" stroke="black" stroke-width="1.6"/>
+<polygon points="725,714 735,708 735,720" fill="black"/>
+<text font-family="Malgun Gothic, Apple SD Gothic Neo, Noto Sans KR, sans-serif" font-size="12.5" font-weight="normal" fill="black" text-anchor="start"><tspan x="811" y="705.4">탄두-탄피 결합 (강화학습)</tspan></text>
+<line x1="725" y1="762" x2="530" y2="762" stroke="black" stroke-width="1.6" stroke-dasharray="6,4"/><polygon points="530,762 542,756 542,768" fill="black"/>
+<rect x="577.5" y="742" width="100.0" height="18" fill="white"/>
+<text font-family="Malgun Gothic, Apple SD Gothic Neo, Noto Sans KR, sans-serif" font-size="12.5" font-weight="normal" fill="black" text-anchor="middle"><tspan x="627.5" y="756.4">조립 완료 보고</tspan></text>
+<rect x="914.0" y="814.0" width="12" height="160.0" fill="#008300" fill-opacity="0.28" stroke="#008300" stroke-width="1.4"/>
+<line x1="530" y1="820" x2="920" y2="820" stroke="black" stroke-width="1.6"/><polygon points="920,820 908,814 908,826" fill="black"/>
+<rect x="653.0" y="800" width="144.0" height="18" fill="white"/>
+<text font-family="Malgun Gothic, Apple SD Gothic Neo, Noto Sans KR, sans-serif" font-size="12.5" font-weight="normal" fill="black" text-anchor="middle"><tspan x="725.0" y="814.4">완제품 포장 명령 전송</tspan></text>
+<path d="M 920,878 C 998,878 998,904 920,904" fill="none" stroke="black" stroke-width="1.6"/>
+<polygon points="920,904 930,898 930,910" fill="black"/>
+<text font-family="Malgun Gothic, Apple SD Gothic Neo, Noto Sans KR, sans-serif" font-size="12.5" font-weight="normal" fill="black" text-anchor="start"><tspan x="1006" y="886.6">포장 수행</tspan><tspan x="1006" y="904.1">(고정대 → 보관함 이동, 모방학습)</tspan></text>
+<line x1="920" y1="968" x2="530" y2="968" stroke="black" stroke-width="1.6" stroke-dasharray="6,4"/><polygon points="530,968 542,962 542,974" fill="black"/>
+<rect x="675.0" y="948" width="100.0" height="18" fill="white"/>
+<text font-family="Malgun Gothic, Apple SD Gothic Neo, Noto Sans KR, sans-serif" font-size="12.5" font-weight="normal" fill="black" text-anchor="middle"><tspan x="725.0" y="962.4">포장 완료 보고</tspan></text>
+<rect x="329.0" y="1020.0" width="12" height="144.0" fill="#eda100" fill-opacity="0.28" stroke="#eda100" stroke-width="1.4"/>
+<line x1="530" y1="1026" x2="335" y2="1026" stroke="black" stroke-width="1.6"/><polygon points="335,1026 347,1020 347,1032" fill="black"/>
+<rect x="322.0" y="1006" width="221.0" height="18" fill="white"/>
+<text font-family="Malgun Gothic, Apple SD Gothic Neo, Noto Sans KR, sans-serif" font-size="12.5" font-weight="normal" fill="black" text-anchor="middle"><tspan x="432.5" y="1020.4">완제품 운반 명령 (ROS2 통신)</tspan></text>
+<path d="M 335,1084 C 413,1084 413,1110 335,1110" fill="none" stroke="black" stroke-width="1.6"/>
+<polygon points="335,1110 345,1104 345,1116" fill="black"/>
+<text font-family="Malgun Gothic, Apple SD Gothic Neo, Noto Sans KR, sans-serif" font-size="12.5" font-weight="normal" fill="black" text-anchor="start"><tspan x="421" y="1101.4">완제품 운반 중 (이동)</tspan></text>
+<rect x="1109.0" y="1152.0" width="12" height="144.0" fill="#e34948" fill-opacity="0.28" stroke="#e34948" stroke-width="1.4"/>
+<line x1="335" y1="1158" x2="1115" y2="1158" stroke="black" stroke-width="1.6"/><polygon points="1115,1158 1103,1152 1103,1164" fill="black"/>
+<rect x="669.5" y="1138" width="111.0" height="18" fill="white"/>
+<text font-family="Malgun Gothic, Apple SD Gothic Neo, Noto Sans KR, sans-serif" font-size="12.5" font-weight="normal" fill="black" text-anchor="middle"><tspan x="725.0" y="1152.4">완제품 도착 통지</tspan></text>
+<path d="M 1115,1216 C 1193,1216 1193,1242 1115,1242" fill="none" stroke="black" stroke-width="1.6"/>
+<polygon points="1115,1242 1125,1236 1125,1248" fill="black"/>
+<text font-family="Malgun Gothic, Apple SD Gothic Neo, Noto Sans KR, sans-serif" font-size="12.5" font-weight="normal" fill="black" text-anchor="start"><tspan x="1201" y="1233.4">적재 수행 (팔레타이징)</tspan></text>
+<line x1="1115" y1="1290" x2="530" y2="1290" stroke="black" stroke-width="1.6" stroke-dasharray="6,4"/><polygon points="530,1290 542,1284 542,1296" fill="black"/>
+<rect x="772.5" y="1270" width="100.0" height="18" fill="white"/>
+<text font-family="Malgun Gothic, Apple SD Gothic Neo, Noto Sans KR, sans-serif" font-size="12.5" font-weight="normal" fill="black" text-anchor="middle"><tspan x="822.5" y="1284.4">적재 완료 보고</tspan></text>
+<rect x="1304.0" y="1342.0" width="12" height="70.0" fill="#1baf7a" fill-opacity="0.28" stroke="#1baf7a" stroke-width="1.4"/>
+<line x1="530" y1="1348" x2="1310" y2="1348" stroke="black" stroke-width="1.6"/><polygon points="1310,1348 1298,1342 1298,1354" fill="black"/>
+<rect x="793.0" y="1328" width="254.0" height="18" fill="white"/>
+<text font-family="Malgun Gothic, Apple SD Gothic Neo, Noto Sans KR, sans-serif" font-size="12.5" font-weight="normal" fill="black" text-anchor="middle"><tspan x="920.0" y="1342.4">공정 이력 저장 (운반·조립·포장·적재)</tspan></text>
+<line x1="1310" y1="1406" x2="530" y2="1406" stroke="black" stroke-width="1.6" stroke-dasharray="6,4"/><polygon points="530,1406 542,1400 542,1412" fill="black"/>
+<rect x="870.0" y="1386" width="100.0" height="18" fill="white"/>
+<text font-family="Malgun Gothic, Apple SD Gothic Neo, Noto Sans KR, sans-serif" font-size="12.5" font-weight="normal" fill="black" text-anchor="middle"><tspan x="920.0" y="1400.4">저장 완료 응답</tspan></text>
+<rect x="329.0" y="1458.0" width="12" height="70.0" fill="#eda100" fill-opacity="0.28" stroke="#eda100" stroke-width="1.4"/>
+<line x1="530" y1="1464" x2="335" y2="1464" stroke="black" stroke-width="1.6"/><polygon points="335,1464 347,1458 347,1470" fill="black"/>
+<rect x="327.5" y="1444" width="210.0" height="18" fill="white"/>
+<text font-family="Malgun Gothic, Apple SD Gothic Neo, Noto Sans KR, sans-serif" font-size="12.5" font-weight="normal" fill="black" text-anchor="middle"><tspan x="432.5" y="1458.4">홈 포지션(대기 위치) 복귀 명령</tspan></text>
+<line x1="335" y1="1522" x2="530" y2="1522" stroke="black" stroke-width="1.6"/><polygon points="530,1522 518,1516 518,1528" fill="black"/>
+<rect x="382.5" y="1502" width="100.0" height="18" fill="white"/>
+<text font-family="Malgun Gothic, Apple SD Gothic Neo, Noto Sans KR, sans-serif" font-size="12.5" font-weight="normal" fill="black" text-anchor="middle"><tspan x="432.5" y="1516.4">복귀 완료 보고</tspan></text>
+<rect x="329.0" y="1574.0" width="12" height="144.0" fill="#eda100" fill-opacity="0.28" stroke="#eda100" stroke-width="1.4"/>
+<line x1="530" y1="1580" x2="335" y2="1580" stroke="black" stroke-width="1.6" stroke-dasharray="6,4"/><polygon points="335,1580 347,1574 347,1586" fill="black"/>
+<rect x="366.0" y="1560" width="133.0" height="18" fill="white"/>
+<text font-family="Malgun Gothic, Apple SD Gothic Neo, Noto Sans KR, sans-serif" font-size="12.5" font-weight="normal" fill="black" text-anchor="middle"><tspan x="432.5" y="1574.4">다음 임무 대기 지시</tspan></text>
+<path d="M 335,1638 C 413,1638 413,1664 335,1664" fill="none" stroke="black" stroke-width="1.6"/>
+<polygon points="335,1664 345,1658 345,1670" fill="black"/>
+<text font-family="Malgun Gothic, Apple SD Gothic Neo, Noto Sans KR, sans-serif" font-size="12.5" font-weight="normal" fill="black" text-anchor="start"><tspan x="421" y="1655.4">대기 상태 유지 (다음 임무까지)</tspan></text>
+</g>
+</svg>
+</div>
+</body>
+</html>
