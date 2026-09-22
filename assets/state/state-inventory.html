@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>Scenario #3</title>
+<style>
+  body { margin:0; padding:24px; background:#f5f5f5; font-family: 'Malgun Gothic','Apple SD Gothic Neo','Noto Sans KR',sans-serif; }
+  .frame { background:white; max-width:1040px; margin:0 auto; padding:20px; box-shadow:0 1px 4px rgba(0,0,0,0.15); }
+  svg { display:block; width:100%; height:auto; }
+</style>
+</head>
+<body>
+<div class="frame">
+<svg viewBox="0 0 1000 540" xmlns="http://www.w3.org/2000/svg">
+<rect x="0" y="0" width="1000" height="540" fill="white"/>
+<text x="40" y="40" font-family="Malgun Gothic, Apple SD Gothic Neo, Noto Sans KR, sans-serif" font-size="22" font-weight="bold" fill="black">Scenario #3 &#8212; 시뮬레이션-현실 재고 동기화</text>
+<g transform="translate(0,60)">
+<defs><marker id="arrowhead" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><polygon points="0,0 8,3 0,6" fill="black"/></marker></defs>
+<circle cx="500" cy="30" r="8" fill="black"/>
+<path d="M 500,38 L 500,61" fill="none" stroke="black" stroke-width="1.6" marker-end="url(#arrowhead)"/>
+<rect x="390.0" y="61.0" width="220" height="58" rx="10" ry="10" fill="white" stroke="black" stroke-width="1.6"/><text font-family="Malgun Gothic, Apple SD Gothic Neo, Noto Sans KR, sans-serif" font-size="15" font-weight="bold" fill="black" text-anchor="middle"><tspan x="500" y="85.2">대기</tspan><tspan x="500" y="105.2">(동기화 주기 대기)</tspan></text>
+<path d="M 500,119 L 500,160" fill="none" stroke="black" stroke-width="1.6" marker-end="url(#arrowhead)"/>
+<text x="512" y="143" font-family="Malgun Gothic, Apple SD Gothic Neo, Noto Sans KR, sans-serif" font-size="12" fill="black" text-anchor="start">동기화 주기 도달</text>
+<rect x="380.0" y="160.0" width="240" height="58" rx="10" ry="10" fill="white" stroke="black" stroke-width="1.6"/><text font-family="Malgun Gothic, Apple SD Gothic Neo, Noto Sans KR, sans-serif" font-size="14" font-weight="normal" fill="black" text-anchor="middle"><tspan x="500" y="184.2">재고·작업 데이터 조회 중</tspan><tspan x="500" y="204.2">(Main Server DB)</tspan></text>
+<path d="M 500,218 L 500,245" fill="none" stroke="black" stroke-width="1.6" marker-end="url(#arrowhead)"/>
+<polygon points="500,245 610,300 500,355 390,300" fill="white" stroke="black" stroke-width="1.6"/><text font-family="Malgun Gothic, Apple SD Gothic Neo, Noto Sans KR, sans-serif" font-size="14" font-weight="bold" fill="black" text-anchor="middle"><tspan x="500" y="296.0">현재 공정</tspan><tspan x="500" y="314.0">단계?</tspan></text>
+<path d="M 390,300 L 290,300" fill="none" stroke="black" stroke-width="1.6" marker-end="url(#arrowhead)"/>
+<text x="340" y="290" font-family="Malgun Gothic, Apple SD Gothic Neo, Noto Sans KR, sans-serif" font-size="12" fill="black" text-anchor="middle">[부품 운반·조립]</text>
+<rect x="70.0" y="277.0" width="220" height="46" rx="10" ry="10" fill="white" stroke="black" stroke-width="1.6"/><text font-family="Malgun Gothic, Apple SD Gothic Neo, Noto Sans KR, sans-serif" font-size="14" font-weight="normal" fill="black" text-anchor="middle"><tspan x="180" y="305.2">부품 수량</tspan></text>
+<path d="M 610,300 L 710,300" fill="none" stroke="black" stroke-width="1.6" marker-end="url(#arrowhead)"/>
+<text x="660" y="290" font-family="Malgun Gothic, Apple SD Gothic Neo, Noto Sans KR, sans-serif" font-size="12" fill="black" text-anchor="middle">[완제품 운반]</text>
+<rect x="710.0" y="277.0" width="220" height="46" rx="10" ry="10" fill="white" stroke="black" stroke-width="1.6"/><text font-family="Malgun Gothic, Apple SD Gothic Neo, Noto Sans KR, sans-serif" font-size="14" font-weight="normal" fill="black" text-anchor="middle"><tspan x="820" y="305.2">제품 수량</tspan></text>
+<path d="M 180,323 L 180,400 L 820,400 L 820,323" fill="none" stroke="black" stroke-width="1.6"/>
+<path d="M 500,400 L 500,440 L 960,440 L 960,90 L 610,90" fill="none" stroke="black" stroke-width="1.6" marker-end="url(#arrowhead)"/>
+</g>
+</svg>
+</div>
+</body>
+</html>
