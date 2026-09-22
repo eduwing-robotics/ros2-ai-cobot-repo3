@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>Scenario #2</title>
+<style>
+  body { margin:0; padding:24px; background:#f5f5f5; font-family: 'Malgun Gothic','Apple SD Gothic Neo','Noto Sans KR',sans-serif; }
+  .frame { background:white; max-width:1290.0px; margin:0 auto; padding:20px; box-shadow:0 1px 4px rgba(0,0,0,0.15); }
+  svg { display:block; width:100%; height:auto; }
+</style>
+</head>
+<body>
+<div class="frame">
+<svg viewBox="0 0 1250.0 1620" xmlns="http://www.w3.org/2000/svg">
+<rect x="0" y="0" width="1250.0" height="1620" fill="white"/>
+<text x="40" y="40" font-family="Malgun Gothic, Apple SD Gothic Neo, Noto Sans KR, sans-serif" font-size="22" font-weight="bold" fill="black">Scenario #2 &#8212; 위험 상황 예측 (결로예방)</text>
+<g transform="translate(0,20)">
+<line x1="1115" y1="136" x2="1115" y2="1540" stroke="#888" stroke-width="1.3" stroke-dasharray="4,3"/>
+<line x1="920" y1="136" x2="920" y2="1540" stroke="#888" stroke-width="1.3" stroke-dasharray="4,3"/>
+<line x1="725" y1="136" x2="725" y2="1540" stroke="#888" stroke-width="1.3" stroke-dasharray="4,3"/>
+<line x1="530" y1="136" x2="530" y2="1540" stroke="#888" stroke-width="1.3" stroke-dasharray="4,3"/>
+<line x1="335" y1="136" x2="335" y2="1540" stroke="#888" stroke-width="1.3" stroke-dasharray="4,3"/>
+<line x1="140" y1="136" x2="140" y2="1540" stroke="#888" stroke-width="1.3" stroke-dasharray="4,3"/>
+<rect x="65.0" y="90" width="150" height="46" rx="6" ry="6" fill="#eda100" stroke="rgba(0,0,0,0.15)" stroke-width="1"/>
+<text font-family="Malgun Gothic, Apple SD Gothic Neo, Noto Sans KR, sans-serif" font-size="13" font-weight="bold" fill="white" text-anchor="middle"><tspan x="140" y="117.5">온·습도 센서</tspan></text>
+<rect x="260.0" y="90" width="150" height="46" rx="6" ry="6" fill="#2a78d6" stroke="rgba(0,0,0,0.15)" stroke-width="1"/>
+<text font-family="Malgun Gothic, Apple SD Gothic Neo, Noto Sans KR, sans-serif" font-size="13" font-weight="bold" fill="white" text-anchor="middle"><tspan x="335" y="108.5">Main Server</tspan><tspan x="335" y="126.5">(공정 관제)</tspan></text>
+<rect x="455.0" y="90" width="150" height="46" rx="6" ry="6" fill="#4a3aa7" stroke="rgba(0,0,0,0.15)" stroke-width="1"/>
+<text font-family="Malgun Gothic, Apple SD Gothic Neo, Noto Sans KR, sans-serif" font-size="13" font-weight="bold" fill="white" text-anchor="middle"><tspan x="530" y="108.5">시뮬레이션 환경</tspan><tspan x="530" y="126.5">(디지털 트윈)</tspan></text>
+<rect x="650.0" y="90" width="150" height="46" rx="6" ry="6" fill="#008300" stroke="rgba(0,0,0,0.15)" stroke-width="1"/>
+<text font-family="Malgun Gothic, Apple SD Gothic Neo, Noto Sans KR, sans-serif" font-size="13" font-weight="bold" fill="white" text-anchor="middle"><tspan x="725" y="108.5">제습·환기</tspan><tspan x="725" y="126.5">시스템</tspan></text>
+<rect x="845.0" y="90" width="150" height="46" rx="6" ry="6" fill="#e34948" stroke="rgba(0,0,0,0.15)" stroke-width="1"/>
+<text font-family="Malgun Gothic, Apple SD Gothic Neo, Noto Sans KR, sans-serif" font-size="13" font-weight="bold" fill="white" text-anchor="middle"><tspan x="920" y="117.5">냉방 시스템</tspan></text>
+<rect x="1040.0" y="90" width="150" height="46" rx="6" ry="6" fill="#1baf7a" stroke="rgba(0,0,0,0.15)" stroke-width="1"/>
+<text font-family="Malgun Gothic, Apple SD Gothic Neo, Noto Sans KR, sans-serif" font-size="13" font-weight="bold" fill="white" text-anchor="middle"><tspan x="1115" y="117.5">Database</tspan></text>
+<rect x="329.0" y="170.0" width="12" height="1346.0" fill="#2a78d6" fill-opacity="0.28" stroke="#2a78d6" stroke-width="1.4"/>
+<line x1="140" y1="176" x2="335" y2="176" stroke="black" stroke-width="1.6"/><polygon points="335,176 323,170 323,182" fill="black"/>
+<rect x="149.0" y="156" width="177.0" height="18" fill="white"/>
+<text font-family="Malgun Gothic, Apple SD Gothic Neo, Noto Sans KR, sans-serif" font-size="12.5" font-weight="normal" fill="black" text-anchor="middle"><tspan x="237.5" y="170.4">실시간 온·습도 데이터 전송</tspan></text>
+<rect x="524.0" y="228.0" width="12" height="144.0" fill="#4a3aa7" fill-opacity="0.28" stroke="#4a3aa7" stroke-width="1.4"/>
+<line x1="335" y1="234" x2="530" y2="234" stroke="black" stroke-width="1.6"/><polygon points="530,234 518,228 518,240" fill="black"/>
+<rect x="360.5" y="214" width="144.0" height="18" fill="white"/>
+<text font-family="Malgun Gothic, Apple SD Gothic Neo, Noto Sans KR, sans-serif" font-size="12.5" font-weight="normal" fill="black" text-anchor="middle"><tspan x="432.5" y="228.4">시뮬레이션 동기화 요청</tspan></text>
+<path d="M 530,292 C 608,292 608,318 530,318" fill="none" stroke="black" stroke-width="1.6"/>
+<polygon points="530,318 540,312 540,324" fill="black"/>
+<text font-family="Malgun Gothic, Apple SD Gothic Neo, Noto Sans KR, sans-serif" font-size="12.5" font-weight="normal" fill="black" text-anchor="start"><tspan x="616" y="309.4">디지털 트윈 반영 동기화 수행</tspan></text>
+<line x1="530" y1="366" x2="335" y2="366" stroke="black" stroke-width="1.6" stroke-dasharray="6,4"/><polygon points="335,366 347,360 347,372" fill="black"/>
+<rect x="377.0" y="346" width="111.0" height="18" fill="white"/>
+<text font-family="Malgun Gothic, Apple SD Gothic Neo, Noto Sans KR, sans-serif" font-size="12.5" font-weight="normal" fill="black" text-anchor="middle"><tspan x="432.5" y="360.4">동기화 완료 응답</tspan></text>
+<path d="M 335,424 C 413,424 413,450 335,450" fill="none" stroke="black" stroke-width="1.6"/>
+<polygon points="335,450 345,444 345,456" fill="black"/>
+<text font-family="Malgun Gothic, Apple SD Gothic Neo, Noto Sans KR, sans-serif" font-size="12.5" font-weight="normal" fill="black" text-anchor="start"><tspan x="421" y="441.4">온·습도 정상 범위 판단</tspan></text>
+<rect x="719.0" y="522.0" width="12" height="144.0" fill="#008300" fill-opacity="0.28" stroke="#008300" stroke-width="1.4"/>
+<line x1="335" y1="528" x2="725" y2="528" stroke="black" stroke-width="1.6"/><polygon points="725,528 713,522 713,534" fill="black"/>
+<rect x="447.0" y="508" width="166.0" height="18" fill="white"/>
+<text font-family="Malgun Gothic, Apple SD Gothic Neo, Noto Sans KR, sans-serif" font-size="12.5" font-weight="normal" fill="black" text-anchor="middle"><tspan x="530.0" y="522.4">제습기 가동 및 환기 명령</tspan></text>
+<path d="M 725,586 C 803,586 803,612 725,612" fill="none" stroke="black" stroke-width="1.6"/>
+<polygon points="725,612 735,606 735,618" fill="black"/>
+<text font-family="Malgun Gothic, Apple SD Gothic Neo, Noto Sans KR, sans-serif" font-size="12.5" font-weight="normal" fill="black" text-anchor="start"><tspan x="811" y="603.4">제습·환기 수행</tspan></text>
+<line x1="725" y1="660" x2="335" y2="660" stroke="black" stroke-width="1.6" stroke-dasharray="6,4"/><polygon points="335,660 347,654 347,666" fill="black"/>
+<rect x="480.0" y="640" width="100.0" height="18" fill="white"/>
+<text font-family="Malgun Gothic, Apple SD Gothic Neo, Noto Sans KR, sans-serif" font-size="12.5" font-weight="normal" fill="black" text-anchor="middle"><tspan x="530.0" y="654.4">가동 완료 보고</tspan></text>
+<rect x="524.0" y="712.0" width="12" height="70.0" fill="#4a3aa7" fill-opacity="0.28" stroke="#4a3aa7" stroke-width="1.4"/>
+<line x1="335" y1="718" x2="530" y2="718" stroke="black" stroke-width="1.6"/><polygon points="530,718 518,712 518,724" fill="black"/>
+<rect x="355.0" y="698" width="155.0" height="18" fill="white"/>
+<text font-family="Malgun Gothic, Apple SD Gothic Neo, Noto Sans KR, sans-serif" font-size="12.5" font-weight="normal" fill="black" text-anchor="middle"><tspan x="432.5" y="712.4">시뮬레이션 재동기화 요청</tspan></text>
+<line x1="530" y1="776" x2="335" y2="776" stroke="black" stroke-width="1.6" stroke-dasharray="6,4"/><polygon points="335,776 347,770 347,782" fill="black"/>
+<rect x="371.5" y="756" width="122.0" height="18" fill="white"/>
+<text font-family="Malgun Gothic, Apple SD Gothic Neo, Noto Sans KR, sans-serif" font-size="12.5" font-weight="normal" fill="black" text-anchor="middle"><tspan x="432.5" y="770.4">재동기화 완료 응답</tspan></text>
+<rect x="240" y="484" width="580" height="346" fill="none" stroke="#444" stroke-width="1.4"/>
+<polygon points="240,484 286,484 286,500 278,508 240,508" fill="#eee" stroke="#444" stroke-width="1.2"/>
+<text font-family="Malgun Gothic, Apple SD Gothic Neo, Noto Sans KR, sans-serif" font-size="12" font-weight="bold" fill="black" text-anchor="middle"><tspan x="263.0" y="500.2">opt</tspan></text>
+<rect x="294.0" y="485.0" width="87.0" height="18" fill="#eee"/>
+<text font-family="Malgun Gothic, Apple SD Gothic Neo, Noto Sans KR, sans-serif" font-size="12.5" font-weight="bold" fill="black" text-anchor="start"><tspan x="298" y="500.4">[습도 초과]</tspan></text>
+<rect x="914.0" y="933.0" width="12" height="144.0" fill="#e34948" fill-opacity="0.28" stroke="#e34948" stroke-width="1.4"/>
+<line x1="335" y1="939" x2="920" y2="939" stroke="black" stroke-width="1.6"/><polygon points="920,939 908,933 908,945" fill="black"/>
+<rect x="561.0" y="919" width="133.0" height="18" fill="white"/>
+<text font-family="Malgun Gothic, Apple SD Gothic Neo, Noto Sans KR, sans-serif" font-size="12.5" font-weight="normal" fill="black" text-anchor="middle"><tspan x="627.5" y="933.4">냉방시스템 가동 명령</tspan></text>
+<path d="M 920,997 C 998,997 998,1023 920,1023" fill="none" stroke="black" stroke-width="1.6"/>
+<polygon points="920,1023 930,1017 930,1029" fill="black"/>
+<text font-family="Malgun Gothic, Apple SD Gothic Neo, Noto Sans KR, sans-serif" font-size="12.5" font-weight="normal" fill="black" text-anchor="start"><tspan x="1006" y="1014.4">냉방 가동 수행</tspan></text>
+<line x1="920" y1="1071" x2="335" y2="1071" stroke="black" stroke-width="1.6" stroke-dasharray="6,4"/><polygon points="335,1071 347,1065 347,1077" fill="black"/>
+<rect x="577.5" y="1051" width="100.0" height="18" fill="white"/>
+<text font-family="Malgun Gothic, Apple SD Gothic Neo, Noto Sans KR, sans-serif" font-size="12.5" font-weight="normal" fill="black" text-anchor="middle"><tspan x="627.5" y="1065.4">가동 완료 보고</tspan></text>
+<rect x="524.0" y="1123.0" width="12" height="70.0" fill="#4a3aa7" fill-opacity="0.28" stroke="#4a3aa7" stroke-width="1.4"/>
+<line x1="335" y1="1129" x2="530" y2="1129" stroke="black" stroke-width="1.6"/><polygon points="530,1129 518,1123 518,1135" fill="black"/>
+<rect x="355.0" y="1109" width="155.0" height="18" fill="white"/>
+<text font-family="Malgun Gothic, Apple SD Gothic Neo, Noto Sans KR, sans-serif" font-size="12.5" font-weight="normal" fill="black" text-anchor="middle"><tspan x="432.5" y="1123.4">시뮬레이션 재동기화 요청</tspan></text>
+<line x1="530" y1="1187" x2="335" y2="1187" stroke="black" stroke-width="1.6" stroke-dasharray="6,4"/><polygon points="335,1187 347,1181 347,1193" fill="black"/>
+<rect x="371.5" y="1167" width="122.0" height="18" fill="white"/>
+<text font-family="Malgun Gothic, Apple SD Gothic Neo, Noto Sans KR, sans-serif" font-size="12.5" font-weight="normal" fill="black" text-anchor="middle"><tspan x="432.5" y="1181.4">재동기화 완료 응답</tspan></text>
+<rect x="240" y="895" width="775" height="346" fill="none" stroke="#444" stroke-width="1.4"/>
+<polygon points="240,895 286,895 286,911 278,919 240,919" fill="#eee" stroke="#444" stroke-width="1.2"/>
+<text font-family="Malgun Gothic, Apple SD Gothic Neo, Noto Sans KR, sans-serif" font-size="12" font-weight="bold" fill="black" text-anchor="middle"><tspan x="263.0" y="911.2">opt</tspan></text>
+<rect x="294.0" y="896.0" width="87.0" height="18" fill="#eee"/>
+<text font-family="Malgun Gothic, Apple SD Gothic Neo, Noto Sans KR, sans-serif" font-size="12.5" font-weight="bold" fill="black" text-anchor="start"><tspan x="298" y="911.4">[온도 초과]</tspan></text>
+<rect x="1109.0" y="1314.0" width="12" height="70.0" fill="#1baf7a" fill-opacity="0.28" stroke="#1baf7a" stroke-width="1.4"/>
+<line x1="335" y1="1320" x2="1115" y2="1320" stroke="black" stroke-width="1.6"/><polygon points="1115,1320 1103,1314 1103,1326" fill="black"/>
+<rect x="587.0" y="1300" width="276.0" height="18" fill="white"/>
+<text font-family="Malgun Gothic, Apple SD Gothic Neo, Noto Sans KR, sans-serif" font-size="12.5" font-weight="normal" fill="black" text-anchor="middle"><tspan x="725.0" y="1314.4">제어·센서 데이터 저장 (실시간 DB 반영)</tspan></text>
+<line x1="1115" y1="1378" x2="335" y2="1378" stroke="black" stroke-width="1.6" stroke-dasharray="6,4"/><polygon points="335,1378 347,1372 347,1384" fill="black"/>
+<rect x="675.0" y="1358" width="100.0" height="18" fill="white"/>
+<text font-family="Malgun Gothic, Apple SD Gothic Neo, Noto Sans KR, sans-serif" font-size="12.5" font-weight="normal" fill="black" text-anchor="middle"><tspan x="725.0" y="1372.4">저장 완료 응답</tspan></text>
+<path d="M 335,1436 C 413,1436 413,1462 335,1462" fill="none" stroke="black" stroke-width="1.6"/>
+<polygon points="335,1462 345,1456 345,1468" fill="black"/>
+<text font-family="Malgun Gothic, Apple SD Gothic Neo, Noto Sans KR, sans-serif" font-size="12.5" font-weight="normal" fill="black" text-anchor="start"><tspan x="421" y="1453.4">대기 상태로 복귀 (다음 주기까지 모니터링)</tspan></text>
+</g>
+</svg>
+</div>
+</body>
+</html>

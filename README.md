@@ -96,19 +96,19 @@ TurtleBot3가 부품을 조립 위치로 운반하면 FR5가 SAM3 비전으로 �
 5. **완제품 이동** — LeRobot으로 수집한 시연 데이터로 학습한 모방학습 정책이 결합된 탄약을 고정대에서 뽑아 보급상자로 옮기고, FR5가 보급상자를 TurtleBot3 위에 올립니다.
 6. **완제품 운반 · 적재** — TurtleBot3가 적재 장소로 이동하고, FR5가 TurtleBot3 위의 완제품 상자를 적재 장소에 하차합니다. 임무 종료 후 복귀해 다음 임무를 대기합니다.
 
-### Scenario 2. 시뮬레이션 · 현실 재고 동기화
-
-1. Main Server DB를 공정의 단일 기준 데이터로 사용합니다.
-2. 부품 운반 · 조립이 일어나면 부품 재고 수량이 줄어듭니다.
-3. 완제품 운반이 완료되면 제품 재고 수량과 상태가 갱신됩니다.
-4. 시뮬레이션은 로봇 작업 사이클과 동기화해 생산량을 예측하고, 케이스별 소요 시간을 기록합니다.
-
-### Scenario 3. 위험 상황 예측 (온 · 습도 기반 결로 예방)
+### Scenario 2. 위험 상황 예측 (온 · 습도 기반 결로 예방)
 
 1. 가상 센서가 작업장의 온도 · 습도 데이터를 주기적으로 발행합니다.
 2. AI 안전 판단 엔진이 관리 기준(온도 21 ~ 28℃, 습도 35 ~ 40%)을 벗어나면 이상 상태로 판정합니다.
 3. 판정 결과에 따라 환기 · 제습 · 냉방 액추에이터를 켜고, 그 효과가 다시 환경에 반영됩니다.
 4. 온 · 습도 · 상태 · 제어 이력은 MQTT로 관제에 전달되고 Main Server에 실시간 저장됩니다.
+
+### Scenario 3. 시뮬레이션 · 현실 재고 동기화
+
+1. Main Server DB를 공정의 단일 기준 데이터로 사용합니다.
+2. 부품 운반 · 조립이 일어나면 부품 재고 수량이 줄어듭니다.
+3. 완제품 운반이 완료되면 제품 재고 수량과 상태가 갱신됩니다.
+4. 시뮬레이션은 로봇 작업 사이클과 동기화해 생산량을 예측하고, 케이스별 소요 시간을 기록합니다.
 
 ### Scenario 4. 긴급정지
 
@@ -123,11 +123,11 @@ TurtleBot3가 부품을 조립 위치로 운반하면 FR5가 SAM3 비전으로 �
 
 <img src="assets/sequence/scene1.png" alt="Scenario 1 시퀀스 다이어그램" width="100%" />
 
-### Scenario 2. 시뮬레이션 · 현실 재고 동기화
+### Scenario 2. 위험 상황 예측 (온 · 습도 기반 결로 예방)
 
 <img src="assets/sequence/scene2.png" alt="Scenario 2 시퀀스 다이어그램" width="100%" />
 
-### Scenario 3. 위험 상황 예측 (온 · 습도 기반 결로 예방)
+### Scenario 3. 시뮬레이션 · 현실 재고 동기화
 
 <img src="assets/sequence/scene3.png" alt="Scenario 3 시퀀스 다이어그램" width="100%" />
 
@@ -141,13 +141,13 @@ TurtleBot3가 부품을 조립 위치로 운반하면 FR5가 SAM3 비전으로 �
 
 <img src="assets/state/state-process.png" alt="공정 기본 사이클 상태도" width="100%" />
 
-### Scenario 2. 시뮬레이션 · 현실 재고 동기화
-
-<img src="assets/state/state-inventory.png" alt="재고 동기화 상태도" width="100%" />
-
-### Scenario 3. 위험 상황 예측 (온 · 습도 기반 결로 예방)
+### Scenario 2. 위험 상황 예측 (온 · 습도 기반 결로 예방)
 
 <img src="assets/state/state-safety.png" alt="온 · 습도 안전관리 상태도" width="100%" />
+
+### Scenario 3. 시뮬레이션 · 현실 재고 동기화
+
+<img src="assets/state/state-inventory.png" alt="재고 동기화 상태도" width="100%" />
 
 ### Scenario 4. 긴급정지
 
