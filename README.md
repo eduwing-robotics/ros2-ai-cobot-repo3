@@ -362,4 +362,4 @@ Virtual Sensor → Main Server → AI Safety Engine → Actuator → Simulation 
 
 - 브로커 없이 시연: `env_demo.py`
 - 관제 서버용 참조 구독자: `env_dashboard_client.py` — 이 파일만 넘기면 된다
-- 정상 범위 온도 21~28℃ · 습도 35~40%
+- 정상 범위 온도 21 ~ 28℃ · 습도 35 ~ 40%
