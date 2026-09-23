@@ -101,7 +101,25 @@ TurtleBot3가 부품을 조립 위치로 운반하면 FR5가 SAM3 비전으로 �
 
 <img src="assets/sequence/scene4.png" alt="Scenario 4 시퀀스 다이어그램" width="100%" />
 
-## 7. 사용자 요구사항 (User Requirements)
+## 7. 상태 다이어그램
+
+### Scenario 1. 공정 기본 사이클
+
+<img src="assets/state/scene1-process.png" alt="공정 기본 사이클 상태도" width="100%" />
+
+### Scenario 2. 환경 제어 시스템 (온 · 습도 기반 결로 예방)
+
+<img src="assets/state/scene2-safety.png" alt="온 · 습도 안전관리 상태도" width="100%" />
+
+### Scenario 3. 시뮬레이션 · 현실 재고 동기화
+
+<img src="assets/state/scene3-inventory.png" alt="재고 동기화 상태도" width="100%" />
+
+### Scenario 4. 긴급정지
+
+<img src="assets/state/scene4-estop.png" alt="긴급정지 상태도" width="100%" />
+
+## 8. 사용자 요구사항 (User Requirements)
 
 | ID | 사용자 요구사항 | 우⁠선⁠순⁠위 |
 | --- | --- | :---: |
@@ -119,7 +137,7 @@ TurtleBot3가 부품을 조립 위치로 운반하면 FR5가 SAM3 비전으로 �
 
 우선순위 — **R** (Required, 필수) · **O** (Optional, 선택)
 
-## 8. 시스템 요구사항 (System Requirements)
+## 9. 시스템 요구사항 (System Requirements)
 
 | ID | 기능 | 요구사항 | 우⁠선⁠순⁠위 |
 | --- | --- | --- | :---: |
@@ -137,7 +155,7 @@ TurtleBot3가 부품을 조립 위치로 운반하면 FR5가 SAM3 비전으로 �
 
 우선순위 — **R** (Required, 필수) · **O** (Optional, 선택)
 
-## 9. 시스템 아키텍처
+## 10. 시스템 아키텍처
 
 ### 하드웨어 아키텍처
 
@@ -148,24 +166,6 @@ TurtleBot3가 부품을 조립 위치로 운반하면 FR5가 SAM3 비전으로 �
 
 
 <img src="assets/architecture/software-architecture.png" alt="소프트웨어 아키텍처" width="100%" />
-
-## 10. 상태 다이어그램
-
-### Scenario 1. 공정 기본 사이클
-
-<img src="assets/state/scene1-process.png" alt="공정 기본 사이클 상태도" width="100%" />
-
-### Scenario 2. 환경 제어 시스템 (온 · 습도 기반 결로 예방)
-
-<img src="assets/state/scene2-safety.png" alt="온 · 습도 안전관리 상태도" width="100%" />
-
-### Scenario 3. 시뮬레이션 · 현실 재고 동기화
-
-<img src="assets/state/scene3-inventory.png" alt="재고 동기화 상태도" width="100%" />
-
-### Scenario 4. 긴급정지
-
-<img src="assets/state/scene4-estop.png" alt="긴급정지 상태도" width="100%" />
 
 ## 11. 소스 구성
 
